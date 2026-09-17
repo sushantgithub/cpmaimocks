@@ -64,7 +64,7 @@ export default function HomePage() {
                 Start Free Today <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
-            <Button size="xl" variant="outline" className="border-white text-white hover:bg-white/10" asChild>
+            <Button size="xl" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 hover:text-white" asChild>
               <Link href="/exams">View Mock Exams</Link>
             </Button>
           </div>
