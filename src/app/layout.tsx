@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SessionProvider } from '@/components/shared/session-provider'
+import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SessionProvider>
           {children}
           <Toaster />
+          <Analytics />
         </SessionProvider>
       </body>
     </html>
