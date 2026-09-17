@@ -121,7 +121,7 @@ export function CsvImportClient() {
           <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono overflow-x-auto">
             question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,domain,topic,difficulty,source
           </div>
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             {[
               { col: 'question_id', req: false, note: 'Auto-generated if blank' },
               { col: 'question', req: true, note: 'Full question text' },
