@@ -2,12 +2,23 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 
-export async function POST(req: Request) {
-  const { secret } = await req.json()
-  if (secret !== process.env.SEED_SECRET) {
+export async function GET(req: Request) {
+  const secret = new URL(req.url).searchParams.get('secret')
+  if (!process.env.SEED_SECRET || secret !== process.env.SEED_SECRET) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
+  return runSeed()
+}
 
+export async function POST(req: Request) {
+  const { secret } = await req.json()
+  if (!process.env.SEED_SECRET || secret !== process.env.SEED_SECRET) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return runSeed()
+}
+
+async function runSeed() {
   try {
     const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@cpmaiprep.com'
     const adminPassword = process.env.ADMIN_PASSWORD ?? 'changeme123!'
