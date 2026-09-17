@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { slugify } from '@/lib/utils'
 
 interface ImportRow {
   question_id?: string; question: string; option_a: string; option_b: string
   option_c: string; option_d: string; correct_answer: string; explanation: string
   domain?: string; topic?: string; difficulty?: string; source?: string
+  status?: string
 }
 
 export async function POST(req: Request) {
@@ -23,40 +25,50 @@ export async function POST(req: Request) {
     let imported = 0
     const errors: string[] = []
 
-    for (const row of questions) {
+    for (let index = 0; index < questions.length; index++) {
+      const row = questions[index]
+      const rowNum = index + 1
       try {
-        // Get or create category
-        let categoryId: string | undefined
-        if (row.domain?.trim()) {
-          const cat = await prisma.category.upsert({
-            where: { slug: row.domain.trim().toLowerCase().replace(/\s+/g, '-') },
-            create: {
-              name: row.domain.trim(),
-              slug: row.domain.trim().toLowerCase().replace(/\s+/g, '-'),
-            },
-            update: {},
-          })
-          categoryId = cat.id
+        const correctAnswer = row.correct_answer?.trim().toUpperCase()
+        if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+          errors.push(`Row ${rowNum}: correct_answer must be A, B, C or D (got "${row.correct_answer}")`)
+          continue
         }
 
-        // Get or create topic
+        // Match the existing category by name or slug before creating a new one,
+        // since Category.name is unique and would otherwise collide.
+        let categoryId: string | undefined
+        const domain = row.domain?.trim()
+        if (domain) {
+          const slug = slugify(domain)
+          const existing = await prisma.category.findFirst({
+            where: { OR: [{ slug }, { name: domain }] },
+          })
+          categoryId = existing
+            ? existing.id
+            : (await prisma.category.create({ data: { name: domain, slug } })).id
+        }
+
         let topicId: string | undefined
-        if (row.topic?.trim() && categoryId) {
-          const topicSlug = row.topic.trim().toLowerCase().replace(/\s+/g, '-')
+        const topicName = row.topic?.trim()
+        if (topicName && categoryId) {
+          const topicSlug = slugify(topicName)
           const topic = await prisma.topic.upsert({
             where: { slug_categoryId: { slug: topicSlug, categoryId } },
-            create: { name: row.topic.trim(), slug: topicSlug, categoryId },
+            create: { name: topicName, slug: topicSlug, categoryId },
             update: {},
           })
           topicId = topic.id
         }
 
-        // Generate question ID if not provided
-        const questionId = row.question_id?.trim() || `Q${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
+        const questionId = row.question_id?.trim()
+          || `Q${Date.now().toString(36)}-${rowNum}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`
 
         const difficulty = (['EASY', 'MEDIUM', 'HARD'].includes(row.difficulty?.toUpperCase() ?? ''))
           ? row.difficulty!.toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD'
           : 'MEDIUM'
+
+        const status = row.status?.toUpperCase() === 'PUBLISHED' ? 'PUBLISHED' : 'DRAFT'
 
         await prisma.question.create({
           data: {
@@ -66,19 +78,19 @@ export async function POST(req: Request) {
             optionB: row.option_b.trim(),
             optionC: row.option_c.trim(),
             optionD: row.option_d.trim(),
-            correctAnswer: row.correct_answer.toUpperCase().trim(),
+            correctAnswer,
             explanation: row.explanation.trim(),
             difficulty,
             source: row.source?.trim(),
             categoryId,
             topicId,
-            status: 'DRAFT',
+            status,
           },
         })
 
         imported++
       } catch (rowError) {
-        errors.push(`Row error: ${rowError instanceof Error ? rowError.message : 'Unknown'}`)
+        errors.push(`Row ${rowNum}: ${rowError instanceof Error ? rowError.message : 'Unknown error'}`)
       }
     }
 

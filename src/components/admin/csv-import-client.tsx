@@ -43,6 +43,7 @@ export function CsvImportClient() {
   const [importing, setImporting] = useState(false)
   const [imported, setImported] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [publishNow, setPublishNow] = useState(true)
 
   function processFile(file: File) {
     Papa.parse(file, {
@@ -94,7 +95,9 @@ export function CsvImportClient() {
       const res = await fetch('/api/admin/questions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: preview.valid }),
+        body: JSON.stringify({
+          questions: preview.valid.map((q) => ({ ...q, status: publishNow ? 'PUBLISHED' : 'DRAFT' })),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -242,6 +245,16 @@ export function CsvImportClient() {
               </CardContent>
             </Card>
           )}
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={publishNow}
+              onChange={(e) => setPublishNow(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Publish immediately (unpublished questions never appear in exams or practice)
+          </label>
 
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setPreview(null)}>Cancel</Button>
