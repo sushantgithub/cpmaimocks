@@ -108,7 +108,7 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
           {formatTime(timeLeft)}
         </div>
 
-        <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+        <Button variant="outline" size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
           <Send className="h-3.5 w-3.5 mr-1.5" />
           Submit
         </Button>
@@ -116,7 +116,8 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Question panel */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-2xl mx-auto">
             {/* Difficulty + marks */}
             <div className="flex items-center gap-2 mb-4">
@@ -162,8 +163,12 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
               })}
             </div>
 
-            {/* Action row */}
-            <div className="flex items-center justify-between mt-6 gap-3">
+          </div>
+          </div>
+
+          {/* Action bar — stays put instead of scrolling away on long questions */}
+          <div className="border-t bg-white px-4 py-3 flex-shrink-0">
+            <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -190,13 +195,15 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
                 </Button>
               </div>
 
-              <Button
-                size="sm"
-                onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-                disabled={current === questions.length - 1}
-              >
-                Next<ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              {current === questions.length - 1 ? (
+                <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+                  <Send className="h-3.5 w-3.5 mr-1.5" />Finish
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => setCurrent((c) => c + 1)}>
+                  Next<ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
             </div>
           </div>
         </main>
@@ -287,11 +294,27 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
                 You have <strong>{unanswered} unanswered</strong> questions. They will be marked incorrect.
               </p>
             )}
+            {marked.size > 0 && (
+              <p className="text-sm text-yellow-800 bg-yellow-50 rounded-lg p-3 mb-4">
+                <strong>{marked.size}</strong> still marked for review.
+              </p>
+            )}
             <p className="text-sm text-muted-foreground mb-6">
               {totalAnswered} of {questions.length} answered. This cannot be undone.
             </p>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>Review</Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowConfirm(false)
+                  // Send them to the first gap rather than dumping them where they were
+                  const firstGap = questions.findIndex((question) => !answers[question.id])
+                  if (firstGap !== -1) setCurrent(firstGap)
+                }}
+              >
+                Review
+              </Button>
               <Button className="flex-1" onClick={() => { setShowConfirm(false); submitExam() }} loading={submitting}>
                 Submit
               </Button>

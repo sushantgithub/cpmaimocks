@@ -146,7 +146,8 @@ export function PracticeInterface({ attemptId, questions }: Props) {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main question area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-2xl mx-auto">
             {/* Meta badges */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
@@ -233,8 +234,12 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               </div>
             )}
 
-            {/* Nav row */}
-            <div className="flex items-center justify-between mt-6 gap-3">
+          </div>
+          </div>
+
+          {/* Action bar — explanations make these pages long, so keep the controls in reach */}
+          <div className="border-t bg-white px-4 py-3 flex-shrink-0">
+            <div className="max-w-2xl mx-auto flex items-center justify-between gap-2">
               <Button
                 variant="ghost"
                 size="sm"
