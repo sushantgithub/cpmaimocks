@@ -153,6 +153,10 @@ model SubscriptionPlan {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // null means the plan grants access to every certification
+  certificationId String?
+
+  certification Certification? @relation(fields: [certificationId], references: [id])
   subscriptions Subscription[]
   payments      Payment[]
 }
@@ -209,16 +213,38 @@ model Payment {
   @@index([providerOrderId])
 }
 
-model Category {
+model Certification {
   id          String   @id @default(cuid())
   name        String   @unique
   slug        String   @unique
+  fullName    String?
   description String?
+  isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  questions Question[]
-  topics    Topic[]
+  categories Category[]
+  questions  Question[]
+  exams      MockExam[]
+  plans      SubscriptionPlan[]
+}
+
+model Category {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String
+  certificationId String
+  description     String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  questions     Question[]
+  topics        Topic[]
+
+  @@unique([name, certificationId])
+  @@unique([slug, certificationId])
 }
 
 model Topic {
@@ -245,9 +271,10 @@ model Question {
   optionC       String         @db.Text
   optionD       String         @db.Text
   correctAnswer String
-  explanation   String         @db.Text
-  categoryId    String?
-  topicId       String?
+  explanation     String       @db.Text
+  certificationId String
+  categoryId      String?
+  topicId         String?
   difficulty    Difficulty     @default(MEDIUM)
   status        QuestionStatus @default(DRAFT)
   source        String?
@@ -255,6 +282,7 @@ model Question {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  certification     Certification      @relation(fields: [certificationId], references: [id])
   category          Category?          @relation(fields: [categoryId], references: [id])
   topic             Topic?             @relation(fields: [topicId], references: [id])
   mockExamQuestions MockExamQuestion[]
@@ -263,12 +291,14 @@ model Question {
 
   @@index([categoryId, difficulty, status])
   @@index([status])
+  @@index([certificationId, status])
 }
 
 model MockExam {
   id                  String     @id @default(cuid())
   title               String
   slug                String     @unique
+  certificationId     String
   description         String?
   questionCount       Int
   timeLimitMinutes    Int
@@ -281,8 +311,11 @@ model MockExam {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
-  questions MockExamQuestion[]
-  attempts  ExamAttempt[]
+  certification Certification      @relation(fields: [certificationId], references: [id])
+  questions     MockExamQuestion[]
+  attempts      ExamAttempt[]
+
+  @@index([certificationId, status])
 }
 
 model MockExamQuestion {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,10 @@ import { Upload, AlertCircle, CheckCircle2, X, FileText } from 'lucide-react'
 const REQUIRED_COLS = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation']
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD', 'easy', 'medium', 'hard']
 const VALID_ANSWERS = ['A', 'B', 'C', 'D', 'a', 'b', 'c', 'd']
+
+interface Certification {
+  id: string; name: string; slug: string; fullName?: string | null
+}
 
 interface RowData {
   question_id?: string; question: string; option_a: string; option_b: string
@@ -44,6 +48,18 @@ export function CsvImportClient() {
   const [imported, setImported] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [publishNow, setPublishNow] = useState(true)
+  const [certifications, setCertifications] = useState<Certification[]>([])
+  const [certificationId, setCertificationId] = useState('')
+
+  useEffect(() => {
+    fetch('/api/certifications')
+      .then(r => r.json())
+      .then((certs: Certification[]) => {
+        setCertifications(certs)
+        if (certs.length > 0) setCertificationId(certs[0].id)
+      })
+      .catch(() => {})
+  }, [])
 
   function processFile(file: File) {
     Papa.parse(file, {
@@ -96,6 +112,7 @@ export function CsvImportClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          certificationId,
           questions: preview.valid.map((q) => ({ ...q, status: publishNow ? 'PUBLISHED' : 'DRAFT' })),
         }),
       })
@@ -245,6 +262,22 @@ export function CsvImportClient() {
               </CardContent>
             </Card>
           )}
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Certification</label>
+            <select
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={certificationId}
+              onChange={(e) => setCertificationId(e.target.value)}
+            >
+              {certifications.map(c => (
+                <option key={c.id} value={c.id}>{c.fullName ? `${c.name} — ${c.fullName}` : c.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              These questions and any new domains they create belong to this certification.
+            </p>
+          </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input

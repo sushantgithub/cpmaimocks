@@ -77,6 +77,20 @@ const DOMAINS = [
 export async function seedDatabase(prisma: PrismaClient) {
   const created: string[] = []
 
+  let certification = await prisma.certification.findUnique({ where: { slug: 'cpmai' } })
+  if (!certification) {
+    certification = await prisma.certification.create({
+      data: {
+        name: 'CPMAI',
+        slug: 'cpmai',
+        fullName: 'Cognitive Project Management for AI',
+        description: 'AI project management certification.',
+        sortOrder: 0,
+      },
+    })
+    created.push('certification: CPMAI')
+  }
+
   const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@cpmaiprep.com'
   const adminPassword = process.env.ADMIN_PASSWORD ?? 'changeme123!'
 
@@ -104,9 +118,13 @@ export async function seedDatabase(prisma: PrismaClient) {
 
   for (let i = 0; i < DOMAINS.length; i++) {
     const slug = DOMAINS[i].toLowerCase().replace(/[^a-z0-9]+/g, '-')
-    const existing = await prisma.category.findUnique({ where: { slug } })
+    const existing = await prisma.category.findUnique({
+      where: { slug_certificationId: { slug, certificationId: certification.id } },
+    })
     if (!existing) {
-      await prisma.category.create({ data: { name: DOMAINS[i], slug, sortOrder: i } })
+      await prisma.category.create({
+        data: { name: DOMAINS[i], slug, sortOrder: i, certificationId: certification.id },
+      })
       created.push(`category: ${DOMAINS[i]}`)
     }
   }
@@ -117,6 +135,7 @@ export async function seedDatabase(prisma: PrismaClient) {
       data: {
         title: 'CPMAI Mock Exam 1',
         slug: 'cpmai-mock-exam-1',
+        certificationId: certification.id,
         description: 'Full 120-question mock exam covering all CPMAI domains.',
         questionCount: 120,
         timeLimitMinutes: 180,

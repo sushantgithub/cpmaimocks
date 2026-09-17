@@ -55,6 +55,7 @@ export interface ExamResult {
 
 export interface PracticeConfig {
   questionCount: number
+  certificationId?: string
   difficulty?: Difficulty[]
   categoryIds?: string[]
   topicIds?: string[]

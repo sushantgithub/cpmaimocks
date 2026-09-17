@@ -13,7 +13,11 @@ export default async function ExamsPage() {
 
   const [subscription, exams, attempts] = await Promise.all([
     getUserActiveSubscription(userId),
-    prisma.mockExam.findMany({ where: { status: 'PUBLISHED' }, orderBy: { sortOrder: 'asc' } }),
+    prisma.mockExam.findMany({
+      where: { status: 'PUBLISHED' },
+      orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+      include: { certification: { select: { name: true } } },
+    }),
     prisma.examAttempt.findMany({
       where: { userId, status: 'COMPLETED', examId: { not: null } },
       select: { examId: true, score: true, submittedAt: true },
@@ -60,7 +64,10 @@ export default async function ExamsPage() {
             <Card key={exam.id} className={locked ? 'opacity-60' : ''}>
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold">{exam.title}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold">{exam.title}</h3>
+                    <Badge variant="secondary" className="text-xs">{exam.certification.name}</Badge>
+                  </div>
                   <div className="flex gap-2">
                     {passed && <Badge variant="success" className="text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Passed</Badge>}
                     {locked && <Lock className="h-4 w-4 text-muted-foreground" />}

@@ -10,6 +10,7 @@ export async function GET() {
   const exams = await prisma.mockExam.findMany({
     orderBy: { sortOrder: 'asc' },
     include: {
+      certification: { select: { id: true, name: true } },
       _count: { select: { questions: true, attempts: true } },
     },
   })
@@ -24,10 +25,19 @@ export async function POST(req: Request) {
   const data = await req.json()
   const slug = slugify(data.title) + '-' + Date.now()
 
+  const certification = data.certificationId
+    ? await prisma.certification.findUnique({ where: { id: data.certificationId } })
+    : await prisma.certification.findFirst({ orderBy: { sortOrder: 'asc' } })
+
+  if (!certification) {
+    return NextResponse.json({ error: 'No certification found. Run the seed first.' }, { status: 400 })
+  }
+
   const exam = await prisma.mockExam.create({
     data: {
       title: data.title,
       slug,
+      certificationId: certification.id,
       description: data.description ?? null,
       questionCount: data.questionCount ?? 0,
       timeLimitMinutes: data.timeLimitMinutes ?? 120,

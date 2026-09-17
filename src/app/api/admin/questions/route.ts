@@ -22,6 +22,8 @@ export async function GET(req: Request) {
   }
   if (status) where.status = status
   if (difficulty) where.difficulty = difficulty
+  const certificationId = searchParams.get('certificationId')
+  if (certificationId) where.certificationId = certificationId
 
   const [questions, total] = await Promise.all([
     prisma.question.findMany({

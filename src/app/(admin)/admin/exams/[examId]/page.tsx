@@ -25,6 +25,8 @@ interface AssignedQuestion {
 interface Exam {
   id: string
   title: string
+  certificationId: string
+  certification?: { name: string } | null
   description: string | null
   timeLimitMinutes: number
   passingScore: number
@@ -72,11 +74,13 @@ export default function EditExamPage() {
     if (!searchQuery.trim()) { setSearchResults([]); return }
     setSearching(true)
     try {
-      const res = await fetch(`/api/admin/questions?search=${encodeURIComponent(searchQuery)}&status=PUBLISHED&limit=20`)
+      const res = await fetch(
+        `/api/admin/questions?search=${encodeURIComponent(searchQuery)}&status=PUBLISHED&limit=20&certificationId=${exam?.certificationId ?? ''}`
+      )
       const data = await res.json()
       setSearchResults(data.questions ?? [])
     } finally { setSearching(false) }
-  }, [searchQuery])
+  }, [searchQuery, exam?.certificationId])
 
   useEffect(() => {
     const t = setTimeout(searchQuestions, 400)
@@ -105,7 +109,9 @@ export default function EditExamPage() {
     }
     setAutoFilling(true)
     try {
-      const res = await fetch(`/api/admin/questions?status=PUBLISHED&limit=${count}`)
+      const res = await fetch(
+        `/api/admin/questions?status=PUBLISHED&limit=${count}&certificationId=${exam?.certificationId ?? ''}`
+      )
       const data = await res.json()
       const found: Question[] = data.questions ?? []
       if (found.length === 0) {

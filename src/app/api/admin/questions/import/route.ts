@@ -17,9 +17,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { questions } = await req.json() as { questions: ImportRow[] }
+    const { questions, certificationId } = await req.json() as {
+      questions: ImportRow[]
+      certificationId?: string
+    }
     if (!Array.isArray(questions) || questions.length === 0) {
       return NextResponse.json({ error: 'No questions provided' }, { status: 400 })
+    }
+
+    const certification = certificationId
+      ? await prisma.certification.findUnique({ where: { id: certificationId } })
+      : await prisma.certification.findFirst({ orderBy: { sortOrder: 'asc' } })
+
+    if (!certification) {
+      return NextResponse.json({ error: 'No certification found. Run the seed first.' }, { status: 400 })
     }
 
     let imported = 0
@@ -42,11 +53,16 @@ export async function POST(req: Request) {
         if (domain) {
           const slug = slugify(domain)
           const existing = await prisma.category.findFirst({
-            where: { OR: [{ slug }, { name: domain }] },
+            where: {
+              certificationId: certification.id,
+              OR: [{ slug }, { name: domain }],
+            },
           })
           categoryId = existing
             ? existing.id
-            : (await prisma.category.create({ data: { name: domain, slug } })).id
+            : (await prisma.category.create({
+                data: { name: domain, slug, certificationId: certification.id },
+              })).id
         }
 
         let topicId: string | undefined
@@ -82,6 +98,7 @@ export async function POST(req: Request) {
             explanation: row.explanation.trim(),
             difficulty,
             source: row.source?.trim(),
+            certificationId: certification.id,
             categoryId,
             topicId,
             status,

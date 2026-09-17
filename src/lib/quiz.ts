@@ -42,6 +42,9 @@ export async function getExamQuestions(examId: string) {
 export async function getPracticeQuestions(userId: string, config: PracticeConfig) {
   const where: Record<string, unknown> = { status: 'PUBLISHED' }
 
+  if (config.certificationId) {
+    where.certificationId = config.certificationId
+  }
   if (config.difficulty && config.difficulty.length > 0) {
     where.difficulty = { in: config.difficulty }
   }
