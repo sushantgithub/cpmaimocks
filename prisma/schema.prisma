@@ -1,0 +1,421 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+  TRIAL
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  emailVerified     DateTime?
+  name              String?
+  image             String?
+  passwordHash      String?
+  role              Role      @default(USER)
+  isActive          Boolean   @default(true)
+  deletionRequested Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  accounts           Account[]
+  sessions           Session[]
+  subscriptions      Subscription[]
+  payments           Payment[]
+  examAttempts       ExamAttempt[]
+  bookmarks          Bookmark[]
+  emailVerifications EmailVerification[]
+  passwordResets     PasswordReset[]
+  couponRedemptions  CouponRedemption[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  used      Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  used      Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  price        Float
+  currency     String   @default("INR")
+  durationDays Int
+  features     Json     @default("[]")
+  isActive     Boolean  @default(true)
+  isFeatured   Boolean  @default(false)
+  trialDays    Int      @default(0)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+  payments      Payment[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  planId             String
+  status             SubscriptionStatus @default(PENDING)
+  startDate          DateTime?
+  endDate            DateTime?
+  trialEndsAt        DateTime?
+  autoRenew          Boolean            @default(false)
+  cancelledAt        DateTime?
+  cancellationReason String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id])
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+  payments Payment[]
+
+  @@index([userId, status])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  userId            String
+  subscriptionId    String?
+  planId            String?
+  amount            Float
+  currency          String        @default("INR")
+  status            PaymentStatus @default(PENDING)
+  provider          String        @default("razorpay")
+  providerPaymentId String?
+  providerOrderId   String?
+  providerSignature String?
+  couponId          String?
+  discountAmount    Float         @default(0)
+  metadata          Json?
+  failureReason     String?
+  refundedAt        DateTime?
+  refundAmount      Float?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  user         User              @relation(fields: [userId], references: [id])
+  subscription Subscription?     @relation(fields: [subscriptionId], references: [id])
+  plan         SubscriptionPlan? @relation(fields: [planId], references: [id])
+  coupon       Coupon?           @relation(fields: [couponId], references: [id])
+
+  @@index([userId, status])
+  @@index([providerPaymentId])
+  @@index([providerOrderId])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  questions Question[]
+  topics    Topic[]
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  categoryId  String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  category  Category   @relation(fields: [categoryId], references: [id])
+  questions Question[]
+
+  @@unique([slug, categoryId])
+}
+
+model Question {
+  id            String         @id @default(cuid())
+  questionId    String         @unique
+  text          String         @db.Text
+  optionA       String         @db.Text
+  optionB       String         @db.Text
+  optionC       String         @db.Text
+  optionD       String         @db.Text
+  correctAnswer String
+  explanation   String         @db.Text
+  categoryId    String?
+  topicId       String?
+  difficulty    Difficulty     @default(MEDIUM)
+  status        QuestionStatus @default(DRAFT)
+  source        String?
+  tags          String[]       @default([])
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  category          Category?          @relation(fields: [categoryId], references: [id])
+  topic             Topic?             @relation(fields: [topicId], references: [id])
+  mockExamQuestions MockExamQuestion[]
+  examAnswers       ExamAnswer[]
+  bookmarks         Bookmark[]
+
+  @@index([categoryId, difficulty, status])
+  @@index([status])
+}
+
+model MockExam {
+  id                  String     @id @default(cuid())
+  title               String
+  slug                String     @unique
+  description         String?
+  questionCount       Int
+  timeLimitMinutes    Int
+  passingScore        Int        @default(70)
+  status              ExamStatus @default(DRAFT)
+  randomizeQuestions  Boolean    @default(true)
+  showExplanations    Boolean    @default(true)
+  requireSubscription Boolean    @default(true)
+  sortOrder           Int        @default(0)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  questions MockExamQuestion[]
+  attempts  ExamAttempt[]
+}
+
+model MockExamQuestion {
+  id         String @id @default(cuid())
+  examId     String
+  questionId String
+  sortOrder  Int    @default(0)
+
+  exam     MockExam @relation(fields: [examId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([examId, questionId])
+}
+
+model ExamAttempt {
+  id               String        @id @default(cuid())
+  userId           String
+  examId           String?
+  mode             String        @default("EXAM")
+  status           AttemptStatus @default(IN_PROGRESS)
+  startedAt        DateTime      @default(now())
+  submittedAt      DateTime?
+  timeTakenSeconds Int?
+  score            Float?
+  correctCount     Int?
+  incorrectCount   Int?
+  unansweredCount  Int?
+  totalQuestions   Int
+  practiceConfig   Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id])
+  exam    MockExam?    @relation(fields: [examId], references: [id])
+  answers ExamAnswer[]
+
+  @@index([userId, status])
+  @@index([userId, examId])
+}
+
+model ExamAnswer {
+  id               String   @id @default(cuid())
+  attemptId        String
+  questionId       String
+  selectedAnswer   String?
+  isCorrect        Boolean?
+  isMarked         Boolean  @default(false)
+  timeTakenSeconds Int?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  attempt  ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
+}
+
+model Bookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  note       String?
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+}
+
+model Coupon {
+  id                 String    @id @default(cuid())
+  code               String    @unique
+  description        String?
+  discountType       String
+  discountValue      Float
+  currency           String    @default("INR")
+  minPurchase        Float?
+  maxRedemptions     Int?
+  currentRedemptions Int       @default(0)
+  expiresAt          DateTime?
+  isActive           Boolean   @default(true)
+  applicablePlans    String[]  @default([])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  redemptions CouponRedemption[]
+  payments    Payment[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  paymentId String?
+  createdAt DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model SiteSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model BlogPost {
+  id             String    @id @default(cuid())
+  title          String
+  slug           String    @unique
+  excerpt        String?
+  content        String    @db.Text
+  coverImage     String?
+  isPublished    Boolean   @default(false)
+  publishedAt    DateTime?
+  author         String?
+  tags           String[]  @default([])
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  event     String
+  userId    String?
+  metadata  Json?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([event, createdAt])
+  @@index([userId])
+}
