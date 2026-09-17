@@ -166,6 +166,28 @@ export function CsvImportClient() {
         </CardContent>
       </Card>
 
+      {/* Certification — chosen before upload, and stays visible through preview */}
+      {!imported && (
+        <Card>
+          <CardContent className="p-4">
+            <label className="text-sm font-medium text-gray-700">Import into certification</label>
+            <select
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={certificationId}
+              onChange={(e) => setCertificationId(e.target.value)}
+            >
+              {certifications.length === 0 && <option value="">Loading…</option>}
+              {certifications.map(c => (
+                <option key={c.id} value={c.id}>{c.fullName ? `${c.name} — ${c.fullName}` : c.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              These questions, and any new domains they create, belong to this certification.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Upload area */}
       {!preview && !imported && (
         <div
@@ -262,22 +284,6 @@ export function CsvImportClient() {
               </CardContent>
             </Card>
           )}
-
-          <div>
-            <label className="text-sm font-medium text-gray-700">Certification</label>
-            <select
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={certificationId}
-              onChange={(e) => setCertificationId(e.target.value)}
-            >
-              {certifications.map(c => (
-                <option key={c.id} value={c.id}>{c.fullName ? `${c.name} — ${c.fullName}` : c.name}</option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              These questions and any new domains they create belong to this certification.
-            </p>
-          </div>
 
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
