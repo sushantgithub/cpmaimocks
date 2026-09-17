@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { PublicNav } from '@/components/layout/public-nav'
 import { PublicFooter } from '@/components/layout/public-footer'
 
