@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         userId: session.user.id,
         mode: 'PRACTICE',
         totalQuestions: questions.length,
-        practiceConfig: config as Record<string, unknown>,
+        practiceConfig: config as object,
         answers: {
           create: questions.map((q) => ({ questionId: q.id })),
         },
