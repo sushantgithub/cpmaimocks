@@ -12,12 +12,15 @@ const DIFFICULTY_OPTIONS = ['EASY', 'MEDIUM', 'HARD']
 const QUESTION_COUNTS = [10, 20, 30, 50]
 
 interface Category { id: string; name: string }
+interface Certification { id: string; name: string; fullName?: string | null }
 
 export default function PracticePage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
+  const [certifications, setCertifications] = useState<Certification[]>([])
   const [config, setConfig] = useState({
     questionCount: 20,
+    certificationId: '',
     difficulty: [] as string[],
     categoryIds: [] as string[],
     mode: 'RANDOM' as 'RANDOM' | 'INCORRECT' | 'BOOKMARKED',
@@ -25,8 +28,24 @@ export default function PracticePage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/categories').then((r) => r.json()).then(setCategories).catch(() => {})
+    fetch('/api/certifications')
+      .then((r) => r.json())
+      .then((certs: Certification[]) => {
+        setCertifications(certs)
+        if (certs.length > 0) setConfig((p) => ({ ...p, certificationId: certs[0].id }))
+      })
+      .catch(() => {})
   }, [])
+
+  // Domains belong to a certification, so reload them whenever it changes
+  useEffect(() => {
+    if (!config.certificationId) return
+    fetch(`/api/categories?certificationId=${config.certificationId}`)
+      .then((r) => r.json())
+      .then(setCategories)
+      .catch(() => {})
+    setConfig((p) => ({ ...p, categoryIds: [] }))
+  }, [config.certificationId])
 
   function toggleDifficulty(d: string) {
     setConfig((prev) => ({
@@ -95,6 +114,29 @@ export default function PracticePage() {
           </div>
         </CardContent>
       </Card>
+
+      {certifications.length > 1 && (
+        <Card>
+          <CardContent className="p-4">
+            <h3 className="font-semibold mb-3">Certification</h3>
+            <div className="flex gap-2 flex-wrap">
+              {certifications.map((cert) => (
+                <button
+                  key={cert.id}
+                  onClick={() => setConfig((p) => ({ ...p, certificationId: cert.id }))}
+                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    config.certificationId === cert.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {cert.name}
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Question count */}
       <Card>

@@ -8,10 +8,17 @@ import { toast } from '@/hooks/use-toast'
 import { Plus, Edit, Trash2, Users, Clock, CheckCircle, FileText } from 'lucide-react'
 import Link from 'next/link'
 
+interface Certification {
+  id: string
+  name: string
+  fullName?: string | null
+}
+
 interface Exam {
   id: string
   title: string
   description: string | null
+  certification?: { id: string; name: string } | null
   questionCount: number
   timeLimitMinutes: number
   passingScore: number
@@ -25,16 +32,29 @@ export default function AdminExamsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [certifications, setCertifications] = useState<Certification[]>([])
   const [form, setForm] = useState({
-    title: '', description: '', timeLimitMinutes: '120', passingScore: '70', requireSubscription: true,
+    title: '', description: '', timeLimitMinutes: '120', passingScore: '70',
+    requireSubscription: true, certificationId: '',
   })
 
   useEffect(() => {
     fetch('/api/admin/exams').then(r => r.json()).then(setExams).finally(() => setLoading(false))
+    fetch('/api/certifications')
+      .then(r => r.json())
+      .then((certs: Certification[]) => {
+        setCertifications(certs)
+        if (certs.length > 0) setForm(p => ({ ...p, certificationId: certs[0].id }))
+      })
+      .catch(() => {})
   }, [])
 
   async function createExam() {
     if (!form.title.trim()) { toast({ title: 'Title is required', variant: 'destructive' }); return }
+    if (!form.certificationId) {
+      toast({ title: 'Pick a certification first', variant: 'destructive' })
+      return
+    }
     setCreating(true)
     try {
       const res = await fetch('/api/admin/exams', {
@@ -46,7 +66,10 @@ export default function AdminExamsPage() {
       if (!res.ok) throw new Error(exam.error)
       setExams(prev => [...prev, exam])
       setShowForm(false)
-      setForm({ title: '', description: '', timeLimitMinutes: '120', passingScore: '70', requireSubscription: true })
+      setForm(p => ({
+        title: '', description: '', timeLimitMinutes: '120', passingScore: '70',
+        requireSubscription: true, certificationId: p.certificationId,
+      }))
       toast({ title: 'Exam created', variant: 'success' })
     } catch (e: unknown) {
       toast({ title: e instanceof Error ? e.message : 'Failed', variant: 'destructive' })
@@ -96,6 +119,22 @@ export default function AdminExamsPage() {
           <CardContent className="p-5 space-y-4">
             <h3 className="font-semibold">New Exam</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-gray-700">Certification *</label>
+                <select
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={form.certificationId}
+                  onChange={e => setForm(p => ({ ...p, certificationId: e.target.value }))}
+                >
+                  {certifications.length === 0 && <option value="">No certifications — create one first</option>}
+                  {certifications.map(c => (
+                    <option key={c.id} value={c.id}>{c.fullName ? `${c.name} — ${c.fullName}` : c.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Only questions from this certification can be added to the exam.
+                </p>
+              </div>
               <div className="md:col-span-2">
                 <label className="text-sm font-medium text-gray-700">Title *</label>
                 <input
@@ -174,6 +213,9 @@ export default function AdminExamsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="font-semibold text-gray-900">{exam.title}</h3>
+                      {exam.certification && (
+                        <Badge variant="outline" className="text-xs">{exam.certification.name}</Badge>
+                      )}
                       <Badge variant={exam.status === 'PUBLISHED' ? 'success' : 'secondary'} className="text-xs">
                         {exam.status}
                       </Badge>

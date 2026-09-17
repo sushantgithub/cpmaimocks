@@ -6,7 +6,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Upload, Search } from 'lucide-react'
 import { QuestionActions } from '@/components/admin/question-actions'
 
-interface SearchParams { search?: string; status?: string; difficulty?: string; page?: string }
+interface SearchParams {
+  search?: string; status?: string; difficulty?: string; page?: string; certification?: string
+}
 
 export default async function QuestionsPage({ searchParams }: { searchParams: SearchParams }) {
   const page = Number(searchParams.page ?? 1)
@@ -22,16 +24,25 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
   }
   if (searchParams.status) where.status = searchParams.status
   if (searchParams.difficulty) where.difficulty = searchParams.difficulty
+  if (searchParams.certification) where.certificationId = searchParams.certification
 
-  const [questions, total] = await Promise.all([
+  const [questions, total, certifications] = await Promise.all([
     prisma.question.findMany({
       where,
-      include: { category: { select: { name: true } }, topic: { select: { name: true } } },
+      include: {
+        category: { select: { name: true } },
+        topic: { select: { name: true } },
+        certification: { select: { name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
     }),
     prisma.question.count({ where }),
+    prisma.certification.findMany({
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, name: true, _count: { select: { questions: true } } },
+    }),
   ])
 
   const totalPages = Math.ceil(total / pageSize)
@@ -64,6 +75,14 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
             className="pl-8 pr-3 py-2 border rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
+        {certifications.length > 1 && (
+          <select name="certification" defaultValue={searchParams.certification} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="">All Certifications</option>
+            {certifications.map(c => (
+              <option key={c.id} value={c.id}>{c.name} ({c._count.questions})</option>
+            ))}
+          </select>
+        )}
         <select name="status" defaultValue={searchParams.status} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
           <option value="">All Status</option>
           <option value="PUBLISHED">Published</option>
