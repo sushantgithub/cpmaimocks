@@ -34,8 +34,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       await prisma.mockExamQuestion.createMany({
         data: questionIds.map((qId: string, i: number) => ({ examId: params.id, questionId: qId, sortOrder: i })),
       })
-      await prisma.mockExam.update({ where: { id: params.id }, data: { questionCount: questionIds.length } })
     }
+    // Always resync, so clearing an exam doesn't leave a stale count advertised.
+    const updated = await prisma.mockExam.update({
+      where: { id: params.id },
+      data: { questionCount: questionIds.length },
+    })
+    return NextResponse.json(updated)
   }
 
   return NextResponse.json(exam)

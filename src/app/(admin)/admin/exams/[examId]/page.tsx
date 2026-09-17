@@ -43,6 +43,8 @@ export default function EditExamPage() {
   const [searchResults, setSearchResults] = useState<Question[]>([])
   const [searching, setSearching] = useState(false)
   const [assignedIds, setAssignedIds] = useState<string[]>([])
+  const [autoFillCount, setAutoFillCount] = useState('120')
+  const [autoFilling, setAutoFilling] = useState(false)
   const [form, setForm] = useState({
     title: '', description: '', timeLimitMinutes: '120', passingScore: '70',
     requireSubscription: true, randomizeQuestions: true, status: 'DRAFT',
@@ -93,6 +95,47 @@ export default function EditExamPage() {
   function removeQuestion(qId: string) {
     setAssignedIds(prev => prev.filter(id => id !== qId))
     setExam(prev => prev ? { ...prev, questions: prev.questions.filter(q => q.question.id !== qId) } : prev)
+  }
+
+  async function autoFill() {
+    const count = parseInt(autoFillCount)
+    if (!count || count < 1) {
+      toast({ title: 'Enter how many questions to add', variant: 'destructive' })
+      return
+    }
+    setAutoFilling(true)
+    try {
+      const res = await fetch(`/api/admin/questions?status=PUBLISHED&limit=${count}`)
+      const data = await res.json()
+      const found: Question[] = data.questions ?? []
+      if (found.length === 0) {
+        toast({
+          title: 'No published questions found',
+          description: 'Import questions and publish them first.',
+          variant: 'destructive',
+        })
+        return
+      }
+      setAssignedIds(found.map(q => q.id))
+      setExam(prev => prev ? {
+        ...prev,
+        questions: found.map((q, i) => ({ id: q.id, sortOrder: i, question: q })),
+      } : prev)
+      toast({
+        title: `Added ${found.length} questions`,
+        description: found.length < count ? `Only ${found.length} published questions exist so far.` : 'Tap Save Changes to apply.',
+        variant: 'success',
+      })
+    } catch {
+      toast({ title: 'Auto-fill failed', variant: 'destructive' })
+    } finally {
+      setAutoFilling(false)
+    }
+  }
+
+  function clearAll() {
+    setAssignedIds([])
+    setExam(prev => prev ? { ...prev, questions: [] } : prev)
   }
 
   async function save() {
@@ -191,11 +234,31 @@ export default function EditExamPage() {
             <CardTitle className="text-base">Add Questions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="rounded-lg border bg-blue-50 border-blue-200 p-3">
+              <p className="text-sm font-medium text-blue-900">Fill this exam automatically</p>
+              <p className="text-xs text-blue-700 mt-0.5 mb-2">
+                Replaces the assigned list with the newest published questions.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  className="w-24 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={autoFillCount}
+                  onChange={e => setAutoFillCount(e.target.value)}
+                />
+                <Button size="sm" onClick={autoFill} loading={autoFilling}>Auto-fill</Button>
+                {assignedIds.length > 0 && (
+                  <Button size="sm" variant="outline" onClick={clearAll}>Clear all</Button>
+                )}
+              </div>
+            </div>
+
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               <input
                 className="w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search published questions..."
+                placeholder="Or search to add individually..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />

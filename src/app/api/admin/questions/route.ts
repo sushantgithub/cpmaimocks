@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   const status = searchParams.get('status') ?? ''
   const difficulty = searchParams.get('difficulty') ?? ''
   const page = parseInt(searchParams.get('page') ?? '1')
-  const limit = parseInt(searchParams.get('limit') ?? '20')
+  const limit = Math.min(parseInt(searchParams.get('limit') ?? '20') || 20, 500)
 
   const where: Record<string, unknown> = {}
   if (search) {
