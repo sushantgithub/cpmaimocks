@@ -3,10 +3,10 @@
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { BookOpen, LogOut, User } from 'lucide-react'
+import { BookOpen, LogOut, User, Shield } from 'lucide-react'
 
 interface Props {
-  user: { name?: string | null; email?: string | null; image?: string | null }
+  user: { name?: string | null; email?: string | null; image?: string | null; role?: string }
 }
 
 export function DashboardNav({ user }: Props) {
@@ -19,6 +19,14 @@ export function DashboardNav({ user }: Props) {
         </Link>
         <div className="flex items-center gap-3">
           <span className="hidden sm:block text-sm text-muted-foreground">{user.name ?? user.email}</span>
+          {user.role === 'ADMIN' && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin">
+                <Shield className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Admin</span>
+              </Link>
+            </Button>
+          )}
           <Button variant="ghost" size="sm" asChild>
             <Link href="/profile"><User className="h-4 w-4" /></Link>
           </Button>

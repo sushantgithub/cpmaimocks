@@ -52,8 +52,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               {item.label}
             </Link>
           ))}
+          <Link
+            href="/dashboard"
+            className="lg:hidden flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors whitespace-nowrap"
+          >
+            <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
+            Back to Site
+          </Link>
         </nav>
-        <div className="hidden lg:block p-3 border-t border-gray-700">
+        <div className="hidden lg:block p-3 border-t border-gray-700 space-y-1">
+          <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">
+            <LayoutDashboard className="h-4 w-4" />
+            Back to Site
+          </Link>
           <form action={async () => { 'use server'; await signOut({ redirectTo: '/' }) }}>
             <button type="submit" className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white">
               <LogOut className="h-4 w-4" />
