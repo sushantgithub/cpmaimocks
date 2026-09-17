@@ -1,3 +1,4 @@
 {
-  "installCommand": "npm install --force"
+  "installCommand": "npm install --force",
+  "regions": ["bom1"]
 }
