@@ -22,8 +22,8 @@ export function DashboardNav({ user }: Props) {
           {user.role === 'ADMIN' && (
             <Button variant="outline" size="sm" asChild>
               <Link href="/admin">
-                <Shield className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Admin</span>
+                <Shield className="h-4 w-4 mr-1" />
+                Admin
               </Link>
             </Button>
           )}
