@@ -41,7 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </button>
           </form>
         </div>
-        <nav className="flex lg:flex-col flex-1 gap-1 p-3 overflow-x-auto lg:overflow-x-visible">
+        <nav className="flex flex-wrap lg:flex-col lg:flex-nowrap flex-1 gap-1 p-3">
           {adminNav.map((item) => (
             <Link
               key={item.href}
