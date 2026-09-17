@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Upload, Search } from 'lucide-react'
-import { QuestionActions } from '@/components/admin/question-actions'
+import { QuestionsTable } from '@/components/admin/questions-table'
 
 interface SearchParams {
   search?: string; status?: string; difficulty?: string; page?: string; certification?: string
@@ -100,49 +100,8 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
 
       {/* Questions table */}
       <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Question</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Category</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Difficulty</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {questions.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No questions found. <Link href="/admin/questions/import" className="text-primary hover:underline">Import some →</Link></td></tr>
-                )}
-                {questions.map((q) => (
-                  <tr key={q.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{q.questionId}</td>
-                    <td className="px-4 py-3 max-w-xs">
-                      <p className="truncate" title={q.text}>{q.text}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">Correct: {q.correctAnswer}</p>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">{q.category?.name ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={q.difficulty === 'HARD' ? 'destructive' : q.difficulty === 'MEDIUM' ? 'warning' : 'success'} className="text-xs capitalize">
-                        {q.difficulty.toLowerCase()}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={q.status === 'PUBLISHED' ? 'success' : q.status === 'DRAFT' ? 'secondary' : 'outline'} className="text-xs capitalize">
-                        {q.status.toLowerCase()}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <QuestionActions questionId={q.id} status={q.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <CardContent className="p-0 sm:p-3">
+          <QuestionsTable questions={questions} />
         </CardContent>
       </Card>
 
