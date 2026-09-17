@@ -57,6 +57,9 @@
     "zod": "^3.23.8",
     "zustand": "^5.0.1"
   },
+  "overrides": {
+    "nodemailer": "^6.9.16"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^6.4.17",
