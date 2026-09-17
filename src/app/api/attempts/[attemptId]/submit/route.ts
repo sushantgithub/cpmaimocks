@@ -1,0 +1,32 @@
+import { NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
+import { submitExam } from '@/lib/quiz'
+import { prisma } from '@/lib/db'
+
+export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
+  try {
+    const session = await auth()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const attempt = await prisma.examAttempt.findUnique({ where: { id: params.attemptId } })
+    if (!attempt || attempt.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const { answers } = await req.json()
+    const result = await submitExam(params.attemptId, answers ?? {})
+
+    await prisma.analyticsEvent.create({
+      data: {
+        event: 'EXAM_COMPLETED',
+        userId: session.user.id,
+        metadata: { attemptId: params.attemptId, score: result.score },
+      },
+    })
+
+    return NextResponse.json({ success: true, ...result })
+  } catch (err) {
+    console.error('[SubmitExam]', err)
+    return NextResponse.json({ error: 'Submission failed' }, { status: 500 })
+  }
+}
