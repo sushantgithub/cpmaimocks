@@ -73,10 +73,6 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
     setAnswers((prev) => ({ ...prev, [q.id]: opt }))
   }
 
-  function clearAnswer() {
-    setAnswers((prev) => { const next = { ...prev }; delete next[q.id]; return next })
-  }
-
   function toggleMark() {
     setMarked((prev) => {
       const next = new Set(prev)
@@ -178,22 +174,15 @@ export function ExamInterface({ attemptId, exam, questions }: Props) {
                 <ChevronLeft className="h-4 w-4 mr-1" />Previous
               </Button>
 
-              <div className="flex gap-2">
-                {answers[q.id] && (
-                  <Button variant="ghost" size="sm" onClick={clearAnswer} className="text-muted-foreground">
-                    <X className="h-3.5 w-3.5 mr-1" />Clear
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleMark}
-                  className={marked.has(q.id) ? 'border-yellow-400 text-yellow-700' : ''}
-                >
-                  <Flag className="h-3.5 w-3.5 mr-1" />
-                  {marked.has(q.id) ? 'Unmark' : 'Mark'}
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleMark}
+                className={marked.has(q.id) ? 'border-yellow-400 text-yellow-700' : ''}
+              >
+                <Flag className="h-3.5 w-3.5 mr-1" />
+                {marked.has(q.id) ? 'Unmark' : 'Mark'}
+              </Button>
 
               {current === questions.length - 1 ? (
                 <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
