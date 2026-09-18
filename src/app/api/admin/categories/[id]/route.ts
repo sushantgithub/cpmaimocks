@@ -3,7 +3,9 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+interface Params { params: { id: string } }
+
+export async function PATCH(req: Request, { params }: Params) {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -33,7 +35,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json(category)
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(_: Request, { params }: Params) {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -51,4 +53,50 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     prisma.category.delete({ where: { id: params.id } }),
   ])
   return NextResponse.json({ success: true })
+}
+
+// Reassigns every question (and topic) from this domain into another one in
+// the same certification, then deletes the now-empty source domain. Used to
+// consolidate categories, e.g. ten placeholder domains down to a
+// certification body's real five, without losing any question's content.
+export async function POST(req: Request, { params }: Params) {
+  const session = await auth()
+  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body = await req.json().catch(() => ({}))
+  const targetId = typeof body.mergeInto === 'string' ? body.mergeInto : ''
+  if (!targetId) return NextResponse.json({ error: 'mergeInto is required' }, { status: 400 })
+  if (targetId === params.id) return NextResponse.json({ error: 'Cannot merge a domain into itself' }, { status: 400 })
+
+  const [source, target] = await Promise.all([
+    prisma.category.findUnique({ where: { id: params.id } }),
+    prisma.category.findUnique({ where: { id: targetId } }),
+  ])
+  if (!source || !target) return NextResponse.json({ error: 'Domain not found' }, { status: 404 })
+  if (source.certificationId !== target.certificationId) {
+    return NextResponse.json({ error: 'Both domains must belong to the same certification' }, { status: 400 })
+  }
+
+  const questionCount = await prisma.question.count({ where: { categoryId: source.id } })
+
+  await prisma.$transaction(async (tx) => {
+    await tx.question.updateMany({ where: { categoryId: source.id }, data: { categoryId: target.id } })
+    // A topic with the same name already under the target would collide on
+    // the unique [slug, categoryId] constraint, so only move the ones that don't.
+    const topics = await tx.topic.findMany({ where: { categoryId: source.id } })
+    const existingSlugs = new Set(
+      (await tx.topic.findMany({ where: { categoryId: target.id }, select: { slug: true } })).map((t) => t.slug)
+    )
+    for (const topic of topics) {
+      if (existingSlugs.has(topic.slug)) {
+        await tx.question.updateMany({ where: { topicId: topic.id }, data: { topicId: null } })
+        await tx.topic.delete({ where: { id: topic.id } })
+      } else {
+        await tx.topic.update({ where: { id: topic.id }, data: { categoryId: target.id } })
+      }
+    }
+    await tx.category.delete({ where: { id: source.id } })
+  })
+
+  return NextResponse.json({ success: true, questionsMoved: questionCount })
 }

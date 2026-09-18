@@ -20,6 +20,8 @@ export default function AdminDomainsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [mergingId, setMergingId] = useState<string | null>(null)
+  const [mergeTarget, setMergeTarget] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetch('/api/certifications')
@@ -103,13 +105,38 @@ export default function AdminDomainsPage() {
     loadCategories()
   }
 
+  async function merge(cat: Category) {
+    const targetId = mergeTarget[cat.id]
+    if (!targetId) return
+    const target = categories.find((c) => c.id === targetId)
+    if (!target) return
+    if (!confirm(`Move all ${cat._count.questions} question(s) from "${cat.name}" into "${target.name}", then delete "${cat.name}"?`)) return
+    setMergingId(cat.id)
+    try {
+      const res = await fetch(`/api/admin/categories/${cat.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mergeInto: targetId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Merge failed')
+      toast({ title: `Merged into ${target.name}`, description: `${data.questionsMoved} question(s) moved`, variant: 'success' })
+      loadCategories()
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : 'Merge failed', variant: 'destructive' })
+    } finally {
+      setMergingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Domains</h1>
         <p className="text-sm text-gray-500 mt-0.5">
           These are the domain names shown on the home page and used to organise questions.
-          Renaming keeps its questions; a domain with questions cannot be deleted until they are moved.
+          Renaming keeps its questions. Merge moves every question from one domain into another and
+          removes the emptied one — use it to consolidate domains that turn out to be the same thing.
         </p>
       </div>
 
@@ -177,6 +204,26 @@ export default function AdminDomainsPage() {
                   <>
                     <span className="flex-1 text-sm font-medium text-gray-900">{cat.name}</span>
                     <span className="text-xs text-gray-500">{cat._count.questions} question(s)</span>
+                    {categories.length > 1 && (
+                      <select
+                        className="border rounded-md px-1.5 py-1 text-xs text-gray-600 max-w-[9rem]"
+                        value={mergeTarget[cat.id] ?? ''}
+                        onChange={(e) => setMergeTarget((prev) => ({ ...prev, [cat.id]: e.target.value }))}
+                      >
+                        <option value="">Merge into…</option>
+                        {categories.filter((c) => c.id !== cat.id).map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!mergeTarget[cat.id] || mergingId === cat.id}
+                      onClick={() => merge(cat)}
+                    >
+                      Merge
+                    </Button>
                     <Button size="icon" variant="ghost" onClick={() => startEdit(cat)}>
                       <Pencil className="h-4 w-4 text-gray-500" />
                     </Button>
