@@ -32,11 +32,11 @@ export async function POST(req: Request) {
       data: { userId: user.id, token, expiresAt: addHours(new Date(), 24) },
     })
 
-    // Send verification email (don't fail registration if email fails)
+    // Registration still succeeds if the mail fails: login does not require verification
     try {
       await sendVerificationEmail(email, name, token)
-    } catch {
-      // Email failure logged but registration succeeds
+    } catch (err) {
+      console.error('[Register] verification email failed', err)
     }
 
     // Track analytics
