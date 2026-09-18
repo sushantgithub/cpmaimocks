@@ -8,6 +8,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+}, {
+  // Send from a noreply address but land replies in a real mailbox
+  replyTo: process.env.EMAIL_REPLY_TO || undefined,
 })
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
