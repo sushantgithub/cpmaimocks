@@ -4,6 +4,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import { sendWelcomeEmail } from '@/lib/email'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -59,6 +60,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  events: {
+    // Fires only for adapter-created users, i.e. first-time Google sign-ins.
+    // Password sign-ups are created by the register route, which mails separately.
+    async createUser({ user }) {
+      if (!user.id || !user.email) return
+      await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } })
+      await prisma.analyticsEvent.create({ data: { event: 'USER_REGISTERED', userId: user.id } })
+      try {
+        await sendWelcomeEmail(user.email, user.name || 'there')
+      } catch (err) {
+        console.error('[Auth] welcome email failed', err)
+      }
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

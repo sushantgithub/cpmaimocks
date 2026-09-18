@@ -60,6 +60,22 @@ export async function sendVerificationEmail(email: string, name: string, token: 
   })
 }
 
+export async function sendWelcomeEmail(email: string, name: string) {
+  await transporter.sendMail({
+    from: FROM,
+    to: email,
+    subject: `Welcome to ${APP_NAME}`,
+    html: baseTemplate(`
+      <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${name}!</h2>
+      <p style="color:#475569;line-height:1.6">Your account is ready. You signed in with Google, so there is nothing to verify: just head to your dashboard and start practising.</p>
+      <div style="text-align:center;margin:32px 0">
+        <a href="${APP_URL}/dashboard" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Go to Dashboard</a>
+      </div>
+      <p style="color:#94a3b8;font-size:13px">Questions? Just reply to this email.</p>
+    `),
+  })
+}
+
 export async function sendPasswordResetEmail(email: string, name: string, token: string) {
   const link = `${APP_URL}/reset-password?token=${token}`
   await transporter.sendMail({
