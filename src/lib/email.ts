@@ -67,11 +67,11 @@ export async function sendWelcomeEmail(email: string, name: string) {
     subject: `Welcome to ${APP_NAME}`,
     html: baseTemplate(`
       <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${name}!</h2>
-      <p style="color:#475569;line-height:1.6">Your account is ready and your email address is already confirmed through Google. Head to your dashboard to take a mock exam or start a practice session.</p>
+      <p style="color:#475569;line-height:1.6">We are glad you are here. Your account is all set, and since you signed in with Google there is nothing more to do. Whenever you are ready, your dashboard is waiting with mock exams and practice questions to help you walk into the real thing with confidence.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${APP_URL}/dashboard" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Go to Dashboard</a>
       </div>
-      <p style="color:#94a3b8;font-size:13px">Questions? Just reply to this email.</p>
+      <p style="color:#94a3b8;font-size:13px">Stuck on anything, or just want to say hello? Reply to this email and a real person will get back to you.</p>
     `),
   })
 }
