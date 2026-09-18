@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendPasswordResetEmail } from '@/lib/email'
-import { generateToken } from '@/lib/utils'
+import { generateToken, normalizeEmail } from '@/lib/tokens'
 import { addHours } from 'date-fns'
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const email = normalizeEmail(body.email)
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } })
 
     // Always return success to prevent email enumeration
     if (!user) return NextResponse.json({ success: true })
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
       data: { userId: user.id, token, expiresAt: addHours(new Date(), 1) },
     })
 
-    await sendPasswordResetEmail(email, user.name ?? 'User', token)
+    await sendPasswordResetEmail(user.email, user.name ?? 'User', token)
 
     return NextResponse.json({ success: true })
   } catch (err) {

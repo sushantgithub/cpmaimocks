@@ -13,6 +13,7 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   if (!result) redirect('/exams')
 
   const { exam, questions } = result
+  if (exam.status !== 'PUBLISHED') redirect('/exams')
 
   if (exam.requireSubscription) {
     // Access is per certification, so a CPMAI plan must not open a PMP exam
