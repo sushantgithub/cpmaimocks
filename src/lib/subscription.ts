@@ -18,6 +18,40 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
   return !!sub
 }
 
+/** Every live subscription, since someone may hold one per certification. */
+export async function getUserActiveSubscriptions(userId: string) {
+  return prisma.subscription.findMany({
+    where: { userId, status: 'ACTIVE', endDate: { gt: new Date() } },
+    include: { plan: true },
+    orderBy: { endDate: 'desc' },
+  })
+}
+
+/**
+ * A plan with no certification grants everything; otherwise it grants only
+ * its own. This is the paywall, so it fails closed on anything unexpected.
+ */
+export async function hasAccessToCertification(
+  userId: string,
+  certificationId: string | null | undefined
+): Promise<boolean> {
+  if (!certificationId) return false
+
+  const subscriptions = await getUserActiveSubscriptions(userId)
+  return subscriptions.some(
+    (sub) => sub.plan.certificationId === null || sub.plan.certificationId === certificationId
+  )
+}
+
+/** Certifications the user can currently reach, for filtering listings. */
+export async function getAccessibleCertificationIds(userId: string): Promise<string[] | 'ALL'> {
+  const subscriptions = await getUserActiveSubscriptions(userId)
+  if (subscriptions.some((sub) => sub.plan.certificationId === null)) return 'ALL'
+  return subscriptions
+    .map((sub) => sub.plan.certificationId)
+    .filter((id): id is string => id !== null)
+}
+
 export async function activateSubscription(
   userId: string,
   planId: string,

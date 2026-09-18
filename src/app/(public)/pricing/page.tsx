@@ -15,7 +15,8 @@ export const metadata: Metadata = {
 export default async function PricingPage() {
   const plans = await prisma.subscriptionPlan.findMany({
     where: { isActive: true },
-    orderBy: { sortOrder: 'asc' },
+    orderBy: [{ certificationId: 'asc' }, { sortOrder: 'asc' }],
+    include: { certification: { select: { name: true } } },
   })
 
   return (
@@ -38,7 +39,10 @@ export default async function PricingPage() {
               )}
               <CardContent className="p-6">
                 <h2 className="font-bold text-xl">{plan.name}</h2>
-                {plan.description && <p className="text-sm text-muted-foreground mt-1 mb-3">{plan.description}</p>}
+                <Badge variant={plan.certificationId ? 'secondary' : 'success'} className="text-xs mt-1">
+                  {plan.certification ? `${plan.certification.name} only` : 'All certifications'}
+                </Badge>
+                {plan.description && <p className="text-sm text-muted-foreground mt-2 mb-3">{plan.description}</p>}
                 <div className="my-4">
                   <span className="text-4xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
                   <span className="text-muted-foreground text-sm ml-1">

@@ -8,6 +8,8 @@ import { toast } from '@/hooks/use-toast'
 import { formatCurrency, approxUsd } from '@/lib/utils'
 import { Plus, Trash2, Save } from 'lucide-react'
 
+interface Certification { id: string; name: string }
+
 interface Plan {
   id: string
   name: string
@@ -19,11 +21,14 @@ interface Plan {
   features: string[]
   isActive: boolean
   isFeatured: boolean
+  certificationId: string | null
+  certification: { id: string; name: string } | null
   _count: { subscriptions: number }
 }
 
 const EMPTY = {
-  name: '', description: '', price: '499', durationDays: '30', trialDays: '0', features: '',
+  name: '', description: '', price: '499', durationDays: '30', trialDays: '0',
+  features: '', certificationId: '',
 }
 
 export default function AdminPlansPage() {
@@ -34,6 +39,7 @@ export default function AdminPlansPage() {
   const [form, setForm] = useState(EMPTY)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [edits, setEdits] = useState<Record<string, Partial<Plan> & { featuresText?: string }>>({})
+  const [certifications, setCertifications] = useState<Certification[]>([])
 
   const load = useCallback(async () => {
     try {
@@ -44,6 +50,10 @@ export default function AdminPlansPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    fetch('/api/certifications').then(r => r.json()).then(setCertifications).catch(() => {})
+  }, [])
 
   function edit(id: string, patch: Partial<Plan> & { featuresText?: string }) {
     setEdits((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
@@ -151,6 +161,15 @@ export default function AdminPlansPage() {
               </div>
             </div>
             <div>
+              <label className="text-sm font-medium text-gray-700">Covers</label>
+              <select className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
+                value={form.certificationId}
+                onChange={(e) => setForm((p) => ({ ...p, certificationId: e.target.value }))}>
+                <option value="">All certifications</option>
+                {certifications.map((c) => <option key={c.id} value={c.id}>{c.name} only</option>)}
+              </select>
+            </div>
+            <div>
               <label className="text-sm font-medium text-gray-700">Description</label>
               <input className="mt-1 w-full border rounded-lg px-3 py-2 text-sm" placeholder="Shown under the plan name"
                 value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
@@ -187,6 +206,9 @@ export default function AdminPlansPage() {
                         {plan.isActive ? 'Live' : 'Hidden'}
                       </Badge>
                       {plan.isFeatured && <Badge className="text-xs">Featured</Badge>}
+                      <Badge variant="outline" className="text-xs">
+                        {plan.certification ? `${plan.certification.name} only` : 'All certifications'}
+                      </Badge>
                       <span className="text-xs text-gray-500">{plan._count.subscriptions} subscriber(s)</span>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => remove(plan)}>
@@ -232,11 +254,22 @@ export default function AdminPlansPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-medium text-gray-600">Description</label>
-                    <input className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
-                      value={patch.description ?? plan.description ?? ''}
-                      onChange={(e) => edit(plan.id, { description: e.target.value })} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Covers</label>
+                      <select className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
+                        value={patch.certificationId ?? plan.certificationId ?? ''}
+                        onChange={(e) => edit(plan.id, { certificationId: e.target.value || null })}>
+                        <option value="">All certifications</option>
+                        {certifications.map((c) => <option key={c.id} value={c.id}>{c.name} only</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Description</label>
+                      <input className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
+                        value={patch.description ?? plan.description ?? ''}
+                        onChange={(e) => edit(plan.id, { description: e.target.value })} />
+                    </div>
                   </div>
 
                   <div>

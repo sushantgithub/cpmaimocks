@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { getUserActiveSubscription } from '@/lib/subscription'
+import { hasAccessToCertification } from '@/lib/subscription'
 import { getExamQuestions } from '@/lib/quiz'
 import { redirect } from 'next/navigation'
 import { ExamInterface } from '@/components/exam/exam-interface'
@@ -15,14 +15,15 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   const { exam, questions } = result
 
   if (exam.requireSubscription) {
-    const subscription = await getUserActiveSubscription(userId)
+    // Access is per certification, so a CPMAI plan must not open a PMP exam
+    const hasAccess = await hasAccessToCertification(userId, exam.certificationId)
     const isFirstFreeExam = (await prisma.mockExam.findMany({
       where: { status: 'PUBLISHED', requireSubscription: false },
       orderBy: { sortOrder: 'asc' },
       take: 1,
     })).some((e) => e.id === exam.id)
 
-    if (!subscription && !isFirstFreeExam) redirect('/subscription')
+    if (!hasAccess && !isFirstFreeExam) redirect('/subscription')
   }
 
   // Create attempt

@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { getUserActiveSubscription } from '@/lib/subscription'
+import { getAccessibleCertificationIds } from '@/lib/subscription'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,12 +11,12 @@ export default async function ExamsPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [subscription, exams, attempts] = await Promise.all([
-    getUserActiveSubscription(userId),
+  const [accessible, exams, attempts] = await Promise.all([
+    getAccessibleCertificationIds(userId),
     prisma.mockExam.findMany({
       where: { status: 'PUBLISHED' },
       orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-      include: { certification: { select: { name: true } } },
+      include: { certification: { select: { id: true, name: true } } },
     }),
     prisma.examAttempt.findMany({
       where: { userId, status: 'COMPLETED', examId: { not: null } },
@@ -25,7 +25,9 @@ export default async function ExamsPage() {
     }),
   ])
 
-  const isSubscribed = !!subscription
+  const canAccess = (certificationId: string) =>
+    accessible === 'ALL' || accessible.includes(certificationId)
+  const isSubscribed = accessible === 'ALL' || accessible.length > 0
   const attemptMap = new Map<string, { score: number; date: Date }>()
   attempts.forEach((a) => {
     if (a.examId && !attemptMap.has(a.examId)) {
@@ -56,7 +58,7 @@ export default async function ExamsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {exams.map((exam, i) => {
-          const locked = exam.requireSubscription && !isSubscribed && i > 0
+          const locked = exam.requireSubscription && !canAccess(exam.certification.id) && i > 0
           const prev = attemptMap.get(exam.id)
           const passed = prev && prev.score >= exam.passingScore
 

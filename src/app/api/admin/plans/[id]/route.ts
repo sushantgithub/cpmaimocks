@@ -33,6 +33,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   if (data.trialDays !== undefined) update.trialDays = Number(data.trialDays) || 0
+  // '' or null means all-access
+  if (data.certificationId !== undefined) update.certificationId = data.certificationId || null
 
   const plan = await prisma.subscriptionPlan.update({ where: { id: params.id }, data: update })
   return NextResponse.json(plan)

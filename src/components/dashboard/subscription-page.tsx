@@ -13,11 +13,15 @@ interface Plan {
   id: string; name: string; slug: string; description: string
   price: number; currency: string; durationDays: number
   features: string[]; isFeatured: boolean
+  certificationId: string | null; certificationName: string | null
 }
+
+interface Certification { id: string; name: string; fullName: string | null }
 
 interface Props {
   subscription: { planName: string; status: string; endDate: string } | null
   plans: Plan[]
+  certifications: Certification[]
 }
 
 declare global {
@@ -26,12 +30,18 @@ declare global {
   }
 }
 
-export function SubscriptionPage({ subscription, plans }: Props) {
+export function SubscriptionPage({ subscription, plans, certifications }: Props) {
+  const [selectedCert, setSelectedCert] = useState<string>(certifications[0]?.id ?? '')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [coupon, setCoupon] = useState('')
   const [discount, setDiscount] = useState<{ valid: boolean; amount: number; couponId: string } | null>(null)
   const [checkingCoupon, setCheckingCoupon] = useState(false)
   const [paying, setPaying] = useState(false)
+
+  // An all-access plan is relevant whichever certification you picked
+  const visiblePlans = plans.filter(
+    (plan) => plan.certificationId === null || plan.certificationId === selectedCert
+  )
 
   async function checkCoupon() {
     if (!selectedPlan || !coupon.trim()) return
@@ -149,9 +159,35 @@ export function SubscriptionPage({ subscription, plans }: Props) {
         </Card>
       )}
 
-      {/* Plans */}
+      {/* Which certification are you buying for */}
+      {certifications.length > 1 && (
+        <div>
+          <h3 className="font-semibold mb-2">Which certification?</h3>
+          <div className="flex gap-2 flex-wrap">
+            {certifications.map((cert) => (
+              <button
+                key={cert.id}
+                onClick={() => { setSelectedCert(cert.id); setSelectedPlan(null) }}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  selectedCert === cert.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+                title={cert.fullName ?? undefined}
+              >
+                {cert.name}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Plans marked “All certifications” cover every exam on the site.
+          </p>
+        </div>
+      )}
+
+      {/* Plans — this certification's, plus anything covering everything */}
       <div className="grid md:grid-cols-3 gap-4">
-        {plans.map((plan) => {
+        {visiblePlans.map((plan) => {
           const isSelected = selectedPlan?.id === plan.id
           return (
             <Card
@@ -170,6 +206,9 @@ export function SubscriptionPage({ subscription, plans }: Props) {
                   <span className="text-3xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
                   <span className="text-muted-foreground text-sm"> / {Math.round(plan.durationDays / 30)} {plan.durationDays <= 31 ? 'month' : plan.durationDays <= 95 ? 'months' : 'year'}</span>
                 </div>
+                <Badge variant={plan.certificationId ? 'secondary' : 'success'} className="text-xs mb-2">
+                  {plan.certificationName ? `${plan.certificationName} only` : 'All certifications'}
+                </Badge>
                 {plan.description && <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>}
                 <ul className="space-y-1.5">
                   {(plan.features as string[]).map((f) => (

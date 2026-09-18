@@ -7,11 +7,17 @@ export default async function SubscriptionRoute() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [subscription, plans] = await Promise.all([
+  const [subscription, plans, certifications] = await Promise.all([
     getUserActiveSubscription(userId),
     prisma.subscriptionPlan.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
+      include: { certification: { select: { id: true, name: true } } },
+    }),
+    prisma.certification.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+      select: { id: true, name: true, fullName: true },
     }),
   ])
 
@@ -32,7 +38,10 @@ export default async function SubscriptionRoute() {
         durationDays: p.durationDays,
         features: p.features as string[],
         isFeatured: p.isFeatured,
+        certificationId: p.certificationId,
+        certificationName: p.certification?.name ?? null,
       }))}
+      certifications={certifications}
     />
   )
 }

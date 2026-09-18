@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getPracticeQuestions } from '@/lib/quiz'
+import { hasAccessToCertification } from '@/lib/subscription'
 import type { PracticeConfig } from '@/types'
+
+const FREE_PRACTICE_LIMIT = 10
 
 export async function POST(req: Request) {
   try {
@@ -10,6 +13,19 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const config: PracticeConfig = await req.json()
+
+    if (!config.certificationId) {
+      return NextResponse.json({ error: 'Pick a certification to practise' }, { status: 400 })
+    }
+
+    // Practice was previously open to anyone signed in, which gave the whole
+    // question bank away. Free users get a capped taste of it instead.
+    const hasAccess = await hasAccessToCertification(session.user.id, config.certificationId)
+    if (!hasAccess && config.questionCount > FREE_PRACTICE_LIMIT) {
+      return NextResponse.json({
+        error: `Free practice is limited to ${FREE_PRACTICE_LIMIT} questions. Subscribe for unlimited practice.`,
+      }, { status: 402 })
+    }
 
     const questions = await getPracticeQuestions(session.user.id, config)
     if (questions.length === 0) {

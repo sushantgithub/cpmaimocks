@@ -9,7 +9,10 @@ export async function GET() {
 
   const plans = await prisma.subscriptionPlan.findMany({
     orderBy: { sortOrder: 'asc' },
-    include: { _count: { select: { subscriptions: true } } },
+    include: {
+      certification: { select: { id: true, name: true } },
+      _count: { select: { subscriptions: true } },
+    },
   })
   return NextResponse.json(plans)
 }
@@ -49,6 +52,8 @@ export async function POST(req: Request) {
       features: Array.isArray(data.features) ? data.features : [],
       isActive: data.isActive ?? true,
       isFeatured: data.isFeatured ?? false,
+      // Empty means the plan covers every certification
+      certificationId: data.certificationId || null,
       sortOrder: count,
     },
   })
