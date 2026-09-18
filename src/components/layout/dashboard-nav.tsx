@@ -15,7 +15,7 @@ export function DashboardNav({ user }: Props) {
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         <Link href="/dashboard" className="flex items-center gap-2 font-bold text-primary">
           <BookOpen className="h-6 w-6" />
-          <span className="hidden sm:block">CPMAI Prep</span>
+          <span className="hidden sm:block">CertMocks</span>
         </Link>
         <div className="flex items-center gap-3">
           <span className="hidden sm:block text-sm text-muted-foreground">{user.name ?? user.email}</span>

@@ -22,7 +22,7 @@ export function PublicNav() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-primary text-lg">
           <BookOpen className="h-6 w-6" />
-          <span>CPMAI Prep</span>
+          <span>CertMocks</span>
         </Link>
 
         {/* Desktop nav */}

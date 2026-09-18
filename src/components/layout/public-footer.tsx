@@ -9,7 +9,7 @@ export function PublicFooter() {
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 font-bold text-primary mb-3">
               <BookOpen className="h-5 w-5" />
-              <span>CPMAI Prep</span>
+              <span>CertMocks</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Independent exam preparation platform for PMI CPMAI certification candidates.
@@ -51,7 +51,7 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-8 pt-8 border-t text-center text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} CPMAI Prep. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} CertMocks. All rights reserved.</p>
           <p className="mt-1">PMI and CPMAI are registered trademarks of the Project Management Institute, Inc.</p>
         </div>
       </div>

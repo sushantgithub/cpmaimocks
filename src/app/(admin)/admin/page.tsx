@@ -36,7 +36,7 @@ export default async function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Overview of your CPMAI Prep platform</p>
+        <p className="text-sm text-gray-500 mt-1">Overview of your CertMocks platform</p>
       </div>
 
       {/* Stats */}

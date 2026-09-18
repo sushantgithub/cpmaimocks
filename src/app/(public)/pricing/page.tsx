@@ -7,8 +7,12 @@ import { formatCurrency, approxUsd } from '@/lib/utils'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
+// Reads plans from the database, so it cannot be built ahead of time like
+// the other public pages.
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
-  title: 'Pricing — CPMAI Prep',
+  title: 'Pricing — CertMocks',
   description: 'Affordable subscription plans for CPMAI exam preparation. Start free, upgrade for full access.',
 }
 

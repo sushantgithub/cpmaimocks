@@ -1,0 +1,85 @@
+name: Database restore
+
+# Replaces every table in the public schema with the contents of a backup.
+# Run from the Actions tab: pick the backup run's ID and type RESTORE.
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_run_id:
+        description: 'Run ID of the "Database backup" run to restore from (from its URL)'
+        required: true
+      confirm:
+        description: 'Type RESTORE to confirm. This wipes the current data.'
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Refuse unless confirmed
+        if: ${{ github.event.inputs.confirm != 'RESTORE' }}
+        run: |
+          echo "::error::You must type RESTORE in the confirm box. Nothing was changed."
+          exit 1
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Download the backup
+        uses: actions/download-artifact@v4
+        with:
+          pattern: db-backup-*
+          merge-multiple: true
+          run-id: ${{ github.event.inputs.backup_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          set -e
+          test -f backup.sql.gz || { echo "::error::No backup.sql.gz in that run"; exit 1; }
+
+          # Drop the app's tables and enums but leave the schema itself alone,
+          # so Supabase's own grants on it survive.
+          psql "$DIRECT_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE r record;
+          BEGIN
+            FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+              EXECUTE format('DROP TABLE IF EXISTS public.%I CASCADE', r.tablename);
+            END LOOP;
+            FOR r IN SELECT t.typname FROM pg_type t
+                     JOIN pg_namespace n ON n.oid = t.typnamespace
+                     WHERE n.nspname = 'public' AND t.typtype = 'e' LOOP
+              EXECUTE format('DROP TYPE IF EXISTS public.%I CASCADE', r.typname);
+            END LOOP;
+          END $$;
+          SQL
+
+          gunzip -c backup.sql.gz \
+            | grep -v '^CREATE SCHEMA public;' \
+            | psql "$DIRECT_URL" -v ON_ERROR_STOP=1 -q
+
+      - name: Show what came back
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          psql "$DIRECT_URL" -At -c "
+            SELECT 'users: '         || count(*) FROM \"User\"
+            UNION ALL SELECT 'questions: ' || count(*) FROM \"Question\"
+            UNION ALL SELECT 'attempts: '  || count(*) FROM \"ExamAttempt\"
+            UNION ALL SELECT 'payments: '  || count(*) FROM \"Payment\";"

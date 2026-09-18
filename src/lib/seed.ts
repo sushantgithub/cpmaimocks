@@ -91,7 +91,7 @@ export async function seedDatabase(prisma: PrismaClient) {
     created.push('certification: CPMAI')
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@cpmaiprep.com'
+  const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@certmocks.com'
   const adminPassword = process.env.ADMIN_PASSWORD ?? 'changeme123!'
 
   const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } })

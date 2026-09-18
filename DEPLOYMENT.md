@@ -1,4 +1,4 @@
-# CPMAI Prep — Deployment Guide
+# CertMocks — Deployment Guide
 
 ## Monthly Running Cost (Small Scale)
 - Vercel (hosting): **Free**
@@ -51,7 +51,7 @@ SMTP_PORT=587
 SMTP_USER=your-gmail@gmail.com
 SMTP_PASS=your-gmail-app-password
 EMAIL_FROM=your-gmail@gmail.com
-EMAIL_FROM_NAME=CPMAI Prep
+EMAIL_FROM_NAME=CertMocks
 
 NEXT_PUBLIC_APP_URL=https://your-vercel-url.vercel.app
 ADMIN_EMAIL=admin@yourdomain.com

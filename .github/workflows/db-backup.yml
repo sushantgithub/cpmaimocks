@@ -1,0 +1,58 @@
+name: Database backup
+
+on:
+  schedule:
+    # 02:00 IST every day
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # pg_dump must be at least as new as the server, and Ubuntu's stock
+      # client can lag Supabase, so take it from the PostgreSQL apt repo.
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+
+      - name: Dump the public schema
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          if [ -z "$DIRECT_URL" ]; then
+            echo "::error::DIRECT_URL secret is not set"; exit 1
+          fi
+          echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+          pg_dump "$DIRECT_URL" --schema=public --no-owner --no-acl --format=plain \
+            | gzip -9 > backup.sql.gz
+          ls -lh backup.sql.gz
+        id: dump
+
+      - name: Show what was captured
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+        run: |
+          psql "$DIRECT_URL" -At -c "
+            SELECT 'users: '         || count(*) FROM \"User\"
+            UNION ALL SELECT 'questions: ' || count(*) FROM \"Question\"
+            UNION ALL SELECT 'attempts: '  || count(*) FROM \"ExamAttempt\"
+            UNION ALL SELECT 'payments: '  || count(*) FROM \"Payment\";"
+
+      - name: Upload backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ steps.dump.outputs.date }}-${{ github.run_id }}
+          path: backup.sql.gz
+          retention-days: 90
+          if-no-files-found: error

@@ -2,15 +2,15 @@ import type { Metadata } from 'next'
 import { BookOpen, Target, ShieldCheck } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'About — CPMAI Prep',
-  description: 'CPMAI Prep is an independent exam preparation platform for PMI CPMAI certification candidates.',
+  title: 'About — CertMocks',
+  description: 'CertMocks is an independent exam preparation platform for PMI CPMAI certification candidates.',
 }
 
 export default function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-16 max-w-3xl">
       <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold mb-3">About CPMAI Prep</h1>
+        <h1 className="text-3xl font-bold mb-3">About CertMocks</h1>
         <p className="text-muted-foreground leading-relaxed max-w-xl mx-auto">
           An independent platform to help professionals prepare for the PMI CPMAI certification with realistic mock exams and practice tools.
         </p>
@@ -32,7 +32,7 @@ export default function AboutPage() {
 
       <div className="prose prose-gray max-w-none text-sm leading-relaxed space-y-4 bg-gray-50 rounded-xl p-6">
         <p className="font-semibold text-base">Disclaimer</p>
-        <p>CPMAI Prep is an independent exam preparation website. It is not affiliated with, endorsed by, sponsored by, or connected to the Project Management Institute (PMI) in any way.</p>
+        <p>CertMocks is an independent exam preparation website. It is not affiliated with, endorsed by, sponsored by, or connected to the Project Management Institute (PMI) in any way.</p>
         <p>PMI, CPMAI, and related certification names are registered trademarks of the Project Management Institute, Inc.</p>
         <p>All questions and content on this platform are independently authored for educational and exam preparation purposes only.</p>
       </div>

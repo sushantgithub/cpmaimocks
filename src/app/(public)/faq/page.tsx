@@ -2,14 +2,14 @@ import type { Metadata } from 'next'
 import { Card, CardContent } from '@/components/ui/card'
 
 export const metadata: Metadata = {
-  title: 'FAQ — CPMAI Prep',
-  description: 'Frequently asked questions about CPMAI Prep exam preparation platform.',
+  title: 'FAQ — CertMocks',
+  description: 'Frequently asked questions about CertMocks exam preparation platform.',
 }
 
 const faqs = [
   { category: 'About CPMAI', items: [
     { q: 'What is the PMI CPMAI certification?', a: 'CPMAI (Certified Professional in Managing AI) is a certification by the Project Management Institute for professionals who manage AI projects and initiatives.' },
-    { q: 'Is CPMAI Prep affiliated with PMI?', a: 'No. CPMAI Prep is an independent exam preparation platform. PMI and CPMAI are registered trademarks of the Project Management Institute, Inc.' },
+    { q: 'Is CertMocks affiliated with PMI?', a: 'No. CertMocks is an independent exam preparation platform. PMI and CPMAI are registered trademarks of the Project Management Institute, Inc.' },
   ]},
   { category: 'Platform', items: [
     { q: 'How many questions are in each mock exam?', a: '120 questions per full mock exam, matching the actual CPMAI exam format with a 3-hour timer.' },
@@ -32,7 +32,7 @@ export default function FAQPage() {
   return (
     <div className="container mx-auto px-4 py-16 max-w-3xl">
       <h1 className="text-3xl font-bold text-center mb-2">Frequently Asked Questions</h1>
-      <p className="text-muted-foreground text-center mb-12">Everything you need to know about CPMAI Prep.</p>
+      <p className="text-muted-foreground text-center mb-12">Everything you need to know about CertMocks.</p>
 
       <div className="space-y-8">
         {faqs.map((section) => (

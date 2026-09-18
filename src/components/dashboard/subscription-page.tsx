@@ -95,7 +95,7 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
         amount: Math.round(finalAmount * 100),
         currency: selectedPlan.currency,
         order_id: order.orderId,
-        name: 'CPMAI Prep',
+        name: 'CertMocks',
         description: `${selectedPlan.name} Subscription`,
         handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
           const verifyRes = await fetch('/api/payments/verify', {

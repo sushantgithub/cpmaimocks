@@ -32,7 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin" className="flex items-center gap-2 font-bold text-white">
             <BookOpen className="h-5 w-5 text-blue-400" />
             <div>
-              <p className="text-sm">CPMAI Prep</p>
+              <p className="text-sm">CertMocks</p>
               <p className="text-xs text-gray-400">Admin Panel</p>
             </div>
           </Link>
