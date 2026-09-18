@@ -3,12 +3,16 @@ import { addHours, subMinutes } from 'date-fns'
 import { prisma } from '@/lib/db'
 import { sendVerificationEmail } from '@/lib/email'
 import { generateToken, normalizeEmail } from '@/lib/tokens'
+import { clientIp, throttle } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
     const email = normalizeEmail(body.email)
     if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
+    if (await throttle('resend', clientIp(req.headers), 5, 15)) {
+      return NextResponse.json({ error: 'Too many requests. Please try again in a few minutes.' }, { status: 429 })
+    }
 
     // Always answer success so the form cannot be used to probe for accounts
     const user = await prisma.user.findFirst({

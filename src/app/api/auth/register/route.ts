@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { sendVerificationEmail } from '@/lib/email'
 import { generateToken, normalizeEmail, isValidEmail } from '@/lib/tokens'
 import { addHours } from 'date-fns'
+import { clientIp, throttle } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +21,9 @@ export async function POST(req: Request) {
     }
     if (password.length < 8) {
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+    }
+    if (await throttle('register', clientIp(req.headers), 5, 60)) {
+      return NextResponse.json({ error: 'Too many sign-ups from this network. Please try again later.' }, { status: 429 })
     }
 
     const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } })

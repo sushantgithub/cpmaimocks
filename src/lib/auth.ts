@@ -4,14 +4,12 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import { clientIp, isRateLimited, recordAttempt } from '@/lib/rate-limit'
+import { authConfig } from '@/lib/auth.config'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: 'jwt' },
-  pages: {
-    signIn: '/login',
-    error: '/login',
-  },
   providers: [
     // Registered only when credentials exist, so the sign-in page never offers
     // a Google button that cannot work.
@@ -33,10 +31,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) return null
 
         const email = String(credentials.email).trim().toLowerCase()
+        // Ten wrong passwords for one address from one network in 15 minutes
+        // locks that pair out, which stops online guessing without letting an
+        // attacker lock a victim out from elsewhere.
+        const limiterKey = `${clientIp(request.headers)}|${email}`
+        if (await isRateLimited('login', limiterKey, 10, 15)) return null
+
         const user = await prisma.user.findFirst({
           where: { email: { equals: email, mode: 'insensitive' } },
         })
@@ -48,7 +52,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           credentials.password as string,
           user.passwordHash
         )
-        if (!isValid) return null
+        if (!isValid) {
+          await recordAttempt('login', limiterKey)
+          return null
+        }
 
         return {
           id: user.id,
@@ -78,6 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
+    ...authConfig.callbacks,
     // Credentials already checks isActive; this closes the same door for Google
     async signIn({ user }) {
       if (!user.email) return false
@@ -86,20 +94,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         select: { isActive: true },
       })
       return existing ? existing.isActive : true
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.role = (user as { role?: string }).role ?? 'USER'
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
-      }
-      return session
     },
   },
 })

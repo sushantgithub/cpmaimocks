@@ -36,8 +36,11 @@ export async function POST(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { questionId } = await req.json()
-  if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+  const { questionId } = await req.json().catch(() => ({}))
+  if (typeof questionId !== 'string' || !questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+
+  const question = await prisma.question.findUnique({ where: { id: questionId }, select: { id: true } })
+  if (!question) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
 
   await prisma.bookmark.upsert({
     where: { userId_questionId: { userId: session.user.id, questionId } },
@@ -52,8 +55,8 @@ export async function DELETE(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { questionId } = await req.json()
-  if (!questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
+  const { questionId } = await req.json().catch(() => ({}))
+  if (typeof questionId !== 'string' || !questionId) return NextResponse.json({ error: 'questionId required' }, { status: 400 })
 
   await prisma.bookmark.deleteMany({
     where: { userId: session.user.id, questionId },

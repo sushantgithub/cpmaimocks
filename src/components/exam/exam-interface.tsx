@@ -15,15 +15,16 @@ import {
 interface Props {
   attemptId: string
   exam: { id: string; title: string; timeLimitMinutes: number; passingScore: number }
+  timeLeftSeconds: number
   questions: ExamQuestion[]
 }
 
-export function ExamInterface({ attemptId, exam, questions }: Props) {
+export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: Props) {
   const router = useRouter()
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [marked, setMarked] = useState<Set<string>>(new Set())
-  const [timeLeft, setTimeLeft] = useState(exam.timeLimitMinutes * 60)
+  const [timeLeft, setTimeLeft] = useState(timeLeftSeconds)
   const [showPanel, setShowPanel] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)

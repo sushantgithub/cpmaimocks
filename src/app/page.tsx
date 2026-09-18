@@ -9,6 +9,11 @@ import {
 } from 'lucide-react'
 import { PublicNav } from '@/components/layout/public-nav'
 import { PublicFooter } from '@/components/layout/public-footer'
+import { prisma } from '@/lib/db'
+import { formatCurrency } from '@/lib/utils'
+
+// Counts and prices come from the database; refresh them hourly
+export const revalidate = 3600
 
 const features = [
   { icon: Brain, title: 'Realistic Mock Exams', desc: '120-question full-length exams matching the actual CPMAI format and difficulty.' },
@@ -17,13 +22,6 @@ const features = [
   { icon: BookMarked, title: 'Bookmark & Review', desc: 'Bookmark tricky questions and revisit them anytime in practice mode.' },
   { icon: Target, title: 'Practice Mode', desc: 'Drill by topic, difficulty, or review your previously incorrect answers.' },
   { icon: Smartphone, title: 'Mobile Friendly', desc: 'Study on any device — phone, tablet, or desktop. Optimised for touch.' },
-]
-
-const stats = [
-  { value: '500+', label: 'Practice Questions' },
-  { value: '5', label: 'Full Mock Exams' },
-  { value: '10', label: 'CPMAI Domains' },
-  { value: '24/7', label: 'Access' },
 ]
 
 const domains = [
@@ -39,7 +37,52 @@ const faqs = [
   { q: 'Can I cancel my subscription?', a: 'Yes, you can cancel anytime from your account settings. Access continues until the end of your billing period.' },
 ]
 
-export default function HomePage() {
+function planPeriod(durationDays: number) {
+  if (durationDays >= 3650) return 'forever'
+  if (durationDays <= 31) return '/month'
+  if (durationDays <= 95) return '/3 months'
+  return '/year'
+}
+
+// The page is also built where no database is reachable (CI), so a failed
+// read degrades to generic copy rather than failing the build.
+async function loadHomeData() {
+  try {
+    const [questionCount, examCount, domainCount, plans] = await Promise.all([
+      prisma.question.count({ where: { status: 'PUBLISHED' } }),
+      prisma.mockExam.count({ where: { status: 'PUBLISHED' } }),
+      prisma.category.count(),
+      prisma.subscriptionPlan.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        take: 3,
+      }),
+    ])
+    return { questionCount, examCount, domainCount, plans }
+  } catch (err) {
+    console.error('[Home] could not load live data', err)
+    return null
+  }
+}
+
+export default async function HomePage() {
+  const data = await loadHomeData()
+  const plans = data?.plans ?? []
+
+  const stats = data
+    ? [
+        { value: data.questionCount >= 100 ? `${Math.floor(data.questionCount / 50) * 50}+` : String(data.questionCount), label: 'Practice Questions' },
+        { value: String(data.examCount), label: data.examCount === 1 ? 'Full Mock Exam' : 'Full Mock Exams' },
+        { value: String(data.domainCount), label: 'CPMAI Domains' },
+        { value: '24/7', label: 'Access' },
+      ]
+    : [
+        { value: 'Timed', label: 'Full-length Mock Exams' },
+        { value: 'Every', label: 'CPMAI Domain Covered' },
+        { value: 'Detailed', label: 'Answer Explanations' },
+        { value: '24/7', label: 'Access' },
+      ]
+
   return (
     <div className="flex min-h-screen flex-col">
       <PublicNav />
@@ -126,7 +169,6 @@ export default function HomePage() {
                   'Question navigation panel',
                   'Mark for review & return later',
                   'Countdown timer with auto-submit',
-                  'Clear answer option',
                   'Confirmation before final submit',
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2 text-sm">
@@ -191,16 +233,21 @@ export default function HomePage() {
       </section>
 
       {/* Pricing preview */}
+      {plans.length > 0 && (
       <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-3">Simple, Affordable Pricing</h2>
           <p className="text-muted-foreground mb-10">Start free. Upgrade when ready.</p>
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            {[
-              { name: 'Free', price: '₹0', period: 'forever', features: ['20 sample questions', '1 mini mock exam', 'Basic stats'], cta: 'Get Started', href: '/register', highlight: false },
-              { name: 'Monthly', price: '₹499', period: '/month', features: ['All 5 full mock exams', 'Unlimited practice', 'Detailed explanations', 'Performance analytics', 'Bookmark questions'], cta: 'Start Monthly', href: '/register', highlight: true },
-              { name: 'Annual', price: '₹2,999', period: '/year', features: ['Everything in Monthly', 'Best value — save 50%', 'Priority support'], cta: 'Best Value', href: '/register', highlight: false },
-            ].map((plan) => (
+            {plans.map((dbPlan) => ({
+              name: dbPlan.name,
+              price: formatCurrency(dbPlan.price, dbPlan.currency),
+              period: planPeriod(dbPlan.durationDays),
+              features: (dbPlan.features as string[]).slice(0, 5),
+              cta: dbPlan.price === 0 ? 'Get Started' : dbPlan.isFeatured ? 'Most Popular' : `Start ${dbPlan.name}`,
+              href: '/register',
+              highlight: dbPlan.isFeatured,
+            })).map((plan) => (
               <Card key={plan.name} className={`${plan.highlight ? 'border-primary ring-2 ring-primary' : ''}`}>
                 <CardContent className="p-6">
                   {plan.highlight && <Badge className="mb-3">Most Popular</Badge>}
@@ -230,6 +277,7 @@ export default function HomePage() {
           </p>
         </div>
       </section>
+      )}
 
       {/* FAQ */}
       <section className="py-16 bg-gray-50">
@@ -257,7 +305,7 @@ export default function HomePage() {
           <Trophy className="h-12 w-12 mx-auto mb-4 text-yellow-300" />
           <h2 className="text-3xl font-bold mb-3">Ready to Pass Your CPMAI?</h2>
           <p className="text-blue-100 mb-8 max-w-lg mx-auto">
-            Join thousands of professionals preparing for the PMI CPMAI certification.
+            Realistic practice for the PMI CPMAI certification.
             Start with a free account today.
           </p>
           <Button size="xl" className="bg-white text-primary hover:bg-blue-50" asChild>

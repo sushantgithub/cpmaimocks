@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { CheckCircle2, Mail } from 'lucide-react'
-import type { Metadata } from 'next'
+import { toast } from '@/hooks/use-toast'
 
 export default function ContactPage() {
   const [sent, setSent] = useState(false)
@@ -16,10 +16,21 @@ export default function ContactPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    // In production: send to your email via API
-    await new Promise((r) => setTimeout(r, 1000))
-    setSent(true)
-    setLoading(false)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send message')
+      setSent(true)
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error('Failed to send message')
+      toast({ title: error.message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

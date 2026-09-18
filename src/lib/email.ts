@@ -18,6 +18,16 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'CertMocks'
 const FROM = `"${process.env.EMAIL_FROM_NAME || APP_NAME}" <${process.env.EMAIL_FROM || process.env.SMTP_USER || ''}>`
 
+// Names and messages come from users, so they must not be able to inject markup
+export function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function baseTemplate(content: string) {
   return `<!DOCTYPE html>
 <html>
@@ -50,7 +60,7 @@ export async function sendVerificationEmail(email: string, name: string, token: 
     to: email,
     subject: `Verify your ${APP_NAME} account`,
     html: baseTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${name}!</h2>
+      <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${escapeHtml(name)}!</h2>
       <p style="color:#475569;line-height:1.6">Thank you for registering. Please verify your email address to activate your account.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${link}" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Verify Email Address</a>
@@ -74,7 +84,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
     to: email,
     subject: `Welcome to ${APP_NAME}`,
     html: baseTemplate(`
-      <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${name}!</h2>
+      <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${escapeHtml(name)}!</h2>
       <p style="color:#475569;line-height:1.6">We are glad you are here. Your account is all set and there is nothing more to do. Whenever you are ready, your dashboard is waiting with mock exams and practice questions to help you walk into the real thing with confidence.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${APP_URL}/dashboard" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Go to Dashboard</a>
@@ -97,7 +107,7 @@ export async function sendPasswordResetEmail(email: string, name: string, token:
     subject: `Reset your ${APP_NAME} password`,
     html: baseTemplate(`
       <h2 style="color:#1e293b;margin:0 0 16px">Password Reset Request</h2>
-      <p style="color:#475569;line-height:1.6">Hi ${name}, we received a request to reset your password.</p>
+      <p style="color:#475569;line-height:1.6">Hi ${escapeHtml(name)}, we received a request to reset your password.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${link}" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Reset Password</a>
       </div>
@@ -120,9 +130,9 @@ export async function sendPaymentConfirmationEmail(
     subject: `Payment confirmed — ${APP_NAME} ${planName}`,
     html: baseTemplate(`
       <h2 style="color:#1e293b;margin:0 0 16px">Payment Confirmed ✓</h2>
-      <p style="color:#475569;line-height:1.6">Hi ${name}, your payment was successful. Your subscription is now active.</p>
+      <p style="color:#475569;line-height:1.6">Hi ${escapeHtml(name)}, your payment was successful. Your subscription is now active.</p>
       <table style="width:100%;border:1px solid #e2e8f0;border-radius:6px;margin:24px 0;border-collapse:collapse">
-        <tr style="background:#f8fafc"><td style="padding:12px 16px;color:#64748b;font-size:14px">Plan</td><td style="padding:12px 16px;font-weight:bold">${planName}</td></tr>
+        <tr style="background:#f8fafc"><td style="padding:12px 16px;color:#64748b;font-size:14px">Plan</td><td style="padding:12px 16px;font-weight:bold">${escapeHtml(planName)}</td></tr>
         <tr><td style="padding:12px 16px;color:#64748b;font-size:14px">Amount Paid</td><td style="padding:12px 16px;font-weight:bold">${currency} ${amount}</td></tr>
         <tr style="background:#f8fafc"><td style="padding:12px 16px;color:#64748b;font-size:14px">Valid Until</td><td style="padding:12px 16px;font-weight:bold">${expiryDate}</td></tr>
       </table>
@@ -140,10 +150,31 @@ export async function sendSubscriptionExpiryReminder(email: string, name: string
     subject: `Your ${APP_NAME} subscription expires in ${daysLeft} days`,
     html: baseTemplate(`
       <h2 style="color:#1e293b;margin:0 0 16px">Subscription Expiring Soon</h2>
-      <p style="color:#475569;line-height:1.6">Hi ${name}, your subscription expires in <strong>${daysLeft} days</strong>. Renew now to keep your access.</p>
+      <p style="color:#475569;line-height:1.6">Hi ${escapeHtml(name)}, your subscription expires in <strong>${daysLeft} days</strong>. Renew now to keep your access.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${APP_URL}/subscription" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Renew Subscription</a>
       </div>
+    `),
+  })
+}
+
+export async function sendContactMessage(input: { name: string; email: string; subject: string; message: string }) {
+  const to = process.env.CONTACT_EMAIL || process.env.EMAIL_REPLY_TO
+  if (!to) throw new Error('No contact inbox configured (set CONTACT_EMAIL or EMAIL_REPLY_TO)')
+
+  await transporter.sendMail({
+    from: FROM,
+    to,
+    // Replying in the inbox goes straight back to the person who wrote in
+    replyTo: `"${escapeHtml(input.name).replace(/"/g, '')}" <${input.email}>`,
+    subject: `[Contact] ${input.subject}`,
+    html: baseTemplate(`
+      <h2 style="color:#1e293b;margin:0 0 16px">New message from the contact form</h2>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+        <tr><td style="padding:6px 0;color:#64748b;width:80px">From</td><td style="padding:6px 0">${escapeHtml(input.name)} &lt;${escapeHtml(input.email)}&gt;</td></tr>
+        <tr><td style="padding:6px 0;color:#64748b">Subject</td><td style="padding:6px 0">${escapeHtml(input.subject)}</td></tr>
+      </table>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:16px;color:#1e293b;line-height:1.6;white-space:pre-wrap">${escapeHtml(input.message)}</div>
     `),
   })
 }

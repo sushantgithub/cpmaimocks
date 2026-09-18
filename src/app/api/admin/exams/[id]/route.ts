@@ -24,7 +24,32 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { questionIds, ...data } = await req.json()
+  const body = await req.json().catch(() => ({}))
+  const { questionIds } = body
+  const data: Record<string, unknown> = {}
+  if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim()
+  if (body.description === null || typeof body.description === 'string') data.description = body.description?.trim() || null
+  for (const key of ['timeLimitMinutes', 'passingScore', 'sortOrder'] as const) {
+    if (body[key] !== undefined) {
+      const value = Number(body[key])
+      if (!Number.isInteger(value) || value < 0) return NextResponse.json({ error: `${key} must be a whole number` }, { status: 400 })
+      data[key] = value
+    }
+  }
+  if (data.passingScore !== undefined && (data.passingScore as number) > 100) {
+    return NextResponse.json({ error: 'passingScore cannot exceed 100' }, { status: 400 })
+  }
+  for (const key of ['requireSubscription', 'randomizeQuestions', 'showExplanations'] as const) {
+    if (typeof body[key] === 'boolean') data[key] = body[key]
+  }
+  if (body.status !== undefined) {
+    if (!['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(body.status)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    data.status = body.status
+  }
+  if (typeof body.certificationId === 'string' && body.certificationId) data.certificationId = body.certificationId
+  if (questionIds !== undefined && !Array.isArray(questionIds)) {
+    return NextResponse.json({ error: 'questionIds must be a list' }, { status: 400 })
+  }
 
   const exam = await prisma.mockExam.update({ where: { id: params.id }, data })
 
