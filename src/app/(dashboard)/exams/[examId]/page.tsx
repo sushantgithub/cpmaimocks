@@ -42,7 +42,16 @@ export default async function ExamPage({ params }: { params: { examId: string } 
 
   if (running) {
     const elapsed = Math.floor((Date.now() - running.startedAt.getTime()) / 1000)
-    if (elapsed < limitSeconds) {
+    // Resume only while the attempt still mirrors the exam. If its questions
+    // have since been changed, resuming would pin the taker to the old set —
+    // someone who started when the exam held one question would otherwise be
+    // served that same question until the time limit expired.
+    const attemptQuestionIds = new Set(running.answers.map((a) => a.question.id))
+    const matchesExam =
+      attemptQuestionIds.size === questions.length &&
+      questions.every((q) => attemptQuestionIds.has(q.id))
+
+    if (elapsed < limitSeconds && matchesExam) {
       return (
         <ExamInterface
           attemptId={running.id}
