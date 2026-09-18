@@ -6,6 +6,10 @@ export async function getExamQuestions(examId: string) {
     where: { id: examId },
     include: {
       questions: {
+        // A draft or archived question is not ready to be seen, so linking it
+        // to an exam must not put it in front of a taker the way practice
+        // already refuses to.
+        where: { question: { status: 'PUBLISHED' } },
         include: {
           question: {
             select: {
