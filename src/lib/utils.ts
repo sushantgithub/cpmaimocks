@@ -13,6 +13,15 @@ export function formatCurrency(amount: number, currency: string = 'INR') {
   }).format(amount)
 }
 
+// Indicative only — customers are always charged in INR and their bank sets
+// the real rate. Update this by hand when it drifts too far to be useful.
+const INR_PER_USD = 88
+
+export function approxUsd(inrAmount: number) {
+  if (inrAmount <= 0) return null
+  return `$${Math.round(inrAmount / INR_PER_USD)}`
+}
+
 export function formatDate(date: Date | string) {
   return new Date(date).toLocaleDateString('en-IN', {
     day: 'numeric',

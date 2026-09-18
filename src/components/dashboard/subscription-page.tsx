@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, approxUsd } from '@/lib/utils'
 import { CheckCircle2, CreditCard } from 'lucide-react'
 
 interface Plan {
@@ -214,6 +214,12 @@ export function SubscriptionPage({ subscription, plans }: Props) {
                 <span>Total</span>
                 <span>{formatCurrency(discount ? selectedPlan.price - discount.amount : selectedPlan.price, selectedPlan.currency)}</span>
               </div>
+              {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price) && (
+                <p className="text-xs text-muted-foreground text-right">
+                  approx. {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price)} USD —
+                  charged in INR, your bank sets the final rate
+                </p>
+              )}
             </div>
 
             <Button className="w-full" size="lg" onClick={handlePurchase} loading={paying}>

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2 } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, approxUsd } from '@/lib/utils'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
@@ -44,6 +44,11 @@ export default async function PricingPage() {
                   <span className="text-muted-foreground text-sm ml-1">
                     / {plan.durationDays <= 31 ? 'month' : plan.durationDays <= 95 ? '3 months' : 'year'}
                   </span>
+                  {approxUsd(plan.price) && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      approx. {approxUsd(plan.price)} USD · billed in INR
+                    </p>
+                  )}
                 </div>
                 <ul className="space-y-2 mb-6">
                   {(plan.features as string[]).map((f) => (
