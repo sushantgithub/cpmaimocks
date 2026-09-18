@@ -15,6 +15,8 @@ interface User {
   role: string
   isActive: boolean
   deletionRequested: boolean
+  emailVerified: string | null
+  signInMethods: string[]
   createdAt: string
   subscriptions: { plan: { name: string }; endDate: string | null }[]
   _count: { examAttempts: number }
@@ -99,6 +101,7 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="border-b bg-gray-50">
                   <th className="text-left px-4 py-3 font-medium text-gray-600">User</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Sign-in</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Plan</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Exams</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
@@ -110,7 +113,7 @@ export default function AdminUsersPage() {
                 {loading ? (
                   [...Array(5)].map((_, i) => (
                     <tr key={i} className="border-b">
-                      <td colSpan={6} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
+                      <td colSpan={7} className="px-4 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
                     </tr>
                   ))
                 ) : users.map(user => {
@@ -123,6 +126,17 @@ export default function AdminUsersPage() {
                           <p className="text-xs text-gray-500">{user.email}</p>
                           {user.deletionRequested && <span className="text-xs text-red-600">Deletion requested</span>}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1 flex-wrap">
+                          {user.signInMethods.map((method) => (
+                            <Badge key={method} variant="secondary" className="text-xs capitalize">{method}</Badge>
+                          ))}
+                          {user.signInMethods.length === 0 && <span className="text-xs text-gray-400">—</span>}
+                        </div>
+                        <p className={`text-xs mt-0.5 ${user.emailVerified ? 'text-green-600' : 'text-amber-600'}`}>
+                          {user.emailVerified ? 'Verified' : 'Unverified'}
+                        </p>
                       </td>
                       <td className="px-4 py-3">
                         {sub ? (

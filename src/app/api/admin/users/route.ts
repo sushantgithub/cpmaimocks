@@ -25,6 +25,9 @@ export async function GET(req: Request) {
         role: true,
         isActive: true,
         deletionRequested: true,
+        emailVerified: true,
+        passwordHash: true,
+        accounts: { select: { provider: true } },
         createdAt: true,
         subscriptions: {
           where: { status: 'ACTIVE' },
@@ -40,5 +43,13 @@ export async function GET(req: Request) {
     prisma.user.count({ where }),
   ])
 
-  return NextResponse.json({ users, total, pages: Math.ceil(total / limit) })
+  const rows = users.map(({ passwordHash, accounts, ...user }) => ({
+    ...user,
+    signInMethods: [
+      ...(passwordHash ? ['password'] : []),
+      ...accounts.map((a) => a.provider),
+    ],
+  }))
+
+  return NextResponse.json({ users: rows, total, pages: Math.ceil(total / limit) })
 }
