@@ -10,9 +10,11 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-const FROM = `"${process.env.EMAIL_FROM_NAME ?? 'CPMAI Prep'}" <${process.env.EMAIL_FROM ?? 'noreply@cpmaiprep.com'}>`
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'CPMAI Prep'
+const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? 'CertMocks'
+// Gmail only sends as the authenticated account, so default the From address
+// to it rather than to a domain we do not control.
+const FROM = `"${process.env.EMAIL_FROM_NAME ?? APP_NAME}" <${process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? ''}>`
 
 function baseTemplate(content: string) {
   return `<!DOCTYPE html>
@@ -24,7 +26,7 @@ function baseTemplate(content: string) {
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:600px;width:100%">
         <tr><td style="background:#1e40af;padding:24px 32px">
           <h1 style="margin:0;color:#fff;font-size:22px">${APP_NAME}</h1>
-          <p style="margin:4px 0 0;color:#93c5fd;font-size:13px">CPMAI Exam Preparation</p>
+          <p style="margin:4px 0 0;color:#93c5fd;font-size:13px">Certification Exam Preparation</p>
         </td></tr>
         <tr><td style="padding:32px">${content}</td></tr>
         <tr><td style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0">
@@ -39,7 +41,8 @@ function baseTemplate(content: string) {
 }
 
 export async function sendVerificationEmail(email: string, name: string, token: string) {
-  const link = `${APP_URL}/verify-email?token=${token}`
+  // The handler is an API route that verifies and then redirects to /login
+  const link = `${APP_URL}/api/auth/verify-email?token=${token}`
   await transporter.sendMail({
     from: FROM,
     to: email,

@@ -57,8 +57,12 @@ function LoginForm() {
         <CardTitle className="text-2xl">Welcome back</CardTitle>
         <CardDescription>
           {params.get('registered') === '1'
-            ? '✓ Account created. Please verify your email then sign in.'
-            : 'Sign in to your CPMAI Prep account'}
+            ? '✓ Account created. Check your email for a verification link, then sign in.'
+            : params.get('verified') === '1'
+            ? '✓ Email verified. You can sign in now.'
+            : params.get('error') === 'expired-token'
+            ? 'That verification link has expired or was already used. Sign in to request a new one.'
+            : 'Sign in to your account'}
         </CardDescription>
       </CardHeader>
       <CardContent>
