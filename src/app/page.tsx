@@ -24,11 +24,6 @@ const features = [
   { icon: Smartphone, title: 'Mobile Friendly', desc: 'Study on any device — phone, tablet, or desktop. Optimised for touch.' },
 ]
 
-const domains = [
-  'AI Strategy & Planning', 'Data for AI', 'Machine Learning Fundamentals',
-  'Responsible AI & Ethics', 'AI Governance', 'Risk Management',
-  'Model Evaluation', 'AI Deployment', 'Monitoring & Maintenance', 'AI Project Management',
-]
 
 const faqs = [
   { q: 'Is this affiliated with PMI?', a: 'No. This is an independent exam preparation platform. PMI and CPMAI are trademarks of the Project Management Institute.' },
@@ -41,17 +36,25 @@ const faqs = [
 // read degrades to generic copy rather than failing the build.
 async function loadHomeData() {
   try {
-    const [questionCount, examCount, domainCount, plans] = await Promise.all([
+    const [questionCount, examCount, plans, certifications] = await Promise.all([
       prisma.question.count({ where: { status: 'PUBLISHED' } }),
       prisma.mockExam.count({ where: { status: 'PUBLISHED' } }),
-      prisma.category.count(),
       prisma.subscriptionPlan.findMany({
         where: { isActive: true },
         orderBy: { sortOrder: 'asc' },
         take: 3,
       }),
+      prisma.certification.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        select: {
+          name: true,
+          categories: { orderBy: { sortOrder: 'asc' }, select: { name: true } },
+        },
+      }),
     ])
-    return { questionCount, examCount, domainCount, plans }
+    const domainCount = certifications.reduce((sum, cert) => sum + cert.categories.length, 0)
+    return { questionCount, examCount, domainCount, plans, certifications }
   } catch (err) {
     console.error('[Home] could not load live data', err)
     return null
@@ -61,12 +64,13 @@ async function loadHomeData() {
 export default async function HomePage() {
   const data = await loadHomeData()
   const plans = data?.plans ?? []
+  const certifications = (data?.certifications ?? []).filter((cert) => cert.categories.length > 0)
 
   const stats = data
     ? [
         { value: data.questionCount >= 100 ? `${Math.floor(data.questionCount / 50) * 50}+` : String(data.questionCount), label: 'Practice Questions' },
         { value: String(data.examCount), label: data.examCount === 1 ? 'Full Mock Exam' : 'Full Mock Exams' },
-        { value: String(data.domainCount), label: 'CPMAI Domains' },
+        { value: String(data.domainCount), label: data.certifications.length === 1 ? `${data.certifications[0].name} Domains` : 'Exam Domains' },
         { value: '24/7', label: 'Access' },
       ]
     : [
@@ -210,20 +214,33 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Domains */}
+      {/* Domains, straight from the question bank so they stay true to what is imported */}
+      {certifications.length > 0 && (
       <section className="py-16 bg-blue-900 text-white">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-3">All 10 CPMAI Domains Covered</h2>
+          <h2 className="text-3xl font-bold mb-3">Every Exam Domain Covered</h2>
           <p className="text-blue-200 mb-10">Questions across every domain with detailed explanations.</p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {domains.map((d) => (
-              <span key={d} className="rounded-full bg-blue-800 px-4 py-2 text-sm text-blue-100 border border-blue-700">
-                {d}
-              </span>
+          <div className="space-y-10">
+            {certifications.map((cert) => (
+              <div key={cert.name}>
+                {certifications.length > 1 && (
+                  <h3 className="text-lg font-semibold text-blue-100 mb-4">
+                    {cert.name} — {cert.categories.length} {cert.categories.length === 1 ? 'domain' : 'domains'}
+                  </h3>
+                )}
+                <div className="flex flex-wrap justify-center gap-3">
+                  {cert.categories.map((category) => (
+                    <span key={category.name} className="rounded-full bg-blue-800 px-4 py-2 text-sm text-blue-100 border border-blue-700">
+                      {category.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
+      )}
 
       {/* Pricing preview */}
       {plans.length > 0 && (
