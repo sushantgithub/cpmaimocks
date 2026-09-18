@@ -25,15 +25,9 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   if (exam.status !== 'PUBLISHED') redirect('/exams')
 
   if (exam.requireSubscription) {
-    // Access is per certification, so a CPMAI plan must not open a PMP exam
+    // Access is per certification, so a plan for one must not open another's exams
     const hasAccess = await hasAccessToCertification(userId, exam.certificationId)
-    const isFirstFreeExam = (await prisma.mockExam.findMany({
-      where: { status: 'PUBLISHED', requireSubscription: false },
-      orderBy: { sortOrder: 'asc' },
-      take: 1,
-    })).some((e) => e.id === exam.id)
-
-    if (!hasAccess && !isFirstFreeExam) redirect('/subscription')
+    if (!hasAccess) redirect('/subscription')
   }
 
   const limitSeconds = exam.timeLimitMinutes * 60

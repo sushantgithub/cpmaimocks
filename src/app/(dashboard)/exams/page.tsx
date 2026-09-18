@@ -28,6 +28,8 @@ export default async function ExamsPage() {
   const canAccess = (certificationId: string) =>
     accessible === 'ALL' || accessible.includes(certificationId)
   const isSubscribed = accessible === 'ALL' || accessible.length > 0
+  const freeCount = exams.filter((exam) => !exam.requireSubscription).length
+  const certificationNames = Array.from(new Set(exams.map((exam) => exam.certification.name)))
   const attemptMap = new Map<string, { score: number; date: Date }>()
   attempts.forEach((a) => {
     if (a.examId && !attemptMap.has(a.examId)) {
@@ -38,9 +40,10 @@ export default async function ExamsPage() {
   return (
     <div className="space-y-6 pb-20 md:pb-6">
       <div>
-        <h1 className="text-2xl font-bold">CPMAI Mock Exams</h1>
+        <h1 className="text-2xl font-bold">Mock Exams</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          120-question full-length exams in real exam format with 3-hour timer.
+          Full-length timed exams in real exam format
+          {certificationNames.length > 0 && ` for ${certificationNames.join(', ')}`}.
         </p>
       </div>
 
@@ -48,7 +51,7 @@ export default async function ExamsPage() {
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
           <p className="font-medium text-yellow-800 text-sm">
             <Lock className="h-4 w-4 inline mr-1" />
-            Subscribe to unlock all mock exams — currently showing 1 free exam.
+            Subscribe to unlock all mock exams — {freeCount === 0 ? 'no free exams are available right now' : `${freeCount} free ${freeCount === 1 ? 'exam is' : 'exams are'} open to everyone`}.
           </p>
           <Button size="sm" className="mt-2" asChild>
             <Link href="/subscription">View Plans</Link>
@@ -57,8 +60,8 @@ export default async function ExamsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {exams.map((exam, i) => {
-          const locked = exam.requireSubscription && !canAccess(exam.certification.id) && i > 0
+        {exams.map((exam) => {
+          const locked = exam.requireSubscription && !canAccess(exam.certification.id)
           const prev = attemptMap.get(exam.id)
           const passed = prev && prev.score >= exam.passingScore
 

@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getUserStats } from '@/lib/quiz'
-import { getUserActiveSubscription } from '@/lib/subscription'
+import { getUserActiveSubscription, getAccessibleCertificationIds } from '@/lib/subscription'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,9 +13,11 @@ export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [stats, subscription, recentAttempts, exams] = await Promise.all([
+  const [stats, subscription, accessible, examCount, recentAttempts, exams] = await Promise.all([
     getUserStats(userId),
     getUserActiveSubscription(userId),
+    getAccessibleCertificationIds(userId),
+    prisma.mockExam.count({ where: { status: 'PUBLISHED' } }),
     prisma.examAttempt.findMany({
       where: { userId, status: 'COMPLETED' },
       include: { exam: { select: { title: true } } },
@@ -30,6 +32,8 @@ export default async function DashboardPage() {
   ])
 
   const isSubscribed = !!subscription
+  const canAccess = (certificationId: string) =>
+    accessible === 'ALL' || accessible.includes(certificationId)
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
@@ -44,7 +48,7 @@ export default async function DashboardPage() {
         <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between gap-4">
           <div>
             <p className="font-semibold">Upgrade to unlock all mock exams</p>
-            <p className="text-sm text-blue-100 mt-0.5">Get full access to 5 mock exams + practice mode</p>
+            <p className="text-sm text-blue-100 mt-0.5">Get full access to {examCount === 1 ? '1 mock exam' : `all ${examCount} mock exams`} + unlimited practice</p>
           </div>
           <Button variant="secondary" size="sm" asChild className="flex-shrink-0">
             <Link href="/subscription">Upgrade</Link>
@@ -79,8 +83,8 @@ export default async function DashboardPage() {
           <Link href="/exams" className="text-sm text-primary hover:underline">View all →</Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {exams.map((exam, i) => {
-            const locked = exam.requireSubscription && !isSubscribed && i > 0
+          {exams.map((exam) => {
+            const locked = exam.requireSubscription && !canAccess(exam.certificationId)
             return (
               <Card key={exam.id} className={locked ? 'opacity-70' : ''}>
                 <CardContent className="p-4">
@@ -88,9 +92,9 @@ export default async function DashboardPage() {
                     <h3 className="font-medium text-sm leading-tight">{exam.title}</h3>
                     {locked ? (
                       <Lock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    ) : (
+                    ) : !exam.requireSubscription ? (
                       <Badge variant="success" className="text-xs">Free</Badge>
-                    )}
+                    ) : null}
                   </div>
                   <div className="text-xs text-muted-foreground mb-3 space-y-1">
                     <p>{exam.questionCount} questions • {exam.timeLimitMinutes} mins</p>

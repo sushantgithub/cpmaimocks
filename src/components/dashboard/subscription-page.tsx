@@ -139,7 +139,7 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
     <div className="max-w-3xl mx-auto space-y-6 pb-20 md:pb-6">
       <div>
         <h1 className="text-2xl font-bold">Subscription</h1>
-        <p className="text-muted-foreground text-sm mt-1">Unlock all CPMAI mock exams and practice tools.</p>
+        <p className="text-muted-foreground text-sm mt-1">Unlock full mock exams and unlimited practice for your certification.</p>
       </div>
 
       {/* Current subscription */}

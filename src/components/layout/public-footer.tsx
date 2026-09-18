@@ -12,7 +12,7 @@ export function PublicFooter() {
               <span>CertMocks</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Independent exam preparation platform for PMI CPMAI certification candidates.
+              Independent exam preparation platform for project management and agile certification candidates.
             </p>
             <p className="mt-3 text-xs text-muted-foreground">
               Not affiliated with or endorsed by PMI.
