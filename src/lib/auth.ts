@@ -4,7 +4,6 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { sendWelcomeEmail } from '@/lib/email'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -68,6 +67,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       await prisma.user.update({ where: { id: user.id }, data: { emailVerified: new Date() } })
       await prisma.analyticsEvent.create({ data: { event: 'USER_REGISTERED', userId: user.id } })
       try {
+        // Loaded lazily: this module is also bundled into the Edge middleware,
+        // where nodemailer's Node networking imports cannot be evaluated.
+        const { sendWelcomeEmail } = await import('@/lib/email')
         await sendWelcomeEmail(user.email, user.name || 'there')
       } catch (err) {
         console.error('[Auth] welcome email failed', err)
