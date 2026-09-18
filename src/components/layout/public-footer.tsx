@@ -52,7 +52,7 @@ export function PublicFooter() {
 
         <div className="mt-8 pt-8 border-t text-center text-xs text-muted-foreground">
           <p>© {new Date().getFullYear()} CertMocks. All rights reserved.</p>
-          <p className="mt-1">PMI and CPMAI are registered trademarks of the Project Management Institute, Inc.</p>
+          <p className="mt-1">PMI, PMP and CPMAI are registered marks of the Project Management Institute, Inc.</p>
         </div>
       </div>
     </footer>
