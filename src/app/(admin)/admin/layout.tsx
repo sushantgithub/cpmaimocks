@@ -13,6 +13,7 @@ const adminNav = [
   { label: 'Import CSV', href: '/admin/questions/import', icon: Upload },
   { label: 'Exams', href: '/admin/exams', icon: Trophy },
   { label: 'Users', href: '/admin/users', icon: Users },
+  { label: 'Plans', href: '/admin/plans', icon: Tag },
   { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
