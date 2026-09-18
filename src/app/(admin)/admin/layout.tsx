@@ -4,11 +4,12 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { signOut } from '@/lib/auth'
-import { BookOpen, LayoutDashboard, Users, HelpCircle, Trophy, CreditCard, Tag, BarChart3, Settings, LogOut, Upload, Award } from 'lucide-react'
+import { BookOpen, LayoutDashboard, Users, HelpCircle, Trophy, CreditCard, Tag, BarChart3, Settings, LogOut, Upload, Award, ListTree } from 'lucide-react'
 
 const adminNav = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Certifications', href: '/admin/certifications', icon: Award },
+  { label: 'Domains', href: '/admin/domains', icon: ListTree },
   { label: 'Questions', href: '/admin/questions', icon: HelpCircle },
   { label: 'Import CSV', href: '/admin/questions/import', icon: Upload },
   { label: 'Exams', href: '/admin/exams', icon: Trophy },
