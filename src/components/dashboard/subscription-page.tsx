@@ -69,31 +69,28 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
     if (!selectedPlan) return
     setPaying(true)
     try {
-      const finalAmount = discount
-        ? selectedPlan.price - discount.amount
-        : selectedPlan.price
-
-      // Create Razorpay order
+      // The server prices the order; the browser only says what it wants
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planId: selectedPlan.id,
-          couponId: discount?.couponId,
-          amount: finalAmount,
-          currency: selectedPlan.currency,
-        }),
+        body: JSON.stringify({ planId: selectedPlan.id, couponId: discount?.couponId }),
       })
       const order = await res.json()
       if (!res.ok) throw new Error(order.error)
+
+      if (order.free) {
+        toast({ title: 'Subscription activated!', description: 'You now have full access.', variant: 'success' })
+        window.location.reload()
+        return
+      }
 
       // Load Razorpay script
       await loadRazorpayScript()
 
       const rzp = new window.Razorpay({
         key: order.keyId,
-        amount: Math.round(finalAmount * 100),
-        currency: selectedPlan.currency,
+        amount: Math.round(order.amount * 100),
+        currency: order.currency,
         order_id: order.orderId,
         name: 'CertMocks',
         description: `${selectedPlan.name} Subscription`,
@@ -105,7 +102,6 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
               signature: response.razorpay_signature,
-              planId: selectedPlan.id,
               paymentDbId: order.paymentId,
             }),
           })

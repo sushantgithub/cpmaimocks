@@ -1,62 +1,48 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { verifyPaymentSignature } from '@/lib/payment'
-import { activateSubscription } from '@/lib/subscription'
-import { sendPaymentConfirmationEmail } from '@/lib/email'
 import { prisma } from '@/lib/db'
-import { formatDate } from '@/lib/utils'
+import { verifyPaymentSignature } from '@/lib/payment'
+import { fulfilPayment } from '@/lib/checkout'
 
 export async function POST(req: Request) {
   try {
     const session = await auth()
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { paymentId: providerPaymentId, orderId, signature, planId, paymentDbId } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const { paymentId: providerPaymentId, orderId, signature, paymentDbId } = body
+    if ([providerPaymentId, orderId, signature, paymentDbId].some((v) => typeof v !== 'string' || !v)) {
+      return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 })
+    }
 
-    const isValid = verifyPaymentSignature(orderId, providerPaymentId, signature)
-    if (!isValid) {
-      await prisma.payment.update({
-        where: { id: paymentDbId },
+    // Only the payer's own pending order, and only for the order it was created for
+    const payment = await prisma.payment.findFirst({
+      where: { id: paymentDbId, userId: session.user.id },
+    })
+    if (!payment) return NextResponse.json({ success: false, error: 'Payment not found' }, { status: 404 })
+    if (payment.providerOrderId !== orderId) {
+      return NextResponse.json({ success: false, error: 'Order mismatch' }, { status: 400 })
+    }
+
+    if (!verifyPaymentSignature(orderId, providerPaymentId, signature)) {
+      await prisma.payment.updateMany({
+        where: { id: payment.id, status: 'PENDING' },
         data: { status: 'FAILED', failureReason: 'Invalid signature' },
       })
+      console.warn('[VerifyPayment] invalid signature', { paymentId: payment.id, userId: session.user.id })
       return NextResponse.json({ success: false, error: 'Invalid payment signature' }, { status: 400 })
     }
 
-    await prisma.payment.update({
-      where: { id: paymentDbId },
-      data: { providerPaymentId, providerSignature: signature },
-    })
-
-    const subscription = await activateSubscription(session.user.id, planId, paymentDbId)
-
-    // Increment coupon redemptions if applicable
-    const payment = await prisma.payment.findUnique({ where: { id: paymentDbId } })
-    if (payment?.couponId) {
-      await prisma.coupon.update({
-        where: { id: payment.couponId },
-        data: { currentRedemptions: { increment: 1 } },
-      })
-      await prisma.couponRedemption.create({
-        data: { couponId: payment.couponId, userId: session.user.id, paymentId: paymentDbId },
-      })
+    const outcome = await fulfilPayment(payment.id, providerPaymentId, signature)
+    if (outcome.alreadyProcessed) {
+      // The webhook may have got here first; report whatever state it left
+      const current = await prisma.payment.findUnique({ where: { id: payment.id }, select: { status: true } })
+      const success = current?.status === 'SUCCESS'
+      return NextResponse.json(
+        success ? { success } : { success, error: 'Payment was not successful' },
+        { status: success ? 200 : 400 }
+      )
     }
-
-    // Send confirmation email
-    try {
-      const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-      const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
-      if (user && plan && subscription.endDate) {
-        await sendPaymentConfirmationEmail(
-          user.email, user.name ?? 'User', plan.name,
-          payment?.amount ?? 0, payment?.currency ?? 'INR',
-          formatDate(subscription.endDate)
-        )
-      }
-    } catch { /* email failure doesn't fail payment */ }
-
-    await prisma.analyticsEvent.create({
-      data: { event: 'PAYMENT_SUCCESS', userId: session.user.id, metadata: { planId, amount: payment?.amount } },
-    })
 
     return NextResponse.json({ success: true })
   } catch (err) {

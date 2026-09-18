@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db'
-import { addDays } from 'date-fns'
 
 export async function getUserActiveSubscription(userId: string) {
   return prisma.subscription.findFirst({
@@ -50,38 +49,6 @@ export async function getAccessibleCertificationIds(userId: string): Promise<str
   return subscriptions
     .map((sub) => sub.plan.certificationId)
     .filter((id): id is string => id !== null)
-}
-
-export async function activateSubscription(
-  userId: string,
-  planId: string,
-  paymentId: string
-) {
-  const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
-  if (!plan) throw new Error('Plan not found')
-
-  const startDate = new Date()
-  const endDate = addDays(startDate, plan.durationDays)
-
-  const subscription = await prisma.subscription.create({
-    data: {
-      userId,
-      planId,
-      status: 'ACTIVE',
-      startDate,
-      endDate,
-    },
-  })
-
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      subscriptionId: subscription.id,
-      status: 'SUCCESS',
-    },
-  })
-
-  return subscription
 }
 
 export async function cancelSubscription(subscriptionId: string, reason?: string) {

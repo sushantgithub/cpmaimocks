@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { applyCoupon } from '@/lib/subscription'
 import { prisma } from '@/lib/db'
+import { computeDiscount } from '@/lib/checkout'
 
 export async function POST(req: Request) {
   try {
@@ -17,9 +18,7 @@ export async function POST(req: Request) {
     if (!plan) return NextResponse.json({ valid: false, error: 'Plan not found' }, { status: 404 })
 
     const coupon = result.coupon!
-    const discountAmount = coupon.discountType === 'PERCENTAGE'
-      ? (plan.price * coupon.discountValue) / 100
-      : Math.min(coupon.discountValue, plan.price)
+    const discountAmount = computeDiscount(coupon, plan)
 
     return NextResponse.json({ valid: true, amount: discountAmount, couponId: coupon.id })
   } catch (err) {
