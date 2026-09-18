@@ -87,13 +87,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     ...authConfig.callbacks,
     // Credentials already checks isActive; this closes the same door for Google
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       if (!user.email) return false
       const existing = await prisma.user.findUnique({
         where: { email: user.email },
-        select: { isActive: true },
+        select: { id: true, isActive: true, emailVerified: true },
       })
-      return existing ? existing.isActive : true
+      if (!existing) return true
+      if (!existing.isActive) return false
+
+      // An OAuth provider has proven the address. createUser only covers
+      // accounts it creates, so a provider linked onto an existing unverified
+      // account would otherwise stay unverified forever.
+      if (account?.type === 'oauth' && !existing.emailVerified) {
+        await prisma.user.update({ where: { id: existing.id }, data: { emailVerified: new Date() } })
+      }
+      return true
     },
   },
 })
