@@ -32,16 +32,26 @@ export function QuestionActions({ questionId, status }: Props) {
     }
   }
 
-  async function deleteQuestion() {
-    if (!confirm('Delete this question? This cannot be undone.')) return
+  async function deleteQuestion(force = false) {
+    if (!force && !confirm('Delete this question? This cannot be undone.')) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/questions/${questionId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed')
+      const res = await fetch(`/api/admin/questions/${questionId}${force ? '?force=true' : ''}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+
+      if (res.status === 409 && !force) {
+        setLoading(false)
+        if (confirm(`${data.error} Delete it anyway? This also removes those exam answers; the affected attempts' scores are unaffected but their answer review will show one less question.`)) {
+          await deleteQuestion(true)
+        }
+        return
+      }
+      if (!res.ok) throw new Error(data.error ?? 'Failed')
+
       toast({ title: 'Question deleted', variant: 'success' })
       router.refresh()
-    } catch {
-      toast({ title: 'Delete failed', variant: 'destructive' })
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : 'Delete failed', variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -55,7 +65,7 @@ export function QuestionActions({ questionId, status }: Props) {
       <Button variant="ghost" size="sm" className="h-7 px-2" onClick={togglePublish} disabled={loading}>
         <Eye className="h-3.5 w-3.5" />
       </Button>
-      <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-700" onClick={deleteQuestion} disabled={loading}>
+      <Button variant="ghost" size="sm" className="h-7 px-2 text-red-500 hover:text-red-700" onClick={() => deleteQuestion()} disabled={loading}>
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
     </div>

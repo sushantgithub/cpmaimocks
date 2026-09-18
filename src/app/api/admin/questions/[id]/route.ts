@@ -47,10 +47,41 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json(question)
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await prisma.question.delete({ where: { id: params.id } })
-  return NextResponse.json({ success: true })
+  const force = new URL(req.url).searchParams.get('force') === 'true'
+
+  const answered = await prisma.examAnswer.count({ where: { questionId: params.id } })
+  if (answered > 0 && !force) {
+    return NextResponse.json({
+      error: `This question has been answered ${answered} time(s) in exam or practice attempts.`,
+      answered,
+    }, { status: 409 })
+  }
+
+  const affectedExamIds = (
+    await prisma.mockExamQuestion.findMany({ where: { questionId: params.id }, select: { examId: true } })
+  ).map((row) => row.examId)
+
+  await prisma.$transaction([
+    // Deleting the answer only removes that one question from a past attempt's
+    // review; the attempt's stored score and counts are untouched.
+    prisma.examAnswer.deleteMany({ where: { questionId: params.id } }),
+    prisma.bookmark.deleteMany({ where: { questionId: params.id } }),
+    prisma.mockExamQuestion.deleteMany({ where: { questionId: params.id } }),
+    prisma.question.delete({ where: { id: params.id } }),
+  ])
+
+  await Promise.all(
+    affectedExamIds.map((examId) =>
+      prisma.mockExam.update({
+        where: { id: examId },
+        data: { questionCount: { decrement: 1 } },
+      })
+    )
+  )
+
+  return NextResponse.json({ success: true, answeredRemoved: answered })
 }

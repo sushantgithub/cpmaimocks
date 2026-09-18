@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
-import { Search, ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
 interface User {
@@ -72,6 +72,22 @@ export default function AdminUsersPage() {
       toast({ title: newActive ? 'User activated' : 'User deactivated', variant: 'success' })
     } catch {
       toast({ title: 'Failed to update', variant: 'destructive' })
+    }
+  }
+
+  async function deleteUser(user: User) {
+    if (!confirm(
+      `Permanently delete ${user.email}? This removes the account and everything tied to it — subscriptions, payments, exam history and bookmarks. This cannot be undone.`
+    )) return
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Failed to delete')
+      setUsers(prev => prev.filter(u => u.id !== user.id))
+      setTotal(t => t - 1)
+      toast({ title: `${user.email} deleted`, variant: 'success' })
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : 'Failed to delete', variant: 'destructive' })
     }
   }
 
@@ -174,6 +190,15 @@ export default function AdminUsersPage() {
                             onClick={() => toggleActive(user)}
                           >
                             {user.isActive ? 'Deactivate' : 'Activate'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => deleteUser(user)}
+                            title="Permanently delete this account"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </td>

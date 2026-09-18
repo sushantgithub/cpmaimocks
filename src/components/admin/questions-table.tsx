@@ -38,24 +38,32 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
     setSelected(allSelected ? new Set() : new Set(questions.map((q) => q.id)))
   }
 
-  async function deleteSelected() {
+  async function deleteSelected(force = false) {
     const count = selected.size
-    if (!confirm(`Delete ${count} question${count === 1 ? '' : 's'}? This cannot be undone.`)) return
+    if (!force && !confirm(`Delete ${count} question${count === 1 ? '' : 's'}? This cannot be undone.`)) return
 
     setDeleting(true)
     try {
       const res = await fetch('/api/admin/questions/bulk-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionIds: Array.from(selected) }),
+        body: JSON.stringify({ questionIds: Array.from(selected), force }),
       })
       const data = await res.json()
+
+      if (res.status === 409 && !force && data.skipped > 0) {
+        setDeleting(false)
+        if (confirm(`${data.skipped} of the selected question(s) have been used in an exam or practice attempt. Delete them anyway? This also removes those exam answers; affected attempts keep their stored score but will show fewer questions in review.`)) {
+          await deleteSelected(true)
+        }
+        return
+      }
       if (!res.ok) throw new Error(data.error ?? 'Delete failed')
 
       toast({
         title: `Deleted ${data.deleted} question${data.deleted === 1 ? '' : 's'}`,
-        description: data.skipped > 0
-          ? `${data.skipped} kept — already answered in an exam attempt.`
+        description: !force && data.skipped > 0
+          ? `${data.skipped} kept — already used in an exam attempt.`
           : undefined,
         variant: 'success',
       })
@@ -77,7 +85,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
           </p>
           <div className="flex gap-2">
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Cancel</Button>
-            <Button size="sm" variant="destructive" onClick={deleteSelected} loading={deleting}>
+            <Button size="sm" variant="destructive" onClick={() => deleteSelected()} loading={deleting}>
               <Trash2 className="h-4 w-4 mr-1" />Delete selected
             </Button>
           </div>

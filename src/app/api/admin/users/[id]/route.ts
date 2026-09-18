@@ -29,3 +29,32 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   })
   return NextResponse.json(user)
 }
+
+// Permanently deletes a user and everything that references them: payments,
+// subscriptions, coupon redemptions and exam history (which cascades to its
+// answers). Accounts, sessions, bookmarks and email/reset tokens cascade via
+// the schema's own onDelete rules. This is for cleaning up test accounts —
+// there is no undo, and it is not what the profile page's self-service
+// "Request Deletion" triggers today (that only sets a flag for an admin to
+// act on, and this endpoint is that action).
+export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+  const session = await auth()
+  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (params.id === session.user.id) {
+    return NextResponse.json({ error: 'You cannot delete your own account' }, { status: 400 })
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, email: true } })
+  if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await prisma.$transaction([
+    prisma.couponRedemption.deleteMany({ where: { userId: params.id } }),
+    prisma.payment.deleteMany({ where: { userId: params.id } }),
+    prisma.subscription.deleteMany({ where: { userId: params.id } }),
+    prisma.examAttempt.deleteMany({ where: { userId: params.id } }), // cascades to ExamAnswer
+    prisma.user.delete({ where: { id: params.id } }), // cascades to Account, Session, Bookmark, EmailVerification, PasswordReset
+  ])
+
+  return NextResponse.json({ success: true, email: user.email })
+}
