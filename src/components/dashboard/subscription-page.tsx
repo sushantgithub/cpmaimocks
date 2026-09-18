@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
-import { formatDate, formatCurrency, approxUsd } from '@/lib/utils'
+import { formatCurrency, approxUsd, planPeriodLabel, isLifetime, accessUntilLabel } from '@/lib/utils'
 import { CheckCircle2, CreditCard } from 'lucide-react'
 
 interface Plan {
@@ -19,7 +19,7 @@ interface Plan {
 interface Certification { id: string; name: string; fullName: string | null }
 
 interface Props {
-  subscription: { planName: string; status: string; endDate: string } | null
+  subscription: { planName: string; status: string; endDate: string; durationDays: number } | null
   plans: Plan[]
   certifications: Certification[]
 }
@@ -149,7 +149,7 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
             <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
             <div>
               <p className="font-semibold text-green-800">Active: {subscription.planName}</p>
-              <p className="text-sm text-green-700">Access until {formatDate(subscription.endDate)}</p>
+              <p className="text-sm text-green-700">{accessUntilLabel(subscription.endDate, subscription.durationDays)}</p>
             </div>
           </CardContent>
         </Card>
@@ -200,7 +200,7 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
                 <h3 className="font-bold text-lg">{plan.name}</h3>
                 <div className="my-2">
                   <span className="text-3xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
-                  <span className="text-muted-foreground text-sm"> / {Math.round(plan.durationDays / 30)} {plan.durationDays <= 31 ? 'month' : plan.durationDays <= 95 ? 'months' : 'year'}</span>
+                  <span className="text-muted-foreground text-sm"> {isLifetime(plan.durationDays) ? 'one-time · lifetime access' : `/ ${planPeriodLabel(plan.durationDays)}`}</span>
                 </div>
                 <Badge variant={plan.certificationId ? 'secondary' : 'success'} className="text-xs mb-2">
                   {plan.certificationName ? `${plan.certificationName} only` : 'All certifications'}

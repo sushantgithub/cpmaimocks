@@ -27,6 +27,7 @@ export default async function SubscriptionRoute() {
         planName: subscription.plan.name,
         status: subscription.status,
         endDate: subscription.endDate!.toISOString(),
+        durationDays: subscription.plan.durationDays,
       } : null}
       plans={plans.map((p) => ({
         id: p.id,

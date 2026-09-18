@@ -3,7 +3,7 @@ import { addDays } from 'date-fns'
 import { prisma } from '@/lib/db'
 import { applyCoupon } from '@/lib/subscription'
 import { sendPaymentConfirmationEmail } from '@/lib/email'
-import { formatDate } from '@/lib/utils'
+import { formatDate, isLifetime } from '@/lib/utils'
 
 function toMoney(value: number) {
   return Math.round(value * 100) / 100
@@ -112,7 +112,7 @@ export async function fulfilPayment(
       payment.plan!.name,
       payment.amount,
       payment.currency,
-      formatDate(subscription.endDate!)
+      isLifetime(payment.plan!.durationDays) ? 'Lifetime' : formatDate(subscription.endDate!)
     )
   } catch (err) {
     console.error('[Checkout] confirmation email failed', paymentId, err)

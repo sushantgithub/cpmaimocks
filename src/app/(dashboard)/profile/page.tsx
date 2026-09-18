@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { getUserStats } from '@/lib/quiz'
 import { getUserActiveSubscription } from '@/lib/subscription'
 import { ProfileClient } from '@/components/dashboard/profile-client'
-import { formatDate } from '@/lib/utils'
+import { formatDate, accessUntilLabel } from '@/lib/utils'
 
 export default async function ProfilePage() {
   const session = await auth()
@@ -22,7 +22,7 @@ export default async function ProfilePage() {
       subscription={subscription ? {
         planName: subscription.plan.name,
         status: subscription.status,
-        endDate: formatDate(subscription.endDate!),
+        access: accessUntilLabel(subscription.endDate!, subscription.plan.durationDays),
       } : null}
     />
   )

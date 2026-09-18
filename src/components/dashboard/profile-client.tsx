@@ -13,7 +13,7 @@ import { User, Lock, Trash2, Trophy, BookOpen, Target, TrendingUp } from 'lucide
 interface Props {
   user: { name: string; email: string; memberSince: string }
   stats: { totalExams: number; totalQuestions: number; avgScore: number; bestScore: number }
-  subscription: { planName: string; status: string; endDate: string } | null
+  subscription: { planName: string; status: string; access: string } | null
 }
 
 export function ProfileClient({ user, stats, subscription }: Props) {
@@ -73,7 +73,7 @@ export function ProfileClient({ user, stats, subscription }: Props) {
           <div>
             <p className="font-medium">{subscription?.planName ?? 'Free Plan'}</p>
             {subscription ? (
-              <p className="text-sm text-muted-foreground">Access until {subscription.endDate}</p>
+              <p className="text-sm text-muted-foreground">{subscription.access}</p>
             ) : (
               <p className="text-sm text-muted-foreground">Limited access</p>
             )}

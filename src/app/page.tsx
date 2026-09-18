@@ -10,7 +10,7 @@ import {
 import { PublicNav } from '@/components/layout/public-nav'
 import { PublicFooter } from '@/components/layout/public-footer'
 import { prisma } from '@/lib/db'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, planPeriodLabel, isLifetime } from '@/lib/utils'
 
 // Counts and prices come from the database; refresh them hourly
 export const revalidate = 3600
@@ -36,13 +36,6 @@ const faqs = [
   { q: 'Can I access on mobile?', a: 'Yes. The platform is designed mobile-first and works on Android, iPhone, tablets, and desktop.' },
   { q: 'Can I cancel my subscription?', a: 'Yes, you can cancel anytime from your account settings. Access continues until the end of your billing period.' },
 ]
-
-function planPeriod(durationDays: number) {
-  if (durationDays >= 3650) return 'forever'
-  if (durationDays <= 31) return '/month'
-  if (durationDays <= 95) return '/3 months'
-  return '/year'
-}
 
 // The page is also built where no database is reachable (CI), so a failed
 // read degrades to generic copy rather than failing the build.
@@ -242,7 +235,7 @@ export default async function HomePage() {
             {plans.map((dbPlan) => ({
               name: dbPlan.name,
               price: formatCurrency(dbPlan.price, dbPlan.currency),
-              period: planPeriod(dbPlan.durationDays),
+              period: isLifetime(dbPlan.durationDays) ? (dbPlan.price === 0 ? 'forever' : 'one-time, lifetime') : `/${planPeriodLabel(dbPlan.durationDays)}`,
               features: (dbPlan.features as string[]).slice(0, 5),
               cta: dbPlan.price === 0 ? 'Get Started' : dbPlan.isFeatured ? 'Most Popular' : `Start ${dbPlan.name}`,
               href: '/register',

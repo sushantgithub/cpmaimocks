@@ -30,6 +30,27 @@ export function formatDate(date: Date | string) {
   })
 }
 
+// A plan this long never meaningfully expires, so it is shown as lifetime
+// access and never gets an expiry date or a renewal reminder.
+export const LIFETIME_DAYS = 36500
+
+export function isLifetime(durationDays: number) {
+  return durationDays >= LIFETIME_DAYS
+}
+
+export function planPeriodLabel(durationDays: number) {
+  if (isLifetime(durationDays)) return 'lifetime'
+  if (durationDays >= 28 && durationDays <= 31) return 'month'
+  if (durationDays >= 88 && durationDays <= 93) return '3 months'
+  if (durationDays >= 178 && durationDays <= 186) return '6 months'
+  if (durationDays >= 360 && durationDays <= 370) return 'year'
+  return `${durationDays} days`
+}
+
+export function accessUntilLabel(endDate: Date | string, durationDays: number) {
+  return isLifetime(durationDays) ? 'Lifetime access' : `Access until ${formatDate(endDate)}`
+}
+
 export function formatTime(seconds: number) {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
-import { formatCurrency, approxUsd } from '@/lib/utils'
+import { formatCurrency, approxUsd, LIFETIME_DAYS, isLifetime, planPeriodLabel } from '@/lib/utils'
 import { Plus, Trash2, Save } from 'lucide-react'
 
 interface Certification { id: string; name: string }
@@ -28,7 +28,7 @@ interface Plan {
 
 const EMPTY = {
   name: '', description: '', price: '499', durationDays: '30', trialDays: '0',
-  features: '', certificationId: '',
+  features: '', certificationId: '', lifetime: false,
 }
 
 export default function AdminPlansPage() {
@@ -92,7 +92,7 @@ export default function AdminPlansPage() {
         body: JSON.stringify({
           ...form,
           price: Number(form.price),
-          durationDays: Number(form.durationDays),
+          durationDays: form.lifetime ? LIFETIME_DAYS : Number(form.durationDays),
           trialDays: Number(form.trialDays),
           features: form.features.split('\n').map((f) => f.trim()).filter(Boolean),
         }),
@@ -151,8 +151,15 @@ export default function AdminPlansPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Duration (days) *</label>
-                <input type="number" min={1} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
-                  value={form.durationDays} onChange={(e) => setForm((p) => ({ ...p, durationDays: e.target.value }))} />
+                <input type="number" min={1} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                  disabled={form.lifetime}
+                  value={form.lifetime ? '' : form.durationDays} onChange={(e) => setForm((p) => ({ ...p, durationDays: e.target.value }))} />
+                <label className="mt-1.5 flex items-center gap-2 text-xs text-gray-700">
+                  <input type="checkbox" className="h-3.5 w-3.5 rounded"
+                    checked={form.lifetime}
+                    onChange={(e) => setForm((p) => ({ ...p, lifetime: e.target.checked }))} />
+                  Lifetime access (one-time payment, never expires)
+                </label>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Free trial (days)</label>
@@ -195,6 +202,8 @@ export default function AdminPlansPage() {
           {plans.map((plan) => {
             const patch = edits[plan.id] ?? {}
             const price = patch.price ?? plan.price
+            const durationDays = patch.durationDays ?? plan.durationDays
+            const lifetime = isLifetime(durationDays)
             const dirty = Object.keys(patch).length > 0
             return (
               <Card key={plan.id}>
@@ -209,6 +218,7 @@ export default function AdminPlansPage() {
                       <Badge variant="outline" className="text-xs">
                         {plan.certification ? `${plan.certification.name} only` : 'All certifications'}
                       </Badge>
+                      <Badge variant="outline" className="text-xs capitalize">{planPeriodLabel(plan.durationDays)}</Badge>
                       <span className="text-xs text-gray-500">{plan._count.subscriptions} subscriber(s)</span>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => remove(plan)}>
@@ -228,9 +238,16 @@ export default function AdminPlansPage() {
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-600">Days</label>
-                      <input type="number" min={1} className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
-                        value={patch.durationDays ?? plan.durationDays}
+                      <input type="number" min={1} className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                        disabled={lifetime}
+                        value={lifetime ? '' : durationDays}
                         onChange={(e) => edit(plan.id, { durationDays: Number(e.target.value) })} />
+                      <label className="mt-1 flex items-center gap-1.5 text-xs text-gray-700">
+                        <input type="checkbox" className="h-3.5 w-3.5 rounded"
+                          checked={lifetime}
+                          onChange={(e) => edit(plan.id, { durationDays: e.target.checked ? LIFETIME_DAYS : 365 })} />
+                        Lifetime
+                      </label>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-600">Trial days</label>

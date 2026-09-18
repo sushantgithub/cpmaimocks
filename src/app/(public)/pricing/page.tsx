@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2 } from 'lucide-react'
-import { formatCurrency, approxUsd } from '@/lib/utils'
+import { formatCurrency, approxUsd, planPeriodLabel, isLifetime } from '@/lib/utils'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
@@ -50,7 +50,7 @@ export default async function PricingPage() {
                 <div className="my-4">
                   <span className="text-4xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
                   <span className="text-muted-foreground text-sm ml-1">
-                    / {plan.durationDays <= 31 ? 'month' : plan.durationDays <= 95 ? '3 months' : 'year'}
+                    {isLifetime(plan.durationDays) ? 'one-time, lifetime access' : `/ ${planPeriodLabel(plan.durationDays)}`}
                   </span>
                   {approxUsd(plan.price) && (
                     <p className="text-xs text-muted-foreground mt-1">

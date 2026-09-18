@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { slugify, getScoreGrade, formatTime, approxUsd } from '@/lib/utils'
+import { slugify, getScoreGrade, formatTime, approxUsd, planPeriodLabel, isLifetime, accessUntilLabel, LIFETIME_DAYS } from '@/lib/utils'
 
 describe('slugify', () => {
   it('turns a domain name into a stable slug', () => {
@@ -32,5 +32,23 @@ describe('approxUsd', () => {
   })
   it('rounds to whole dollars', () => {
     expect(approxUsd(880)).toBe('$10')
+  })
+})
+
+describe('plan durations', () => {
+  it('labels common durations', () => {
+    expect(planPeriodLabel(30)).toBe('month')
+    expect(planPeriodLabel(90)).toBe('3 months')
+    expect(planPeriodLabel(180)).toBe('6 months')
+    expect(planPeriodLabel(365)).toBe('year')
+    expect(planPeriodLabel(45)).toBe('45 days')
+  })
+
+  it('treats a century as lifetime', () => {
+    expect(isLifetime(LIFETIME_DAYS)).toBe(true)
+    expect(isLifetime(365)).toBe(false)
+    expect(planPeriodLabel(LIFETIME_DAYS)).toBe('lifetime')
+    expect(accessUntilLabel(new Date('2126-01-01'), LIFETIME_DAYS)).toBe('Lifetime access')
+    expect(accessUntilLabel(new Date('2027-01-15'), 365)).toMatch(/^Access until /)
   })
 })

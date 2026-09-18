@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { LIFETIME_DAYS, isLifetime } from '@/lib/utils'
 
 interface Plan {
   id: string; name: string; slug: string; price: number; currency: string
@@ -119,9 +120,16 @@ export function AdminSettingsClient({ plans: initialPlans }: { plans: Plan[] }) 
                 <label className="text-xs font-medium text-gray-600 mb-1 block">Duration (days)</label>
                 <Input
                   type="number"
-                  value={plan.durationDays}
+                  disabled={isLifetime(plan.durationDays)}
+                  value={isLifetime(plan.durationDays) ? '' : plan.durationDays}
                   onChange={(e) => updatePlan(plan.id, 'durationDays', Number(e.target.value))}
                 />
+                <label className="mt-1 flex items-center gap-1.5 text-xs text-gray-700">
+                  <input type="checkbox" className="h-3.5 w-3.5 rounded"
+                    checked={isLifetime(plan.durationDays)}
+                    onChange={(e) => updatePlan(plan.id, 'durationDays', e.target.checked ? LIFETIME_DAYS : 365)} />
+                  Lifetime
+                </label>
               </div>
             </div>
 
