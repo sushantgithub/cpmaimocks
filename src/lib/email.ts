@@ -67,7 +67,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
     subject: `Welcome to ${APP_NAME}`,
     html: baseTemplate(`
       <h2 style="color:#1e293b;margin:0 0 16px">Welcome, ${name}!</h2>
-      <p style="color:#475569;line-height:1.6">Your account is ready. You signed in with Google, so there is nothing to verify: just head to your dashboard and start practising.</p>
+      <p style="color:#475569;line-height:1.6">Your account is ready and your email address is already confirmed through Google. Head to your dashboard to take a mock exam or start a practice session.</p>
       <div style="text-align:center;margin:32px 0">
         <a href="${APP_URL}/dashboard" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Go to Dashboard</a>
       </div>
