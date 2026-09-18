@@ -76,7 +76,11 @@ export async function POST(req: Request) {
       },
     })
 
-    return NextResponse.json({ attemptId: attempt.id, questionCount: questions.length })
+    return NextResponse.json({
+      attemptId: attempt.id,
+      questionCount: questions.length,
+      requested: config.questionCount,
+    })
   } catch (err) {
     console.error('[StartPractice]', err)
     return NextResponse.json({ error: 'Failed to start practice session' }, { status: 500 })

@@ -75,6 +75,15 @@ export default function PracticePage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+
+      // Only PUBLISHED questions are eligible, so a narrow filter or a bank
+      // still in draft can yield far fewer than asked for.
+      if (data.questionCount < data.requested) {
+        toast({
+          title: `Only ${data.questionCount} question${data.questionCount === 1 ? '' : 's'} matched`,
+          description: `You asked for ${data.requested}. Try fewer filters, or ask an admin to publish more questions.`,
+        })
+      }
       router.push(`/practice/${data.attemptId}`)
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error('Failed to start')
