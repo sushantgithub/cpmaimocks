@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
 import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2 } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatCurrency } from '@/lib/utils'
 
 interface User {
   id: string
@@ -20,6 +20,7 @@ interface User {
   createdAt: string
   subscriptions: { plan: { name: string }; endDate: string | null }[]
   _count: { examAttempts: number }
+  payments: { amount: number; currency: string }[]
 }
 
 export default function AdminUsersPage() {
@@ -76,16 +77,38 @@ export default function AdminUsersPage() {
   }
 
   async function deleteUser(user: User) {
-    if (!confirm(
-      `Permanently delete ${user.email}? This removes the account and everything tied to it — subscriptions, payments, exam history and bookmarks. This cannot be undone.`
-    )) return
+    const hasPaid = user.payments.length > 0
+
+    if (hasPaid) {
+      const total = user.payments.reduce((sum, p) => sum + p.amount, 0)
+      const currency = user.payments[0]?.currency ?? 'INR'
+      const typed = prompt(
+        `${user.email} has ${user.payments.length} successful payment(s) totalling ${formatCurrency(total, currency)}. ` +
+        `This does not look like a test account. If you are sure, type their email address to confirm permanent deletion:`
+      )
+      if (typed === null) return
+      if (typed.trim().toLowerCase() !== user.email.toLowerCase()) {
+        toast({ title: 'Email did not match — nothing was deleted', variant: 'destructive' })
+        return
+      }
+    } else {
+      if (!confirm(
+        `Delete ${user.email}? No payment history — this looks like a test or free account. ` +
+        `Deleting removes it entirely and frees up this email address for a fresh sign-up. This cannot be undone.`
+      )) return
+    }
+
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error ?? 'Failed to delete')
       setUsers(prev => prev.filter(u => u.id !== user.id))
       setTotal(t => t - 1)
-      toast({ title: `${user.email} deleted`, variant: 'success' })
+      toast({
+        title: `${user.email} deleted`,
+        description: 'That email address can be used to sign up again.',
+        variant: 'success',
+      })
     } catch (e) {
       toast({ title: e instanceof Error ? e.message : 'Failed to delete', variant: 'destructive' })
     }
@@ -144,6 +167,13 @@ export default function AdminUsersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
+                        {user.payments.length > 0 ? (
+                          <Badge variant="success" className="text-xs mb-1">
+                            Paid · {formatCurrency(user.payments.reduce((s, p) => s + p.amount, 0), user.payments[0].currency)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs mb-1">No payments</Badge>
+                        )}
                         <div className="flex gap-1 flex-wrap">
                           {user.signInMethods.map((method) => (
                             <Badge key={method} variant="secondary" className="text-xs capitalize">{method}</Badge>

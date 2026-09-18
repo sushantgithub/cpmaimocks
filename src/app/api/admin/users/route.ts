@@ -35,6 +35,10 @@ export async function GET(req: Request) {
           take: 1,
         },
         _count: { select: { examAttempts: true } },
+        payments: {
+          where: { status: 'SUCCESS' },
+          select: { amount: true, currency: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
