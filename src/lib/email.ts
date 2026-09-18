@@ -60,7 +60,15 @@ export async function sendVerificationEmail(email: string, name: string, token: 
   })
 }
 
+const WELCOME_QUOTES = [
+  { text: 'Success is where preparation and opportunity meet.', by: 'Bobby Unser' },
+  { text: 'The expert in anything was once a beginner.', by: 'Helen Hayes' },
+  { text: 'It always seems impossible until it is done.', by: 'Nelson Mandela' },
+  { text: 'Well begun is half done.', by: 'Aristotle' },
+]
+
 export async function sendWelcomeEmail(email: string, name: string) {
+  const quote = WELCOME_QUOTES[Math.floor(Math.random() * WELCOME_QUOTES.length)]
   await transporter.sendMail({
     from: FROM,
     to: email,
@@ -71,6 +79,11 @@ export async function sendWelcomeEmail(email: string, name: string) {
       <div style="text-align:center;margin:32px 0">
         <a href="${APP_URL}/dashboard" style="background:#1e40af;color:#fff;padding:14px 32px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">Go to Dashboard</a>
       </div>
+      <blockquote style="margin:0 0 24px;padding:16px 20px;background:#f8fafc;border-left:4px solid #1e40af;border-radius:0 6px 6px 0">
+        <p style="margin:0;color:#1e293b;font-size:15px;line-height:1.6;font-style:italic">&ldquo;${quote.text}&rdquo;</p>
+        <p style="margin:8px 0 0;color:#64748b;font-size:13px">&mdash; ${quote.by}</p>
+      </blockquote>
+      <p style="color:#475569;line-height:1.6">Best of luck with your exam. You have got this.</p>
       <p style="color:#94a3b8;font-size:13px">Stuck on anything, or just want to say hello? Reply to this email and a real person will get back to you.</p>
     `),
   })
