@@ -34,7 +34,7 @@ export default async function PracticeAttemptPage({ params }: { params: { attemp
   })
 
   if (!attempt || attempt.userId !== session.user.id) notFound()
-  if (attempt.mode !== 'PRACTICE') redirect('/practice')
+  if (attempt.mode !== 'PRACTICE' && attempt.mode !== 'QUIZ') redirect('/practice')
 
   // If already completed, redirect to results
   if (attempt.status === 'COMPLETED') {

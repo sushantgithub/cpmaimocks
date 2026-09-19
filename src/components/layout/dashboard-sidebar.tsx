@@ -4,17 +4,22 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, BookOpen, PenSquare, Bookmark, User, CreditCard, Trophy
+  LayoutDashboard, PenSquare, Bookmark, User, CreditCard, Trophy, ListChecks
 } from 'lucide-react'
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Quizzes', href: '/quizzes', icon: ListChecks },
   { label: 'Mock Exams', href: '/exams', icon: Trophy },
   { label: 'Practice', href: '/practice', icon: PenSquare },
   { label: 'Bookmarks', href: '/bookmarks', icon: Bookmark },
   { label: 'Profile', href: '/profile', icon: User },
   { label: 'Subscription', href: '/subscription', icon: CreditCard },
 ]
+
+// The bottom bar fits five; Bookmarks is the occasional one, so it stays on
+// the desktop rail and in Profile rather than taking a slot from Quizzes.
+const mobileNavItems = navItems.filter((i) => i.label !== 'Bookmarks').slice(0, 5)
 
 export function DashboardSidebar() {
   const pathname = usePathname()
@@ -42,7 +47,7 @@ export function DashboardSidebar() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t flex justify-around py-2">
-        {navItems.slice(0, 5).map((item) => (
+        {mobileNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}

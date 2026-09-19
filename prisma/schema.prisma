@@ -75,6 +75,7 @@ model User {
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
   couponRedemptions  CouponRedemption[]
+  quizResets         QuizReset[]
 
   @@index([email])
 }
@@ -213,6 +214,39 @@ model Payment {
   @@index([providerOrderId])
 }
 
+/// A quiz that groups questions by tag rather than by domain, e.g. an
+/// algorithm drill whose questions live in several domains. Domain quizzes
+/// need no row here: they are derived from the certification's categories.
+model Quiz {
+  id              String   @id @default(cuid())
+  title           String
+  slug            String
+  description     String?
+  certificationId String
+  tag             String
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+
+  @@unique([slug, certificationId])
+}
+
+/// Marks when someone restarted a mastered quiz. Answers given before this
+/// point stop counting as seen, so the quiz serves its questions afresh.
+model QuizReset {
+  id      String   @id @default(cuid())
+  userId  String
+  quizKey String
+  resetAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizKey])
+}
+
 model Certification {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -228,6 +262,7 @@ model Certification {
   questions  Question[]
   exams      MockExam[]
   plans      SubscriptionPlan[]
+  quizzes    Quiz[]
 }
 
 model Category {
@@ -263,24 +298,24 @@ model Topic {
 }
 
 model Question {
-  id            String         @id @default(cuid())
-  questionId    String         @unique
-  text          String         @db.Text
-  optionA       String         @db.Text
-  optionB       String         @db.Text
-  optionC       String         @db.Text
-  optionD       String         @db.Text
-  correctAnswer String
-  explanation     String       @db.Text
+  id              String         @id @default(cuid())
+  questionId      String         @unique
+  text            String         @db.Text
+  optionA         String         @db.Text
+  optionB         String         @db.Text
+  optionC         String         @db.Text
+  optionD         String         @db.Text
+  correctAnswer   String
+  explanation     String         @db.Text
   certificationId String
   categoryId      String?
   topicId         String?
-  difficulty    Difficulty     @default(MEDIUM)
-  status        QuestionStatus @default(DRAFT)
-  source        String?
-  tags          String[]       @default([])
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  difficulty      Difficulty     @default(MEDIUM)
+  status          QuestionStatus @default(DRAFT)
+  source          String?
+  tags            String[]       @default([])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   certification     Certification      @relation(fields: [certificationId], references: [id])
   category          Category?          @relation(fields: [categoryId], references: [id])

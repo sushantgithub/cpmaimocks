@@ -37,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: { attemptId: stri
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    if (attempt.mode !== 'PRACTICE') {
+    if (attempt.mode !== 'PRACTICE' && attempt.mode !== 'QUIZ') {
       return NextResponse.json({ error: 'Not a practice attempt' }, { status: 400 })
     }
 
