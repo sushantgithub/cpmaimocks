@@ -8,6 +8,16 @@ interface ImportRow {
   option_c: string; option_d: string; correct_answer: string; explanation: string
   domain?: string; topic?: string; difficulty?: string; source?: string
   status?: string
+  // Comma-separated labels that group questions across domains, e.g. the
+  // algorithm drill, which draws from whichever domains its questions sit in.
+  tags?: string
+}
+
+function parseTags(raw: string | undefined) {
+  if (!raw) return []
+  return Array.from(new Set(
+    raw.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)
+  )).slice(0, 10)
 }
 
 export async function POST(req: Request) {
@@ -98,6 +108,7 @@ export async function POST(req: Request) {
             explanation: row.explanation.trim(),
             difficulty,
             source: row.source?.trim(),
+            tags: parseTags(row.tags),
             certificationId: certification.id,
             categoryId,
             topicId,

@@ -20,6 +20,7 @@ interface RowData {
   question_id?: string; question: string; option_a: string; option_b: string
   option_c: string; option_d: string; correct_answer: string; explanation: string
   domain?: string; topic?: string; difficulty?: string; source?: string
+  tags?: string
 }
 
 interface ValidationResult {
@@ -139,7 +140,7 @@ export function CsvImportClient() {
             Your CSV must have these column headers (case sensitive):
           </p>
           <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono overflow-x-auto">
-            question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,domain,topic,difficulty,source
+            question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,domain,topic,difficulty,source,tags
           </div>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             {[
@@ -155,6 +156,7 @@ export function CsvImportClient() {
               { col: 'topic', req: false, note: 'Topic within domain' },
               { col: 'difficulty', req: false, note: 'EASY, MEDIUM, or HARD' },
               { col: 'source', req: false, note: 'Optional reference' },
+              { col: 'tags', req: false, note: 'Comma-separated, e.g. algorithm' },
             ].map((c) => (
               <div key={c.col} className="flex items-start gap-1">
                 <span className={`font-mono ${c.req ? 'text-red-600' : 'text-gray-500'}`}>{c.col}</span>
@@ -255,6 +257,7 @@ export function CsvImportClient() {
                         <th className="text-left px-3 py-2 font-medium">Question</th>
                         <th className="text-left px-3 py-2 font-medium">Answer</th>
                         <th className="text-left px-3 py-2 font-medium">Domain</th>
+                        <th className="text-left px-3 py-2 font-medium">Tags</th>
                         <th className="text-left px-3 py-2 font-medium">Difficulty</th>
                       </tr>
                     </thead>
@@ -266,6 +269,7 @@ export function CsvImportClient() {
                           </td>
                           <td className="px-3 py-2 font-semibold text-primary">{row.correct_answer.toUpperCase()}</td>
                           <td className="px-3 py-2 text-gray-500">{row.domain ?? '—'}</td>
+                          <td className="px-3 py-2 text-gray-500">{row.tags?.trim() || '—'}</td>
                           <td className="px-3 py-2">
                             <Badge variant="outline" className="text-xs capitalize">
                               {(row.difficulty ?? 'medium').toLowerCase()}
