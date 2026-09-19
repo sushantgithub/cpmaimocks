@@ -125,7 +125,7 @@ export default async function DashboardPage() {
                     </Button>
                   ) : (
                     <Button size="sm" className="w-full" asChild>
-                      <Link href={freshExamHref(exam.id)}>Start Exam <ArrowRight className="h-3 w-3" /></Link>
+                      <Link href={freshExamHref(exam.id)} prefetch={false}>Start Exam <ArrowRight className="h-3 w-3" /></Link>
                     </Button>
                   )}
                 </CardContent>
