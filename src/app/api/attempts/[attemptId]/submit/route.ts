@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { submitExam } from '@/lib/quiz'
+import { ExamSubmissionError, submitExam } from '@/lib/quiz'
 import { prisma } from '@/lib/db'
 
 export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
@@ -26,6 +26,9 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
 
     return NextResponse.json({ success: true, ...result })
   } catch (err) {
+    if (err instanceof ExamSubmissionError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: 409 })
+    }
     console.error('[SubmitExam]', err)
     return NextResponse.json({ error: 'Submission failed' }, { status: 500 })
   }

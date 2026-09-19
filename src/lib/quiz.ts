@@ -2,6 +2,13 @@ import { prisma } from '@/lib/db'
 import type { PracticeConfig } from '@/types'
 import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
 
+export class ExamSubmissionError extends Error {
+  constructor(public code: 'ALREADY_SUBMITTED' | 'TIME_EXPIRED', message: string) {
+    super(message)
+    this.name = 'ExamSubmissionError'
+  }
+}
+
 export async function getExamQuestions(examId: string) {
   const exam = await prisma.mockExam.findUnique({
     where: { id: examId },
@@ -113,20 +120,28 @@ export async function submitExam(
   const attempt = await prisma.examAttempt.findUnique({
     where: { id: attemptId },
     include: {
+      exam: { select: { timeLimitMinutes: true } },
       answers: { include: { question: { select: { id: true, correctAnswer: true, categoryId: true, topicId: true } } } },
     },
   })
 
   if (!attempt) throw new Error('Attempt not found')
-  if (attempt.status === 'COMPLETED') throw new Error('Exam already submitted')
+  if (attempt.status !== 'IN_PROGRESS') {
+    throw new ExamSubmissionError('ALREADY_SUBMITTED', 'Exam already submitted')
+  }
 
   const timeTaken = Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000)
+  const timeLimitSeconds = (attempt.exam?.timeLimitMinutes ?? 0) * 60
+  const clockToleranceSeconds = 10
+  if (timeLimitSeconds > 0 && timeTaken > timeLimitSeconds + clockToleranceSeconds) {
+    throw new ExamSubmissionError('TIME_EXPIRED', 'Exam time has expired')
+  }
 
   let correctCount = 0
   let incorrectCount = 0
   let unansweredCount = 0
 
-  const answerUpdates = attempt.answers.map((ea) => {
+  const scoredAnswers = attempt.answers.map((ea) => {
     const selected = normalizeAnswer(answers[ea.questionId]) || null
     const isCorrect = selected ? isAnswerCorrect(selected, ea.question.correctAnswer) : null
 
@@ -134,30 +149,40 @@ export async function submitExam(
     else if (isCorrect === false) incorrectCount++
     else unansweredCount++
 
-    return prisma.examAnswer.update({
-      where: { id: ea.id },
-      data: {
-        selectedAnswer: selected,
-        isCorrect,
-      },
-    })
+    return { id: ea.id, selectedAnswer: selected, isCorrect }
   })
 
-  await prisma.$transaction(answerUpdates)
+  const score = attempt.totalQuestions > 0
+    ? (correctCount / attempt.totalQuestions) * 100
+    : 0
 
-  const score = (correctCount / attempt.totalQuestions) * 100
+  await prisma.$transaction(async (tx) => {
+    const claimed = await tx.examAttempt.updateMany({
+      where: { id: attemptId, status: 'IN_PROGRESS' },
+      data: {
+        status: 'COMPLETED',
+        submittedAt: new Date(),
+        timeTakenSeconds: timeTaken,
+        score,
+        correctCount,
+        incorrectCount,
+        unansweredCount,
+      },
+    })
 
-  await prisma.examAttempt.update({
-    where: { id: attemptId },
-    data: {
-      status: 'COMPLETED',
-      submittedAt: new Date(),
-      timeTakenSeconds: timeTaken,
-      score,
-      correctCount,
-      incorrectCount,
-      unansweredCount,
-    },
+    if (claimed.count !== 1) {
+      throw new ExamSubmissionError('ALREADY_SUBMITTED', 'Exam already submitted')
+    }
+
+    for (const answer of scoredAnswers) {
+      await tx.examAnswer.update({
+        where: { id: answer.id },
+        data: {
+          selectedAnswer: answer.selectedAnswer,
+          isCorrect: answer.isCorrect,
+        },
+      })
+    }
   })
 
   return { score, correctCount, incorrectCount, unansweredCount, timeTaken }
