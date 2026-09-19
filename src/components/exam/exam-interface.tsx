@@ -200,7 +200,14 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   }
 
   function nextQuestion() {
-    if (exam.showExplanations && answers[q.id] && !feedback[q.id]) {
+    // An unanswered learning-mock question is a deliberate skip. Advance
+    // without selecting, saving, or revealing anything so Finish can surface
+    // it later under Review Unanswered.
+    if (exam.showExplanations && !answers[q.id]) {
+      setCurrent((current) => Math.min(questions.length - 1, current + 1))
+      return
+    }
+    if (exam.showExplanations && !feedback[q.id]) {
       void revealCurrentFeedback()
       return
     }
