@@ -14,7 +14,7 @@ export default auth((req) => {
 
   // Protect dashboard routes
   if (pathname.startsWith('/dashboard') || pathname.startsWith('/exams') ||
-      pathname.startsWith('/practice') || pathname.startsWith('/results') ||
+      pathname.startsWith('/practice') || pathname.startsWith('/quizzes') || pathname.startsWith('/results') ||
       pathname.startsWith('/bookmarks') || pathname.startsWith('/profile') ||
       pathname.startsWith('/subscription')) {
     if (!req.auth) return loginRedirect(req)
@@ -32,6 +32,7 @@ export const config = {
     '/dashboard/:path*',
     '/exams/:path*',
     '/practice/:path*',
+    '/quizzes/:path*',
     '/results/:path*',
     '/bookmarks/:path*',
     '/profile/:path*',
