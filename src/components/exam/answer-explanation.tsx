@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { answerLetters, explanationRows, splitExplanationRows, type ExplanationRow } from '@/lib/answers'
-import { CheckCircle2, XCircle, ChevronDown } from 'lucide-react'
+import { answerLetters, explanationRows, type ExplanationRow } from '@/lib/answers'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 export interface ExplainedQuestion {
   optionA: string
@@ -64,23 +63,12 @@ function OptionRow({ row }: { row: ExplanationRow }) {
  * they did not pick folded away. Questions imported before per-option text
  * existed show the key idea alone, exactly as they always have.
  */
-export function AnswerExplanation({ question, selectedAnswer, expanded = false, className }: Props) {
-  const [showRest, setShowRest] = useState(expanded)
+export function AnswerExplanation({ question, selectedAnswer, className }: Props) {
   const rows = explanationRows(question, selectedAnswer)
   const keyIdea = question.explanation?.trim()
 
-  if (rows.length === 0) {
-    return keyIdea ? <p className={cn('text-sm leading-relaxed text-gray-700', className)}>{keyIdea}</p> : null
-  }
-
-  const { lead, rest } = splitExplanationRows(rows)
-
   return (
     <div className={cn('space-y-3', className)}>
-      <ul className="space-y-2">
-        {lead.map((row) => <OptionRow key={row.key} row={row} />)}
-      </ul>
-
       {keyIdea && (
         <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 mb-1">Key idea</p>
@@ -88,23 +76,12 @@ export function AnswerExplanation({ question, selectedAnswer, expanded = false, 
         </div>
       )}
 
-      {rest.length > 0 && (
+      {rows.length > 0 && (
         <div>
-          {!expanded && (
-            <button
-              type="button"
-              onClick={() => setShowRest((v) => !v)}
-              className="flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900"
-            >
-              <ChevronDown className={cn('h-4 w-4 transition-transform', showRest && 'rotate-180')} />
-              {showRest ? 'Hide the other options' : `Why the other ${rest.length === 1 ? 'option is' : 'options are'} wrong`}
-            </button>
-          )}
-          {showRest && (
-            <ul className="space-y-2 mt-2">
-              {rest.map((row) => <OptionRow key={row.key} row={row} />)}
-            </ul>
-          )}
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-600 mb-2">Explanation</p>
+          <ul className="space-y-2">
+            {rows.map((row) => <OptionRow key={row.key} row={row} />)}
+          </ul>
         </div>
       )}
     </div>
