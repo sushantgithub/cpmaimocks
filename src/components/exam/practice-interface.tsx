@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -57,7 +57,6 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null)
   const submitted = useRef(false)
-  const explanationRef = useRef<HTMLDivElement>(null)
 
   const q = questions[current]
   const selectCount = expectedCount(q.correctAnswer)
@@ -70,18 +69,22 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
 
-  // Feedback sits below the options and can otherwise appear off-screen on
-  // smaller displays, making it look as though no explanation was shown.
-  useEffect(() => {
-    if (!revealed) return
-    explanationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-  }, [current, revealed])
+  function revealFeedback() {
+    // Run after React has committed the answered state, then move the actual
+    // question scroller (not the fixed page) to the feedback block.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        document.getElementById(`feedback-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    })
+  }
 
   function selectAnswer(opt: string) {
     if (answers[q.id]) return // lock once answered
 
     if (!multi) {
       setAnswers((prev) => ({ ...prev, [q.id]: opt }))
+      revealFeedback()
       return
     }
     // Multiple-response: gather the picks, and only commit once the taker has
@@ -94,6 +97,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
     if (next.length === selectCount) {
       setAnswers((prev) => ({ ...prev, [q.id]: normalizeAnswer(next.join(',')) }))
       setPending([])
+      revealFeedback()
     }
   }
 
@@ -271,7 +275,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
 
             {/* Result + Explanation (shown after answering) */}
             {revealed && (
-              <div ref={explanationRef} className={cn(
+              <div id={`feedback-${q.id}`} tabIndex={-1} className={cn(
                 'mt-5 rounded-xl border-2 p-4',
                 isCorrect ? 'border-green-300 bg-green-50' : 'border-red-200 bg-red-50'
               )}>
