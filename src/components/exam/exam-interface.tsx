@@ -585,7 +585,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
             </div>
             {unanswered > 0 && (
               <p className="text-sm text-yellow-700 bg-yellow-50 rounded-lg p-3 mb-4">
-                You have <strong>{unanswered} unanswered</strong> questions. They will be marked incorrect.
+                You have <strong>{unanswered} unanswered</strong> questions. They will count as unanswered.
               </p>
             )}
             {!exam.showExplanations && marked.size > 0 && (
