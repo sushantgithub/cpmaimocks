@@ -138,13 +138,14 @@ export async function submitExam(
   const recordedTimeTaken = timeLimitSeconds > 0
     ? Math.min(timeTaken, timeLimitSeconds)
     : timeTaken
+  const expired = timeLimitSeconds > 0 && timeTaken >= timeLimitSeconds
 
   let correctCount = 0
   let incorrectCount = 0
   let unansweredCount = 0
 
   const scoredAnswers = attempt.answers.map((ea) => {
-    const selected = normalizeAnswer(answers[ea.questionId] ?? ea.selectedAnswer ?? '') || null
+    const selected = normalizeAnswer(expired ? (ea.selectedAnswer ?? '') : (answers[ea.questionId] ?? ea.selectedAnswer ?? '')) || null
     const isCorrect = selected ? isAnswerCorrect(selected, ea.question.correctAnswer) : null
 
     if (isCorrect === true) correctCount++
@@ -195,7 +196,7 @@ export async function submitExam(
     incorrectCount,
     unansweredCount,
     timeTaken: recordedTimeTaken,
-    expired: timeLimitSeconds > 0 && timeTaken > timeLimitSeconds,
+    expired,
   }
 }
 
