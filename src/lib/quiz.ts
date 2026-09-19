@@ -201,7 +201,7 @@ export async function submitExam(
 
 export async function getAttemptResults(attemptId: string, userId: string) {
   const attempt = await prisma.examAttempt.findFirst({
-    where: { id: attemptId, userId },
+    where: { id: attemptId, userId, status: 'COMPLETED' },
     include: {
       exam: { select: { title: true, passingScore: true, timeLimitMinutes: true } },
       answers: {
