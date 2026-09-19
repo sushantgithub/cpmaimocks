@@ -113,7 +113,7 @@ export default async function ExamsPage() {
                   </Button>
                 ) : (
                   <Button className="w-full" asChild>
-                    <Link href={freshExamHref(exam.id)}>{prev ? (samplesPool ? 'Continue Practice' : 'Retake Exam') : 'Start Exam'}</Link>
+                    <Link href={freshExamHref(exam.id)} prefetch={false}>{prev ? (samplesPool ? 'Continue Practice' : 'Retake Exam') : 'Start Exam'}</Link>
                   </Button>
                 )}
               </CardContent>
