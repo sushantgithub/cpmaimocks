@@ -86,6 +86,9 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
       const initialMarked = running.answers
         .filter((a) => a.isMarked)
         .map((a) => a.question.id)
+      const initialChecked = running.answers
+        .filter((a) => a.isCorrect !== null)
+        .map((a) => a.question.id)
 
       return (
         <ExamInterface
@@ -96,6 +99,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
           questions={running.answers.map((a) => toExamQuestion(a.question))}
           initialAnswers={initialAnswers}
           initialMarked={initialMarked}
+          initialChecked={initialChecked}
         />
       )
     }
