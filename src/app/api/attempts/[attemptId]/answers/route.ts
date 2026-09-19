@@ -43,20 +43,25 @@ export async function PATCH(req: Request, { params }: { params: { attemptId: str
     return NextResponse.json({ error: 'Exam time has expired', code: 'TIME_EXPIRED' }, { status: 409 })
   }
 
-  const normalized = entries.map((entry) => {
-    if (typeof entry.questionId !== 'string' || !entry.questionId) throw new Error('INVALID_BATCH')
-    if (entry.isMarked !== undefined && typeof entry.isMarked !== 'boolean') throw new Error('INVALID_BATCH')
-    if (entry.selectedAnswer !== undefined && entry.selectedAnswer !== null && typeof entry.selectedAnswer !== 'string') {
-      throw new Error('INVALID_BATCH')
-    }
-    return {
-      questionId: entry.questionId,
-      selectedAnswer: entry.selectedAnswer === undefined
-        ? undefined
-        : (normalizeAnswer(entry.selectedAnswer as string | null) || null),
-      isMarked: entry.isMarked as boolean | undefined,
-    }
-  })
+  let normalized: Array<{ questionId: string; selectedAnswer?: string | null; isMarked?: boolean }>
+  try {
+    normalized = entries.map((entry) => {
+      if (typeof entry.questionId !== 'string' || !entry.questionId) throw new Error('INVALID_BATCH')
+      if (entry.isMarked !== undefined && typeof entry.isMarked !== 'boolean') throw new Error('INVALID_BATCH')
+      if (entry.selectedAnswer !== undefined && entry.selectedAnswer !== null && typeof entry.selectedAnswer !== 'string') {
+        throw new Error('INVALID_BATCH')
+      }
+      return {
+        questionId: entry.questionId,
+        selectedAnswer: entry.selectedAnswer === undefined
+          ? undefined
+          : (normalizeAnswer(entry.selectedAnswer as string | null) || null),
+        isMarked: entry.isMarked as boolean | undefined,
+      }
+    })
+  } catch {
+    return NextResponse.json({ error: 'Invalid answer batch' }, { status: 400 })
+  }
 
   try {
     await prisma.$transaction(async (tx) => {
