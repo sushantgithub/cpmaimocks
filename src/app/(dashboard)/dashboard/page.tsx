@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { formatDate, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
 import { freshExamHref } from '@/lib/exam-links'
-import { Trophy, BookOpen, Target, TrendingUp, ArrowRight, Lock } from 'lucide-react'
+import { Trophy, BookOpen, Target, TrendingUp, ArrowRight, Lock, CheckCircle2 } from 'lucide-react'
 
 /**
  * How many questions one attempt serves, shown against the pool it is drawn
@@ -26,7 +26,7 @@ export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [stats, subscription, accessible, examCount, recentAttempts, exams] = await Promise.all([
+  const [stats, subscription, accessible, examCount, recentAttempts, exams, masteredQuestions] = await Promise.all([
     getUserStats(userId),
     getUserActiveSubscriptions(userId),
     getAccessibleCertificationIds(userId),
@@ -41,6 +41,14 @@ export default async function DashboardPage() {
       where: { status: 'PUBLISHED' },
       orderBy: { sortOrder: 'asc' },
       take: 6,
+    }),
+    prisma.examAnswer.findMany({
+      where: {
+        attempt: { userId, status: 'COMPLETED' },
+        isCorrect: true,
+      },
+      select: { questionId: true },
+      distinct: ['questionId'],
     }),
   ])
 
@@ -70,10 +78,11 @@ export default async function DashboardPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Exams Taken', value: stats.totalExams, icon: Trophy, color: 'text-blue-600' },
-          { label: 'Questions Done', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600' },
+          { label: 'Questions Attempted', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600' },
+          { label: 'Questions Mastered', value: masteredQuestions.length, icon: CheckCircle2, color: 'text-green-600' },
           { label: 'Average Score', value: `${stats.avgScore}%`, icon: Target, color: 'text-yellow-600' },
           { label: 'Best Score', value: `${stats.bestScore}%`, icon: TrendingUp, color: 'text-green-600' },
         ].map((s) => (
