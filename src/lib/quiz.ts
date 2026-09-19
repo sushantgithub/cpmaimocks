@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import type { PracticeConfig } from '@/types'
 import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
+import { answerForFinalScoring, questionHistoryState } from '@/lib/exam-progress'
 
 export class ExamSubmissionError extends Error {
   constructor(public code: 'ALREADY_SUBMITTED' | 'TIME_EXPIRED', message: string) {
@@ -69,12 +70,12 @@ export async function getExamQuestions(examId: string, userId?: string) {
       if (!latest.has(answer.questionId)) latest.set(answer.questionId, answer.isCorrect)
     }
 
-    const wrong = questions.filter((q) => latest.get(q.id) === false)
-    const unseen = questions.filter((q) => !latest.has(q.id))
-    const correct = questions.filter((q) => latest.get(q.id) === true)
+    const missed = questions.filter((q) => questionHistoryState(latest, q.id) === 'missed')
+    const unseen = questions.filter((q) => questionHistoryState(latest, q.id) === 'unseen')
+    const correct = questions.filter((q) => questionHistoryState(latest, q.id) === 'correct')
     const order = (items: typeof questions) => exam.randomizeQuestions ? shuffle(items) : items
 
-    questions = [...order(wrong), ...order(unseen), ...order(correct)]
+    questions = [...order(missed), ...order(unseen), ...order(correct)]
     return { exam, questions: questions.slice(0, exam.questionsPerAttempt) }
   }
 
@@ -183,7 +184,7 @@ export async function submitExam(
   const attempt = await prisma.examAttempt.findUnique({
     where: { id: attemptId },
     include: {
-      exam: { select: { timeLimitMinutes: true } },
+      exam: { select: { timeLimitMinutes: true, showExplanations: true } },
       answers: { include: { question: { select: { id: true, correctAnswer: true, categoryId: true, topicId: true } } } },
     },
   })
@@ -208,16 +209,13 @@ export async function submitExam(
   let unansweredCount = 0
 
   const scoredAnswers = attempt.answers.map((ea) => {
-    // Feedback-enabled mocks lock an answer by populating isCorrect before
-    // final submission. Never let a later browser payload replace a selection
-    // after the learner has already seen the answer key.
-    const selected = normalizeAnswer(
-      ea.isCorrect !== null
-        ? (ea.selectedAnswer ?? '')
-        : expired
-          ? (ea.selectedAnswer ?? '')
-          : (answers[ea.questionId] ?? ea.selectedAnswer ?? '')
-    ) || null
+    const selected = answerForFinalScoring({
+      showExplanations: attempt.exam?.showExplanations ?? false,
+      storedAnswer: ea.selectedAnswer,
+      storedIsCorrect: ea.isCorrect,
+      browserAnswer: answers[ea.questionId],
+      expired,
+    })
     const isCorrect = selected ? isAnswerCorrect(selected, ea.question.correctAnswer) : null
 
     if (isCorrect === true) correctCount++
