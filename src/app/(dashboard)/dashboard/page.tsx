@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getUserStats } from '@/lib/quiz'
-import { getUserActiveSubscription, getAccessibleCertificationIds } from '@/lib/subscription'
+import { getUserActiveSubscriptions, getAccessibleCertificationIds } from '@/lib/subscription'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   const [stats, subscription, accessible, examCount, recentAttempts, exams] = await Promise.all([
     getUserStats(userId),
-    getUserActiveSubscription(userId),
+    getUserActiveSubscriptions(userId),
     getAccessibleCertificationIds(userId),
     prisma.mockExam.count({ where: { status: 'PUBLISHED' } }),
     prisma.examAttempt.findMany({
@@ -31,7 +31,7 @@ export default async function DashboardPage() {
     }),
   ])
 
-  const isSubscribed = !!subscription
+  const isSubscribed = subscription.length > 0
   const canAccess = (certificationId: string) =>
     accessible === 'ALL' || accessible.includes(certificationId)
 
