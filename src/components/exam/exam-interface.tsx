@@ -106,7 +106,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   // Save only changed questions after a short idle period.
   useEffect(() => {
     if (dirty.current.size === 0) return
-    const timer = window.setTimeout(() => { void saveDirty() }, 2500)
+    const timer = window.setTimeout(() => { void saveDirty() }, 1000)
     return () => window.clearTimeout(timer)
   }, [answers, marked, saveDirty])
 
@@ -127,6 +127,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((deadline.current! - Date.now()) / 1000))
       setTimeLeft(remaining)
+      if (remaining > 0 && remaining <= 3) void saveDirty()
       if (remaining === 0) void submitExam(true)
     }
 
@@ -140,12 +141,13 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [submitExam])
+  }, [saveDirty, submitExam])
 
   const multi = (q.selectCount ?? 1) > 1
   const chosen = answerLetters(answers[q.id])
 
   function selectAnswer(opt: string) {
+    if (timeLeft <= 0 && deadline.current !== null) return
     dirty.current.add(q.id)
     setAnswers((prev) => {
       if (!multi) return { ...prev, [q.id]: opt }
@@ -160,6 +162,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   }
 
   function toggleMark() {
+    if (timeLeft <= 0 && deadline.current !== null) return
     dirty.current.add(q.id)
     setMarked((prev) => {
       const next = new Set(prev)
