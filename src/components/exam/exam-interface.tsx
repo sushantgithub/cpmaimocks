@@ -32,6 +32,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const submitted = useRef(false)
+  const deadline = useRef(timeLeftSeconds > 0 ? Date.now() + timeLeftSeconds * 1000 : null)
   const dirty = useRef<Set<string>>(new Set())
   const answersRef = useRef(answers)
   const markedRef = useRef(marked)
@@ -118,19 +119,27 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     return () => document.removeEventListener('visibilitychange', onVisibilityChange)
   }, [saveDirty])
 
-  // Timer
+  // Derive the timer from an absolute deadline so background-tab throttling
+  // cannot grant extra client-side answering time.
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) {
-          clearInterval(timer)
-          submitExam(true)
-          return 0
-        }
-        return t - 1
-      })
-    }, 1000)
-    return () => clearInterval(timer)
+    if (deadline.current === null) return
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline.current! - Date.now()) / 1000))
+      setTimeLeft(remaining)
+      if (remaining === 0) void submitExam(true)
+    }
+
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') tick()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [submitExam])
 
   const multi = (q.selectCount ?? 1) > 1
