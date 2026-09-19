@@ -75,6 +75,9 @@ export async function PATCH(req: Request, { params }: { params: { attemptId: str
             attemptId: params.attemptId,
             questionId: entry.questionId,
             attempt: { status: 'IN_PROGRESS' },
+            // Once feedback has exposed the answer key, isCorrect is populated
+            // and the scored selection is immutable. Mark/unmark still works.
+            ...(entry.selectedAnswer !== undefined ? { isCorrect: null } : {}),
           },
           data,
         })
