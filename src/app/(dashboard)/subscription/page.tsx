@@ -1,6 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { getUserActiveSubscription } from '@/lib/subscription'
+import { getUserActiveSubscriptions } from '@/lib/subscription'
 import { SubscriptionPage } from '@/components/dashboard/subscription-page'
 
 export default async function SubscriptionRoute() {
@@ -8,7 +8,7 @@ export default async function SubscriptionRoute() {
   const userId = session!.user.id
 
   const [subscription, plans, certifications] = await Promise.all([
-    getUserActiveSubscription(userId),
+    getUserActiveSubscriptions(userId),
     prisma.subscriptionPlan.findMany({
       where: { isActive: true },
       orderBy: { sortOrder: 'asc' },
@@ -23,12 +23,13 @@ export default async function SubscriptionRoute() {
 
   return (
     <SubscriptionPage
-      subscription={subscription ? {
-        planName: subscription.plan.name,
-        status: subscription.status,
-        endDate: subscription.endDate!.toISOString(),
-        durationDays: subscription.plan.durationDays,
-      } : null}
+      subscriptions={subscription.map((sub) => ({
+        planId: sub.planId,
+        planName: sub.plan.name,
+        status: sub.status,
+        endDate: sub.endDate!.toISOString(),
+        durationDays: sub.plan.durationDays,
+      }))}
       plans={plans.map((p) => ({
         id: p.id,
         name: p.name,
