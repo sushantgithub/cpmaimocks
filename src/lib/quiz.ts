@@ -9,7 +9,7 @@ export class ExamSubmissionError extends Error {
   }
 }
 
-export async function getExamQuestions(examId: string) {
+export async function getExamQuestions(examId: string, userId?: string) {
   const exam = await prisma.mockExam.findUnique({
     where: { id: examId },
     include: {
@@ -48,6 +48,35 @@ export async function getExamQuestions(examId: string) {
   if (!exam) return null
 
   let questions = exam.questions.map((eq) => eq.question)
+
+  // For sampled/domain mocks, subsequent attempts should teach rather than
+  // randomly repeat questions the learner already answered correctly. Prefer
+  // questions previously answered incorrectly, then unseen questions. Only
+  // fall back to previously-correct questions when those two groups cannot
+  // fill the sitting.
+  if (userId && exam.questionsPerAttempt && exam.questionsPerAttempt < questions.length) {
+    const history = await prisma.examAnswer.findMany({
+      where: {
+        attempt: { userId, examId, status: 'COMPLETED' },
+        questionId: { in: questions.map((q) => q.id) },
+      },
+      select: { questionId: true, isCorrect: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' },
+    })
+
+    const latest = new Map<string, boolean | null>()
+    for (const answer of history) {
+      if (!latest.has(answer.questionId)) latest.set(answer.questionId, answer.isCorrect)
+    }
+
+    const wrong = questions.filter((q) => latest.get(q.id) === false)
+    const unseen = questions.filter((q) => !latest.has(q.id))
+    const correct = questions.filter((q) => latest.get(q.id) === true)
+    const order = (items: typeof questions) => exam.randomizeQuestions ? shuffle(items) : items
+
+    questions = [...order(wrong), ...order(unseen), ...order(correct)]
+    return { exam, questions: questions.slice(0, exam.questionsPerAttempt) }
+  }
 
   return { exam, questions: selectForAttempt(questions, exam.randomizeQuestions, exam.questionsPerAttempt) }
 }
