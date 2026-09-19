@@ -31,6 +31,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const [timeLeft, setTimeLeft] = useState(timeLeftSeconds)
   const [showPanel, setShowPanel] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showReview, setShowReview] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, any>>({})
   const [feedbackLoading, setFeedbackLoading] = useState(false)
@@ -206,6 +207,20 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     setCurrent((current) => Math.min(questions.length - 1, current + 1))
   }
 
+  const needsReview = questions
+    .map((question, index) => ({
+      question,
+      index,
+      unanswered: !answers[question.id],
+      marked: marked.has(question.id),
+    }))
+    .filter((item) => item.unanswered || item.marked)
+
+  function openReviewQuestion(index: number) {
+    setCurrent(index)
+    setShowReview(false)
+  }
+
   function toggleMark() {
     if (timeLeft <= 0 && deadline.current !== null) return
     dirty.current.add(q.id)
@@ -242,7 +257,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
           </div>
         )}
 
-        <Button variant="outline" size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+        <Button variant="outline" size="sm" onClick={() => needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true)} disabled={submitting}>
           <Send className="h-3.5 w-3.5 mr-1.5" />
           Submit
         </Button>
@@ -352,7 +367,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               </Button>
 
               {current === questions.length - 1 ? (
-                <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+                <Button size="sm" onClick={() => needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true)} disabled={submitting}>
                   <Send className="h-3.5 w-3.5 mr-1.5" />Finish
                 </Button>
               ) : (
@@ -438,6 +453,40 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
         </div>
       )}
 
+      {/* Review unanswered and marked questions before final submission */}
+      {showReview && (
+        <div className="fixed inset-0 z-60 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 max-w-sm w-full shadow-xl max-h-[75vh] flex flex-col">
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <h3 className="font-bold text-lg">Needs Review</h3>
+              <button onClick={() => setShowReview(false)} aria-label="Close review"><X className="h-5 w-5" /></button>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              {needsReview.length} question{needsReview.length === 1 ? '' : 's'} need attention before submission.
+            </p>
+            <div className="space-y-2 overflow-y-auto mb-4">
+              {needsReview.map((item) => (
+                <button
+                  key={item.question.id}
+                  onClick={() => openReviewQuestion(item.index)}
+                  className="w-full flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-gray-50"
+                >
+                  <span className="font-medium">Q{item.index + 1}</span>
+                  <span className="flex gap-1.5 flex-wrap justify-end">
+                    {item.unanswered && <Badge variant="outline" className="text-xs">Unanswered</Badge>}
+                    {item.marked && <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">Marked</Badge>}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowReview(false)}>Keep Reviewing</Button>
+              <Button className="flex-1" onClick={() => { setShowReview(false); setShowConfirm(true) }}>Submit Anyway</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Submit confirmation */}
       {showConfirm && (
         <div className="fixed inset-0 z-60 bg-black/50 flex items-center justify-center p-4">
@@ -465,9 +514,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                 className="flex-1"
                 onClick={() => {
                   setShowConfirm(false)
-                  // Send them to the first gap rather than dumping them where they were
-                  const firstGap = questions.findIndex((question) => !answers[question.id])
-                  if (firstGap !== -1) setCurrent(firstGap)
+                  if (needsReview.length > 0) setShowReview(true)
                 }}
               >
                 Review
