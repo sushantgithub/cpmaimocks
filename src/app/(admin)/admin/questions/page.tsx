@@ -95,9 +95,9 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
           <option value="ARCHIVED">Archived</option>
         </select>
         <select name="isTest" defaultValue={searchParams.isTest} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-          <option value="">Test &amp; real</option>
+          <option value="">All questions</option>
+          <option value="exclude">Real questions only</option>
           <option value="only">Test questions only</option>
-          <option value="exclude">Exclude test questions</option>
         </select>
         <select name="difficulty" defaultValue={searchParams.difficulty} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
           <option value="">All Difficulty</option>
