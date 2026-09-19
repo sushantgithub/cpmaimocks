@@ -2,14 +2,22 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { normalizeAnswer } from '@/lib/answers'
+import { slugify } from '@/lib/utils'
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const question = await prisma.question.findUnique({ where: { id: params.id } })
+  const question = await prisma.question.findUnique({
+    where: { id: params.id },
+    include: {
+      certification: { select: { name: true, fullName: true } },
+      topic: { select: { name: true } },
+    },
+  })
   if (!question) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(question)
+  // The form edits a topic by name, not by id: it may not exist yet.
+  return NextResponse.json({ ...question, topic: question.topic?.name ?? '' })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -52,6 +60,31 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (Array.isArray(body.tags)) data.tags = body.tags.filter((t: unknown): t is string => typeof t === 'string')
   if (typeof body.isTest === 'boolean') data.isTest = body.isTest
+
+  // A topic arrives as a name and hangs off a domain, so it is resolved
+  // against whichever domain this update leaves the question in.
+  if (typeof body.topic === 'string') {
+    const topicName = body.topic.trim()
+    if (!topicName) {
+      data.topicId = null
+    } else {
+      const categoryId = (data.categoryId as string | null | undefined)
+        ?? (await prisma.question.findUnique({
+          where: { id: params.id },
+          select: { categoryId: true },
+        }))?.categoryId
+      if (!categoryId) {
+        return NextResponse.json({ error: 'Pick a domain before naming a topic' }, { status: 400 })
+      }
+      const topic = await prisma.topic.upsert({
+        where: { slug_categoryId: { slug: slugify(topicName), categoryId } },
+        create: { name: topicName, slug: slugify(topicName), categoryId },
+        update: {},
+      })
+      data.topicId = topic.id
+    }
+  }
+
   if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
   const question = await prisma.question.update({ where: { id: params.id }, data })

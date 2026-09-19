@@ -8,23 +8,43 @@ import { toast } from '@/hooks/use-toast'
 import { ArrowLeft } from 'lucide-react'
 
 interface Category { id: string; name: string }
+interface Certification { id: string; name: string; fullName?: string | null }
 
 const EMPTY = {
   text: '', optionA: '', optionB: '', optionC: '', optionD: '',
   correctAnswer: 'A', explanation: '', difficulty: 'MEDIUM',
   explanationA: '', explanationB: '', explanationC: '', explanationD: '',
-  categoryId: '', status: 'DRAFT',
+  categoryId: '', topic: '', status: 'DRAFT',
 }
 
 export default function NewQuestionPage() {
   const router = useRouter()
   const [form, setForm] = useState(EMPTY)
   const [categories, setCategories] = useState<Category[]>([])
+  const [certifications, setCertifications] = useState<Certification[]>([])
+  const [certificationId, setCertificationId] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.json()).then(setCategories).catch(() => {})
+    fetch('/api/certifications')
+      .then(r => r.json())
+      .then((list: Certification[]) => {
+        setCertifications(list)
+        setCertificationId(prev => prev || list[0]?.id || '')
+      })
+      .catch(() => {})
   }, [])
+
+  // Domains belong to a certification, so the list has to follow the picker —
+  // otherwise a CPMAI question could be filed under a PMP domain.
+  useEffect(() => {
+    if (!certificationId) { setCategories([]); return }
+    fetch(`/api/categories?certificationId=${certificationId}`)
+      .then(r => r.json())
+      .then(setCategories)
+      .catch(() => {})
+    setForm(p => ({ ...p, categoryId: '' }))
+  }, [certificationId])
 
   function field(key: keyof typeof EMPTY) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -36,12 +56,18 @@ export default function NewQuestionPage() {
     for (const f of required) {
       if (!form[f].trim()) { toast({ title: `${f} is required`, variant: 'destructive' }); return }
     }
+    if (!certificationId) { toast({ title: 'Pick a certification first', variant: 'destructive' }); return }
+    // A topic hangs off a domain, so one without the other has nowhere to live.
+    if (form.topic.trim() && !form.categoryId) {
+      toast({ title: 'Pick a domain before naming a topic', variant: 'destructive' }); return
+    }
     setSaving(true)
     try {
       const res = await fetch('/api/admin/questions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          certificationId,
           // The import endpoint speaks the CSV column names, not form state.
           questions: [{
             question: form.text,
@@ -57,6 +83,7 @@ export default function NewQuestionPage() {
             explanation_d: form.explanationD,
             difficulty: form.difficulty,
             domain: categories.find(c => c.id === form.categoryId)?.name ?? '',
+            topic: form.topic,
             status: publish ? 'PUBLISHED' : 'DRAFT',
           }],
         }),
@@ -89,6 +116,23 @@ export default function NewQuestionPage() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Question Details</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Certification *</label>
+            <select
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={certificationId}
+              onChange={e => setCertificationId(e.target.value)}
+            >
+              {certifications.length === 0 && <option value="">Loading…</option>}
+              {certifications.map(c => (
+                <option key={c.id} value={c.id}>{c.fullName ? `${c.name} — ${c.fullName}` : c.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              The exam this question belongs to. The domain list below follows this choice.
+            </p>
+          </div>
+
           <div>
             <label className="text-sm font-medium text-gray-700">Question Text *</label>
             <textarea
@@ -125,12 +169,28 @@ export default function NewQuestionPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Category</label>
+              <label className="text-sm font-medium text-gray-700">Domain</label>
               <select className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.categoryId} onChange={field('categoryId')}>
                 <option value="">— None —</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Topic</label>
+            <input
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Optional — a sub-area within the domain, e.g. Bias and fairness"
+              value={form.topic}
+              onChange={field('topic')}
+              disabled={!form.categoryId}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {form.categoryId
+                ? 'Created automatically if it does not exist yet.'
+                : 'Pick a domain first — a topic sits inside one.'}
+            </p>
           </div>
 
           <div>

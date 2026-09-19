@@ -14,6 +14,10 @@ interface Question {
   explanationA: string | null; explanationB: string | null;
   explanationC: string | null; explanationD: string | null;
   categoryId: string | null; topicId: string | null;
+  certificationId: string;
+  certification?: { name: string; fullName?: string | null } | null;
+  /** The topic's name, not its id — it may not exist yet. */
+  topic: string;
 }
 
 const OPTION_EXPLANATIONS = ['explanationA', 'explanationB', 'explanationC', 'explanationD'] as const
@@ -26,10 +30,16 @@ export default function EditQuestionPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    Promise.all([
-      fetch(`/api/admin/questions/${id}`).then(r => r.json()),
-      fetch('/api/categories').then(r => r.json()),
-    ]).then(([q, cats]) => { setForm(q); setCategories(cats) }).catch(() => {})
+    fetch(`/api/admin/questions/${id}`)
+      .then(r => r.json())
+      .then(async (q: Question) => {
+        setForm(q)
+        // Only this certification's domains, so a question cannot be filed
+        // under a domain belonging to a different exam.
+        const cats = await fetch(`/api/categories?certificationId=${q.certificationId}`).then(r => r.json())
+        setCategories(cats)
+      })
+      .catch(() => {})
   }, [id])
 
   function field(key: keyof Question) {
@@ -45,6 +55,9 @@ export default function EditQuestionPage() {
     }
     setSaving(true)
     try {
+      if (form.topic?.trim() && !form.categoryId) {
+        toast({ title: 'Pick a domain before naming a topic', variant: 'destructive' }); return
+      }
       const res = await fetch(`/api/admin/questions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -56,13 +69,18 @@ export default function EditQuestionPage() {
           explanationC: form.explanationC ?? '', explanationD: form.explanationD ?? '',
           difficulty: form.difficulty, status: form.status,
           categoryId: form.categoryId || null,
+          topic: form.topic ?? '',
         }),
       })
-      if (!res.ok) throw new Error('Save failed')
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Save failed')
       toast({ title: 'Question updated', variant: 'success' })
       router.push('/admin/questions')
-    } catch {
-      toast({ title: 'Failed to save', variant: 'destructive' })
+    } catch (err) {
+      toast({
+        title: 'Failed to save',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
     } finally { setSaving(false) }
   }
 
@@ -80,6 +98,19 @@ export default function EditQuestionPage() {
       <Card>
         <CardHeader className="pb-3"><CardTitle className="text-base">Question Details</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Certification</label>
+            <p className="mt-1 rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              {form.certification?.fullName
+                ? `${form.certification.name} — ${form.certification.fullName}`
+                : form.certification?.name ?? '—'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Fixed once a question exists. Moving it to another exam would leave its
+              domain behind — delete and re-add instead.
+            </p>
+          </div>
+
           <div>
             <label className="text-sm font-medium text-gray-700">Question Text *</label>
             <textarea
@@ -121,7 +152,7 @@ export default function EditQuestionPage() {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Category</label>
+              <label className="text-sm font-medium text-gray-700">Domain</label>
               <select
                 className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={form.categoryId ?? ''}
@@ -131,6 +162,22 @@ export default function EditQuestionPage() {
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Topic</label>
+            <input
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Optional — a sub-area within the domain, e.g. Bias and fairness"
+              value={form.topic ?? ''}
+              onChange={field('topic')}
+              disabled={!form.categoryId}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {form.categoryId
+                ? 'Created automatically if it does not exist yet. Clear it to remove the topic.'
+                : 'Pick a domain first — a topic sits inside one.'}
+            </p>
           </div>
 
           <div>
