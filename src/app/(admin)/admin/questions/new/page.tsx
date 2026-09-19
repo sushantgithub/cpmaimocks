@@ -37,14 +37,21 @@ export default function NewQuestionPage() {
 
   // Domains belong to a certification, so the list has to follow the picker —
   // otherwise a CPMAI question could be filed under a PMP domain.
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false)
+
   useEffect(() => {
     if (!certificationId) { setCategories([]); return }
+    setCategoriesLoaded(false)
     fetch(`/api/categories?certificationId=${certificationId}`)
       .then(r => r.json())
       .then(setCategories)
-      .catch(() => {})
+      .catch(() => setCategories([]))
+      .finally(() => setCategoriesLoaded(true))
     setForm(p => ({ ...p, categoryId: '' }))
   }, [certificationId])
+
+  // An empty dropdown reads like a broken page, so say which it is.
+  const noDomains = categoriesLoaded && categories.length === 0
 
   function field(key: keyof typeof EMPTY) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -131,6 +138,12 @@ export default function NewQuestionPage() {
             <p className="text-xs text-muted-foreground mt-1">
               The exam this question belongs to. The domain list below follows this choice.
             </p>
+            {noDomains && (
+              <p className="text-xs text-amber-700 mt-1">
+                This certification has no domains yet. Add them under Admin → Domains,
+                or pick a different certification.
+              </p>
+            )}
           </div>
 
           <div>
@@ -170,8 +183,13 @@ export default function NewQuestionPage() {
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Domain</label>
-              <select className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.categoryId} onChange={field('categoryId')}>
-                <option value="">— None —</option>
+              <select
+                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                value={form.categoryId}
+                onChange={field('categoryId')}
+                disabled={noDomains}
+              >
+                <option value="">{noDomains ? '— No domains —' : '— None —'}</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
