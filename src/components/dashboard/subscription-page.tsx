@@ -126,12 +126,44 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
   }
 
   function loadRazorpayScript(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       if (window.Razorpay) return resolve()
-      const script = document.createElement('script')
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-      script.onload = () => resolve()
-      document.head.appendChild(script)
+
+      const src = 'https://checkout.razorpay.com/v1/checkout.js'
+      let script = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
+      const timeout = window.setTimeout(() => {
+        cleanup()
+        reject(new Error("Couldn't reach the payment provider. Disable any ad blocker for this site and try again."))
+      }, 15000)
+
+      const cleanup = () => {
+        window.clearTimeout(timeout)
+        if (script) {
+          script.onload = null
+          script.onerror = null
+        }
+      }
+
+      const loaded = () => {
+        cleanup()
+        if (window.Razorpay) resolve()
+        else reject(new Error("Payment provider didn't load correctly. Please try again."))
+      }
+      const failed = () => {
+        cleanup()
+        reject(new Error("Couldn't reach the payment provider. Disable any ad blocker for this site and try again."))
+      }
+
+      if (!script) {
+        script = document.createElement('script')
+        script.src = src
+        document.head.appendChild(script)
+      }
+      script.onload = loaded
+      script.onerror = failed
+
+      // An existing tag may already have finished loading before handlers were attached.
+      if (window.Razorpay) loaded()
     })
   }
 
