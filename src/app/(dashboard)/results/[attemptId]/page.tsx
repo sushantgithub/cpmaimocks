@@ -10,11 +10,22 @@ import { CheckCircle2, XCircle, MinusCircle, Trophy, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { answerLetters } from '@/lib/answers'
 import { AnswerExplanation } from '@/components/exam/answer-explanation'
+import { prisma } from '@/lib/db'
 
 export default async function ResultsPage({ params }: { params: { attemptId: string } }) {
   const session = await auth()
   const result = await getAttemptResults(params.attemptId, session!.user.id)
-  if (!result) redirect('/dashboard')
+  if (!result) {
+    const attempt = await prisma.examAttempt.findFirst({
+      where: { id: params.attemptId, userId: session!.user.id },
+      select: { status: true, mode: true, examId: true },
+    })
+    if (attempt?.status === 'IN_PROGRESS') {
+      if (attempt.mode === 'EXAM' && attempt.examId) redirect(`/exams/${attempt.examId}`)
+      redirect(`/practice/${params.attemptId}`)
+    }
+    redirect('/dashboard')
+  }
 
   const score = Math.round(result.score ?? 0)
   const grade = getScoreGrade(score)
