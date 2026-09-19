@@ -19,7 +19,7 @@ interface Plan {
 interface Certification { id: string; name: string; fullName: string | null }
 
 interface Props {
-  subscription: { planName: string; status: string; endDate: string; durationDays: number } | null
+  subscriptions: { planId: string; planName: string; status: string; endDate: string; durationDays: number }[]
   plans: Plan[]
   certifications: Certification[]
 }
@@ -30,7 +30,7 @@ declare global {
   }
 }
 
-export function SubscriptionPage({ subscription, plans, certifications }: Props) {
+export function SubscriptionPage({ subscriptions, plans, certifications }: Props) {
   const [selectedCert, setSelectedCert] = useState<string>(certifications[0]?.id ?? '')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [coupon, setCoupon] = useState('')
@@ -174,9 +174,9 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
         <p className="text-muted-foreground text-sm mt-1">Unlock full mock exams and unlimited practice for your certification.</p>
       </div>
 
-      {/* Current subscription */}
-      {subscription && (
-        <Card className="border-green-200 bg-green-50">
+      {/* Current subscriptions */}
+      {subscriptions.map((subscription) => (
+        <Card key={subscription.planId} className="border-green-200 bg-green-50">
           <CardContent className="p-4 flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
             <div>
@@ -185,7 +185,7 @@ export function SubscriptionPage({ subscription, plans, certifications }: Props)
             </div>
           </CardContent>
         </Card>
-      )}
+      ))}
 
       {/* Which certification are you buying for */}
       {certifications.length > 1 && (
