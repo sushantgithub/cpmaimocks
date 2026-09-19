@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { ExamSubmissionError, submitExam } from '@/lib/quiz'
-import { prisma } from '@/lib/db'
 
 export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
   try {
@@ -15,14 +14,6 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
 
     const { answers } = await req.json()
     const result = await submitExam(params.attemptId, answers ?? {})
-
-    await prisma.analyticsEvent.create({
-      data: {
-        event: 'EXAM_COMPLETED',
-        userId: session.user.id,
-        metadata: { attemptId: params.attemptId, score: result.score },
-      },
-    })
 
     return NextResponse.json({ success: true, ...result })
   } catch (err) {
