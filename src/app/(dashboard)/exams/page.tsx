@@ -103,7 +103,7 @@ export default async function ExamsPage() {
                 {prev && (
                   <p className="text-xs text-muted-foreground mb-3">
                     Last attempt: {Math.round(prev.score)}% — {prev.date.toLocaleDateString()}
-                    {samplesPool && <span> · a new set is drawn each attempt</span>}
+                    {samplesPool && <span> · next set prioritizes missed and new questions</span>}
                   </p>
                 )}
                 {locked ? (
@@ -112,7 +112,7 @@ export default async function ExamsPage() {
                   </Button>
                 ) : (
                   <Button className="w-full" asChild>
-                    <Link href={`/exams/${exam.id}`}>{prev ? 'Retake Exam' : 'Start Exam'}</Link>
+                    <Link href={`/exams/${exam.id}`}>{prev ? (samplesPool ? 'Continue Practice' : 'Retake Exam') : 'Start Exam'}</Link>
                   </Button>
                 )}
               </CardContent>
