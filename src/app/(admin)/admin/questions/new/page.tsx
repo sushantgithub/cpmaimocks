@@ -15,7 +15,11 @@ const EMPTY = {
   correctAnswer: 'A', explanation: '', difficulty: 'MEDIUM',
   explanationA: '', explanationB: '', explanationC: '', explanationD: '',
   categoryId: '', topic: '', status: 'DRAFT',
+  isTest: false,
 }
+
+const FIELD = 'mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+const TEXTAREA = `${FIELD} resize-y min-h-[76px]`
 
 export default function NewQuestionPage() {
   const router = useRouter()
@@ -63,6 +67,7 @@ export default function NewQuestionPage() {
     for (const f of required) {
       if (!form[f].trim()) { toast({ title: `${f} is required`, variant: 'destructive' }); return }
     }
+
     if (!certificationId) { toast({ title: 'Pick a certification first', variant: 'destructive' }); return }
     // A topic hangs off a domain, so one without the other has nowhere to live.
     if (form.topic.trim() && !form.categoryId) {
@@ -91,6 +96,7 @@ export default function NewQuestionPage() {
             difficulty: form.difficulty,
             domain: categories.find(c => c.id === form.categoryId)?.name ?? '',
             topic: form.topic,
+            is_test: form.isTest ? 'true' : '',
             status: publish ? 'PUBLISHED' : 'DRAFT',
           }],
         }),
@@ -126,7 +132,7 @@ export default function NewQuestionPage() {
           <div>
             <label className="text-sm font-medium text-gray-700">Certification *</label>
             <select
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={FIELD}
               value={certificationId}
               onChange={e => setCertificationId(e.target.value)}
             >
@@ -149,8 +155,7 @@ export default function NewQuestionPage() {
           <div>
             <label className="text-sm font-medium text-gray-700">Question Text *</label>
             <textarea
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              className={TEXTAREA}
               placeholder="Enter the question..."
               value={form.text}
               onChange={field('text')}
@@ -161,7 +166,7 @@ export default function NewQuestionPage() {
             <div key={opt}>
               <label className="text-sm font-medium text-gray-700">Option {String.fromCharCode(65 + i)} *</label>
               <input
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={FIELD}
                 value={form[opt]}
                 onChange={field(opt)}
               />
@@ -171,20 +176,20 @@ export default function NewQuestionPage() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Correct Answer *</label>
-              <select className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.correctAnswer} onChange={field('correctAnswer')}>
+              <select className={FIELD} value={form.correctAnswer} onChange={field('correctAnswer')}>
                 {['A', 'B', 'C', 'D'].map(k => <option key={k}>{k}</option>)}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Difficulty</label>
-              <select className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.difficulty} onChange={field('difficulty')}>
+              <select className={FIELD} value={form.difficulty} onChange={field('difficulty')}>
                 {['EASY', 'MEDIUM', 'HARD'].map(d => <option key={d}>{d}</option>)}
               </select>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Domain</label>
               <select
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                className={`${FIELD} disabled:bg-gray-100`}
                 value={form.categoryId}
                 onChange={field('categoryId')}
                 disabled={noDomains}
@@ -198,7 +203,7 @@ export default function NewQuestionPage() {
           <div>
             <label className="text-sm font-medium text-gray-700">Topic</label>
             <input
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={FIELD}
               placeholder="Optional — a sub-area within the domain, e.g. Bias and fairness"
               value={form.topic}
               onChange={field('topic')}
@@ -214,8 +219,7 @@ export default function NewQuestionPage() {
           <div>
             <label className="text-sm font-medium text-gray-700">Key idea *</label>
             <textarea
-              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={2}
+              className={TEXTAREA}
               placeholder="One line naming the principle this question tests..."
               value={form.explanation}
               onChange={field('explanation')}
@@ -234,14 +238,33 @@ export default function NewQuestionPage() {
               <div key={key}>
                 <label className="text-xs font-medium text-gray-600">Option {String.fromCharCode(65 + i)}</label>
                 <textarea
-                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  rows={2}
+                  className={TEXTAREA}
                   value={form[key]}
                   onChange={field(key)}
                 />
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+              checked={form.isTest}
+              onChange={e => setForm(p => ({ ...p, isTest: e.target.checked }))}
+            />
+            <span>
+              <span className="text-sm font-medium text-gray-700">Test question</span>
+              <span className="block text-xs text-muted-foreground">
+                Marks this as throwaway content. Test questions can be found and deleted
+                in one go later, without guessing from their wording.
+              </span>
+            </span>
+          </label>
         </CardContent>
       </Card>
 
