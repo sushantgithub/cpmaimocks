@@ -21,6 +21,9 @@ export async function GET(req: Request) {
     ]
   }
   if (status) where.status = status
+  const isTest = searchParams.get('isTest')
+  if (isTest === 'only') where.isTest = true
+  else if (isTest === 'exclude') where.isTest = false
   if (difficulty) where.difficulty = difficulty
   const certificationId = searchParams.get('certificationId')
   if (certificationId) where.certificationId = certificationId
@@ -34,6 +37,7 @@ export async function GET(req: Request) {
         text: true,
         difficulty: true,
         status: true,
+        isTest: true,
         category: { select: { name: true } },
         topic: { select: { name: true } },
       },

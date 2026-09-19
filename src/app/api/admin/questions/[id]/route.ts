@@ -41,6 +41,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body[key] === null || typeof body[key] === 'string') data[key] = body[key] || null
   }
   if (Array.isArray(body.tags)) data.tags = body.tags.filter((t: unknown): t is string => typeof t === 'string')
+  if (typeof body.isTest === 'boolean') data.isTest = body.isTest
   if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
   const question = await prisma.question.update({ where: { id: params.id }, data })

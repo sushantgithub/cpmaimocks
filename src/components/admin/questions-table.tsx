@@ -16,6 +16,7 @@ interface Question {
   correctAnswer: string
   difficulty: string
   status: string
+  isTest?: boolean
   category?: { name: string } | null
 }
 
@@ -148,6 +149,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
                   <Badge variant={q.status === 'PUBLISHED' ? 'success' : q.status === 'DRAFT' ? 'secondary' : 'outline'} className="text-xs capitalize">
                     {q.status.toLowerCase()}
                   </Badge>
+                  {q.isTest && <Badge variant="destructive" className="text-xs ml-1">test</Badge>}
                 </td>
                 <td className="px-4 py-3">
                   <QuestionActions questionId={q.id} status={q.status} />

@@ -5,9 +5,11 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Upload, Search } from 'lucide-react'
 import { QuestionsTable } from '@/components/admin/questions-table'
+import { TestQuestionsBanner } from '@/components/admin/test-questions-banner'
 
 interface SearchParams {
   search?: string; status?: string; difficulty?: string; page?: string; certification?: string
+  isTest?: string
 }
 
 export default async function QuestionsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -25,8 +27,10 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
   if (searchParams.status) where.status = searchParams.status
   if (searchParams.difficulty) where.difficulty = searchParams.difficulty
   if (searchParams.certification) where.certificationId = searchParams.certification
+  if (searchParams.isTest === 'only') where.isTest = true
+  else if (searchParams.isTest === 'exclude') where.isTest = false
 
-  const [questions, total, certifications] = await Promise.all([
+  const [questions, total, certifications, testCount] = await Promise.all([
     prisma.question.findMany({
       where,
       include: {
@@ -43,6 +47,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, _count: { select: { questions: true } } },
     }),
+    prisma.question.count({ where: { isTest: true } }),
   ])
 
   const totalPages = Math.ceil(total / pageSize)
@@ -89,6 +94,11 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
           <option value="DRAFT">Draft</option>
           <option value="ARCHIVED">Archived</option>
         </select>
+        <select name="isTest" defaultValue={searchParams.isTest} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="">Test &amp; real</option>
+          <option value="only">Test questions only</option>
+          <option value="exclude">Exclude test questions</option>
+        </select>
         <select name="difficulty" defaultValue={searchParams.difficulty} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
           <option value="">All Difficulty</option>
           <option value="EASY">Easy</option>
@@ -97,6 +107,8 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
         </select>
         <Button type="submit" variant="secondary" size="sm">Filter</Button>
       </form>
+
+      {testCount > 0 && <TestQuestionsBanner count={testCount} />}
 
       {/* Questions table */}
       <Card>

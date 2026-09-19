@@ -312,6 +312,9 @@ model Question {
   topicId         String?
   difficulty      Difficulty     @default(MEDIUM)
   status          QuestionStatus @default(DRAFT)
+  /// Marks throwaway content imported to try the platform out, so it can be
+  /// found and removed later without guessing from names or domains.
+  isTest          Boolean        @default(false)
   source          String?
   tags            String[]       @default([])
   createdAt       DateTime       @default(now())
@@ -327,6 +330,7 @@ model Question {
   @@index([categoryId, difficulty, status])
   @@index([status])
   @@index([certificationId, status])
+  @@index([isTest])
 }
 
 model MockExam {

@@ -11,6 +11,13 @@ interface ImportRow {
   // Comma-separated labels that group questions across domains, e.g. the
   // algorithm drill, which draws from whichever domains its questions sit in.
   tags?: string
+  is_test?: string
+}
+
+const TRUTHY = ['true', 'yes', 'y', '1', 'test']
+
+function parseBool(raw: string | undefined) {
+  return TRUTHY.includes((raw ?? '').trim().toLowerCase())
 }
 
 function parseTags(raw: string | undefined) {
@@ -109,6 +116,7 @@ export async function POST(req: Request) {
             difficulty,
             source: row.source?.trim(),
             tags: parseTags(row.tags),
+            isTest: parseBool(row.is_test),
             certificationId: certification.id,
             categoryId,
             topicId,
