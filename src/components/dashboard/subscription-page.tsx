@@ -216,12 +216,13 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
       {/* Plans — this certification's, plus anything covering everything */}
       <div className="grid md:grid-cols-3 gap-4">
         {visiblePlans.map((plan) => {
+          const isOwned = subscriptions.some((subscription) => subscription.planId === plan.id)
           const isSelected = selectedPlan?.id === plan.id
           return (
             <Card
               key={plan.id}
-              className={`cursor-pointer transition-all ${isSelected ? 'ring-2 ring-primary border-primary' : 'hover:border-gray-300'} ${plan.isFeatured ? 'relative' : ''}`}
-              onClick={() => setSelectedPlan(isSelected ? null : plan)}
+              className={`transition-all ${isOwned ? 'border-green-300 bg-green-50/40' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''} ${plan.isFeatured ? 'relative' : ''}`}
+              onClick={() => { if (!isOwned) setSelectedPlan(isSelected ? null : plan) }}
             >
               {plan.isFeatured && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -229,7 +230,10 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
                 </div>
               )}
               <CardContent className="p-5">
-                <h3 className="font-bold text-lg">{plan.name}</h3>
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-bold text-lg">{plan.name}</h3>
+                  {isOwned && <Badge variant="success" className="text-xs">Owned</Badge>}
+                </div>
                 <div className="my-2">
                   <span className="text-3xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
                   <span className="text-muted-foreground text-sm"> {isLifetime(plan.durationDays) ? 'one-time · lifetime access' : `/ ${planPeriodLabel(plan.durationDays)}`}</span>
@@ -246,8 +250,8 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
                     </li>
                   ))}
                 </ul>
-                <div className={`mt-4 h-5 rounded-full border-2 ${isSelected ? 'border-primary bg-primary' : 'border-gray-300'} flex items-center justify-center`}>
-                  {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+                <div className={`mt-4 h-5 rounded-full border-2 ${isOwned ? 'border-green-500 bg-green-500' : isSelected ? 'border-primary bg-primary' : 'border-gray-300'} flex items-center justify-center`}>
+                  {(isOwned || isSelected) && <div className="h-2 w-2 rounded-full bg-white" />}
                 </div>
               </CardContent>
             </Card>
