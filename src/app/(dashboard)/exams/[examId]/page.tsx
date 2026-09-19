@@ -21,7 +21,7 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   const session = await auth()
   const userId = session!.user.id
 
-  const result = await getExamQuestions(params.examId)
+  const result = await getExamQuestions(params.examId, userId)
   if (!result) redirect('/exams')
 
   const { exam, questions } = result
