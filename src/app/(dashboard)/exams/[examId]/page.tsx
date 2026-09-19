@@ -17,7 +17,7 @@ const questionSelect = {
   topic: { select: { name: true } },
 } as const
 
-export default async function ExamPage({ params }: { params: { examId: string } }) {
+export default async function ExamPage({ params, searchParams }: { params: { examId: string }; searchParams?: { fresh?: string } }) {
   const session = await auth()
   const userId = session!.user.id
 
@@ -34,6 +34,18 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   }
 
   const limitSeconds = exam.timeLimitMinutes * 60
+
+  // Entering from the Mock Exams card means the learner explicitly chose to
+  // start/continue with a new set. Discard stale unfinished test/work from an
+  // earlier visit, then remove ?fresh so ordinary refreshes of the new attempt
+  // resume it instead of wiping progress.
+  if (searchParams?.fresh === '1') {
+    await prisma.examAttempt.updateMany({
+      where: { userId, examId: exam.id, status: 'IN_PROGRESS' },
+      data: { status: 'ABANDONED' },
+    })
+    redirect(`/exams/${exam.id}`)
+  }
 
   // A reload must not hand out a fresh timer or a duplicate attempt: pick up
   // the running attempt with whatever time it has left.
