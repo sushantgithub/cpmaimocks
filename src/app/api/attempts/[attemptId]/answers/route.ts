@@ -65,23 +65,38 @@ export async function PATCH(req: Request, { params }: { params: { attemptId: str
 
   try {
     await prisma.$transaction(async (tx) => {
+      const questionIds = normalized.map((entry) => entry.questionId)
+      const rows = await tx.examAnswer.findMany({
+        where: { attemptId: params.attemptId, questionId: { in: questionIds } },
+        select: { id: true, questionId: true, isCorrect: true },
+      })
+      const byQuestion = new Map(rows.map((row) => [row.questionId, row]))
+
+      if (rows.length !== new Set(questionIds).size) throw new Error('INVALID_QUESTION')
+
       for (const entry of normalized) {
+        const row = byQuestion.get(entry.questionId)
+        if (!row) throw new Error('INVALID_QUESTION')
+
         const data: { selectedAnswer?: string | null; isMarked?: boolean } = {}
-        if (entry.selectedAnswer !== undefined) data.selectedAnswer = entry.selectedAnswer
+        if (entry.selectedAnswer !== undefined && row.isCorrect === null) {
+          data.selectedAnswer = entry.selectedAnswer
+        }
         if (entry.isMarked !== undefined) data.isMarked = entry.isMarked
 
-        const updated = await tx.examAnswer.updateMany({
+        if (Object.keys(data).length === 0) continue
+
+        // Feedback may lock the answer between the read above and this write.
+        // In that race, selectedAnswer must not overwrite the locked response;
+        // a zero-row update is therefore a harmless idempotent success.
+        await tx.examAnswer.updateMany({
           where: {
-            attemptId: params.attemptId,
-            questionId: entry.questionId,
+            id: row.id,
             attempt: { status: 'IN_PROGRESS' },
-            // Once feedback has exposed the answer key, isCorrect is populated
-            // and the scored selection is immutable. Mark/unmark still works.
-            ...(entry.selectedAnswer !== undefined ? { isCorrect: null } : {}),
+            ...(data.selectedAnswer !== undefined ? { isCorrect: null } : {}),
           },
           data,
         })
-        if (updated.count !== 1) throw new Error('INVALID_QUESTION')
       }
     }, { timeout: 10000, maxWait: 5000 })
   } catch (err) {
@@ -91,6 +106,6 @@ export async function PATCH(req: Request, { params }: { params: { attemptId: str
     throw err
   }
 
-  // Deliberately return no grading data. Correctness is computed only at submission.
+  // Deliberately return no grading data. Checked answers are locked by the feedback endpoint.
   return NextResponse.json({ success: true })
 }
