@@ -32,6 +32,16 @@ export async function POST(req: Request) {
   if (!certification) {
     return NextResponse.json({ error: 'No certification found. Run the seed first.' }, { status: 400 })
   }
+  // Zero would expire the exam immediately and pass every attempt.
+  const timeLimitMinutes = Number(data.timeLimitMinutes ?? 120)
+  const passingScore = Number(data.passingScore ?? 70)
+  if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 1) {
+    return NextResponse.json({ error: 'timeLimitMinutes must be at least 1' }, { status: 400 })
+  }
+  if (!Number.isInteger(passingScore) || passingScore < 1 || passingScore > 100) {
+    return NextResponse.json({ error: 'passingScore must be between 1 and 100' }, { status: 400 })
+  }
+
 
   const exam = await prisma.mockExam.create({
     data: {
@@ -40,8 +50,8 @@ export async function POST(req: Request) {
       certificationId: certification.id,
       description: data.description ?? null,
       questionCount: data.questionCount ?? 0,
-      timeLimitMinutes: data.timeLimitMinutes ?? 120,
-      passingScore: data.passingScore ?? 70,
+      timeLimitMinutes: timeLimitMinutes,
+      passingScore: passingScore,
       requireSubscription: data.requireSubscription ?? true,
       randomizeQuestions: data.randomizeQuestions ?? true,
       status: 'DRAFT',

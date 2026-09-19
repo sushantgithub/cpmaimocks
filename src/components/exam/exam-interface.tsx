@@ -171,7 +171,8 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     })
   }
 
-  const isWarning = timeLeft < 300 // last 5 minutes
+  const untimed = deadline.current === null
+  const isWarning = !untimed && timeLeft < 300 // last 5 minutes
 
   return (
     <div className="fixed inset-0 bg-gray-50 flex flex-col z-50">
@@ -191,7 +192,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
           'font-mono font-bold text-lg tabular-nums px-3 py-1 rounded-lg',
           isWarning ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-800'
         )}>
-          {formatTime(timeLeft)}
+          {untimed ? 'Untimed' : formatTime(timeLeft)}
         </div>
 
         <Button variant="outline" size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>

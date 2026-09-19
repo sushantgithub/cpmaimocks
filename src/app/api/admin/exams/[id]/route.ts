@@ -29,10 +29,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const data: Record<string, unknown> = {}
   if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim()
   if (body.description === null || typeof body.description === 'string') data.description = body.description?.trim() || null
+  // sortOrder may be zero; the other two may not. A zero time limit expires the
+  // exam on its first timer tick, and a zero pass mark passes every attempt.
+  const MINIMUM: Record<string, number> = { timeLimitMinutes: 1, passingScore: 1, sortOrder: 0 }
   for (const key of ['timeLimitMinutes', 'passingScore', 'sortOrder'] as const) {
     if (body[key] !== undefined) {
       const value = Number(body[key])
-      if (!Number.isInteger(value) || value < 0) return NextResponse.json({ error: `${key} must be a whole number` }, { status: 400 })
+      if (!Number.isInteger(value) || value < MINIMUM[key]) {
+        return NextResponse.json(
+          { error: `${key} must be a whole number of at least ${MINIMUM[key]}` }, { status: 400 })
+      }
       data[key] = value
     }
   }
