@@ -12,7 +12,7 @@ import { answerLetters } from '@/lib/answers'
 import { AnswerExplanation } from '@/components/exam/answer-explanation'
 import { prisma } from '@/lib/db'
 
-export default async function ResultsPage({ params }: { params: { attemptId: string } }) {
+export default async function ResultsPage({ params, searchParams }: { params: { attemptId: string }; searchParams?: { review?: string } }) {
   const session = await auth()
   const result = await getAttemptResults(params.attemptId, session!.user.id)
   if (!result) {
@@ -30,6 +30,13 @@ export default async function ResultsPage({ params }: { params: { attemptId: str
   const score = Math.round(result.score ?? 0)
   const grade = getScoreGrade(score)
   const timeTaken = result.timeTakenSeconds ?? 0
+  const reviewFilter = ['correct', 'incorrect', 'unanswered'].includes(searchParams?.review ?? '') ? searchParams!.review! : 'all'
+  const reviewAnswers = result.answers.filter((answer) =>
+    reviewFilter === 'all' ? true :
+    reviewFilter === 'correct' ? answer.isCorrect === true :
+    reviewFilter === 'incorrect' ? answer.isCorrect === false :
+    !answer.selectedAnswer
+  )
 
   // Domain breakdown
   const domainMap = new Map<string, { correct: number; total: number }>()
@@ -105,9 +112,26 @@ export default async function ResultsPage({ params }: { params: { attemptId: str
 
       {/* Detailed review */}
       <div>
-        <h3 className="font-semibold text-lg mb-4">Question Review</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h3 className="font-semibold text-lg">Question Review</h3>
+          <div className="flex flex-wrap gap-2">
+            {[
+              ['all', 'All'],
+              ['correct', `Correct (${result.correctCount ?? 0})`],
+              ['incorrect', `Incorrect (${result.incorrectCount ?? 0})`],
+              ['unanswered', `Unanswered (${result.unansweredCount ?? 0})`],
+            ].map(([value, label]) => (
+              <Button key={value} size="sm" variant={reviewFilter === value ? 'default' : 'outline'} asChild>
+                <Link href={value === 'all' ? `/results/${params.attemptId}` : `/results/${params.attemptId}?review=${value}`}>
+                  {label}
+                </Link>
+              </Button>
+            ))}
+          </div>
+        </div>
         <div className="space-y-4">
-          {result.answers.map((answer, i) => {
+          {reviewAnswers.map((answer) => {
+            const i = result.answers.findIndex((item) => item.id === answer.id)
             const q = answer.question
             const isCorrect = answer.isCorrect
             const isUnanswered = !answer.selectedAnswer
