@@ -51,10 +51,10 @@ describe('learning mock progress rules', () => {
     })).toBe('A')
   })
 
-  it('moves only through pending review questions', () => {
+  it('moves forward through pending review questions and finishes without wrapping', () => {
     expect(nextReviewIndex(5, [5, 7, 9])).toBe(7)
     expect(nextReviewIndex(7, [7, 9])).toBe(9)
     expect(nextReviewIndex(9, [9])).toBeNull()
-    expect(nextReviewIndex(9, [5, 9])).toBe(5)
+    expect(nextReviewIndex(9, [5, 9])).toBeNull()
   })
 })
