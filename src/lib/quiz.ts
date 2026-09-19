@@ -132,10 +132,12 @@ export async function submitExam(
 
   const timeTaken = Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000)
   const timeLimitSeconds = (attempt.exam?.timeLimitMinutes ?? 0) * 60
-  const clockToleranceSeconds = 10
-  if (timeLimitSeconds > 0 && timeTaken > timeLimitSeconds + clockToleranceSeconds) {
-    throw new ExamSubmissionError('TIME_EXPIRED', 'Exam time has expired')
-  }
+  // The server clock is authoritative. A late submission is still finalized
+  // with the answers the browser has so background-tab timer throttling cannot
+  // strand an attempt or destroy the learner's work.
+  const recordedTimeTaken = timeLimitSeconds > 0
+    ? Math.min(timeTaken, timeLimitSeconds)
+    : timeTaken
 
   let correctCount = 0
   let incorrectCount = 0
@@ -162,7 +164,7 @@ export async function submitExam(
       data: {
         status: 'COMPLETED',
         submittedAt: new Date(),
-        timeTakenSeconds: timeTaken,
+        timeTakenSeconds: recordedTimeTaken,
         score,
         correctCount,
         incorrectCount,
@@ -174,18 +176,27 @@ export async function submitExam(
       throw new ExamSubmissionError('ALREADY_SUBMITTED', 'Exam already submitted')
     }
 
-    for (const answer of scoredAnswers) {
-      await tx.examAnswer.update({
-        where: { id: answer.id },
-        data: {
-          selectedAnswer: answer.selectedAnswer,
-          isCorrect: answer.isCorrect,
-        },
-      })
-    }
+    await Promise.all(
+      scoredAnswers.map((answer) =>
+        tx.examAnswer.update({
+          where: { id: answer.id },
+          data: {
+            selectedAnswer: answer.selectedAnswer,
+            isCorrect: answer.isCorrect,
+          },
+        })
+      )
+    )
   })
 
-  return { score, correctCount, incorrectCount, unansweredCount, timeTaken }
+  return {
+    score,
+    correctCount,
+    incorrectCount,
+    unansweredCount,
+    timeTaken: recordedTimeTaken,
+    expired: timeLimitSeconds > 0 && timeTaken > timeLimitSeconds,
+  }
 }
 
 export async function getAttemptResults(attemptId: string, userId: string) {
