@@ -9,10 +9,24 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import type { ExamQuestion } from '@/types'
 import { answerLetters, normalizeAnswer } from '@/lib/answers'
+import { nextReviewIndex } from '@/lib/exam-progress'
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import {
   Flag, ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu
 } from 'lucide-react'
+
+interface FeedbackData {
+  selectedAnswer: string
+  isCorrect: boolean
+  correctAnswer: string
+  explanation: string
+  explanationA?: string | null
+  explanationB?: string | null
+  explanationC?: string | null
+  explanationD?: string | null
+  explanationE?: string | null
+  explanationF?: string | null
+}
 
 interface Props {
   attemptId: string
@@ -22,9 +36,10 @@ interface Props {
   initialAnswers?: Record<string, string>
   initialMarked?: string[]
   initialChecked?: string[]
+  initialFeedback?: Record<string, FeedbackData>
 }
 
-export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [] }: Props) {
+export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [], initialFeedback = {} }: Props) {
   const router = useRouter()
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers)
@@ -36,7 +51,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const [showReview, setShowReview] = useState(false)
   const [reviewMode, setReviewMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [feedback, setFeedback] = useState<Record<string, any>>({})
+  const [feedback, setFeedback] = useState<Record<string, FeedbackData>>(() => initialFeedback)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const submitted = useRef(false)
   const deadline = useRef(timeLeftSeconds > 0 ? Date.now() + timeLeftSeconds * 1000 : null)
@@ -218,11 +233,13 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
         return
       }
 
-      const nextMissed = needsReview.find((item) => item.unanswered && item.index > current)
-        ?? needsReview.find((item) => item.unanswered && item.index !== current)
+      const nextIndex = nextReviewIndex(
+        current,
+        needsReview.filter((item) => item.unanswered).map((item) => item.index),
+      )
 
-      if (nextMissed) {
-        setCurrent(nextMissed.index)
+      if (nextIndex !== null) {
+        setCurrent(nextIndex)
       } else if (needsReview.some((item) => item.unanswered)) {
         // The current question is still unanswered. Return to the review list
         // instead of allowing an accidental final submission.
@@ -288,7 +305,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       {/* Header */}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between gap-4 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <button className="md:hidden p-1" onClick={() => setShowPanel(true)}>
+          <button className="md:hidden p-1" onClick={() => setShowPanel(true)} disabled={reviewMode}>
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0">
@@ -405,7 +422,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                 variant="ghost"
                 size="sm"
                 onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-                disabled={current === 0}
+                disabled={reviewMode || current === 0}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />Previous
               </Button>
@@ -446,6 +463,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
         </main>
 
         {/* Desktop question navigator */}
+        {!reviewMode && (
         <aside className="hidden md:flex w-56 flex-col border-l bg-white p-3 overflow-y-auto flex-shrink-0">
           <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Navigator</p>
           <div className="grid grid-cols-5 gap-1.5 mb-4">
@@ -481,10 +499,11 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
             <p className="text-muted-foreground">{unanswered} remaining</p>
           </div>
         </aside>
+        )}
       </div>
 
       {/* Mobile question panel overlay */}
-      {showPanel && (
+      {showPanel && !reviewMode && (
         <div className="fixed inset-0 z-60 bg-black/50 flex items-end" onClick={() => setShowPanel(false)}>
           <div className="bg-white w-full rounded-t-2xl p-4 max-h-[60vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
@@ -575,7 +594,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               </p>
             )}
             <p className="text-sm text-muted-foreground mb-6">
-              {totalAnswered} of {questions.length} answered. This cannot be undone.
+              {totalAnswered} of {questions.length} completed. This cannot be undone.
             </p>
             <div className="flex gap-3">
               <Button
