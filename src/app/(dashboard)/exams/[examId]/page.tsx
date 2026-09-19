@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { hasAccessToCertification } from '@/lib/subscription'
-import { getExamQuestions } from '@/lib/quiz'
+import { getExamQuestions, submitExam } from '@/lib/quiz'
 import { redirect } from 'next/navigation'
 import { ExamInterface } from '@/components/exam/exam-interface'
 import type { ExamQuestion } from '@/types'
@@ -40,7 +40,7 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   const running = await prisma.examAttempt.findFirst({
     where: { userId, examId: exam.id, status: 'IN_PROGRESS' },
     orderBy: { startedAt: 'desc' },
-    include: { answers: { select: { question: { select: questionSelect } } } },
+    include: { answers: { select: { selectedAnswer: true, isMarked: true, question: { select: questionSelect } } } },
   })
 
   if (running) {
@@ -54,16 +54,39 @@ export default async function ExamPage({ params }: { params: { examId: string } 
       attemptQuestionIds.size === questions.length &&
       questions.every((q) => attemptQuestionIds.has(q.id))
 
-    if (elapsed < limitSeconds && matchesExam) {
+    const expired = limitSeconds > 0 && elapsed >= limitSeconds
+
+    if (!expired && matchesExam) {
+      const initialAnswers = Object.fromEntries(
+        running.answers
+          .filter((a) => a.selectedAnswer)
+          .map((a) => [a.question.id, a.selectedAnswer as string])
+      )
+      const initialMarked = running.answers
+        .filter((a) => a.isMarked)
+        .map((a) => a.question.id)
+
       return (
         <ExamInterface
           attemptId={running.id}
           exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore }}
-          timeLeftSeconds={limitSeconds - elapsed}
+          timeLeftSeconds={limitSeconds > 0 ? Math.max(0, limitSeconds - elapsed) : 0}
           questions={running.answers.map((a) => toExamQuestion(a.question))}
+          initialAnswers={initialAnswers}
+          initialMarked={initialMarked}
         />
       )
     }
+
+    if (expired && matchesExam) {
+      // Autosaved selections are the source of truth when the learner returns
+      // after time has expired. submitExam merges them before grading.
+      await submitExam(running.id, {})
+      redirect(`/results/${running.id}`)
+    }
+
+    // Only abandon when the exam changed underneath the attempt. Scoring that
+    // stale question set would be misleading.
     await prisma.examAttempt.update({ where: { id: running.id }, data: { status: 'ABANDONED' } })
   }
 
