@@ -214,7 +214,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       unanswered: !answers[question.id],
       marked: marked.has(question.id),
     }))
-    .filter((item) => item.unanswered || item.marked)
+    .filter((item) => item.unanswered || (!exam.showExplanations && item.marked))
 
   function openReviewQuestion(index: number) {
     setCurrent(index)
@@ -356,15 +356,17 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                 <ChevronLeft className="h-4 w-4 mr-1" />Previous
               </Button>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleMark}
-                className={marked.has(q.id) ? 'border-yellow-400 text-yellow-700' : ''}
-              >
-                <Flag className="h-3.5 w-3.5 mr-1" />
-                {marked.has(q.id) ? 'Unmark' : 'Mark'}
-              </Button>
+              {!exam.showExplanations && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleMark}
+                  className={marked.has(q.id) ? 'border-yellow-400 text-yellow-700' : ''}
+                >
+                  <Flag className="h-3.5 w-3.5 mr-1" />
+                  {marked.has(q.id) ? 'Unmark' : 'Mark'}
+                </Button>
+              )}
 
               {current === questions.length - 1 ? (
                 <Button size="sm" onClick={() => needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true)} disabled={submitting}>
@@ -462,7 +464,9 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               <button onClick={() => setShowReview(false)} aria-label="Close review"><X className="h-5 w-5" /></button>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              {needsReview.length} question{needsReview.length === 1 ? '' : 's'} need attention before submission.
+              {exam.showExplanations
+                ? `${needsReview.length} unanswered question${needsReview.length === 1 ? '' : 's'} before submission.`
+                : `${needsReview.length} question${needsReview.length === 1 ? '' : 's'} need attention before submission.`}
             </p>
             <div className="space-y-2 overflow-y-auto mb-4">
               {needsReview.map((item) => (
@@ -474,13 +478,15 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                   <span className="font-medium">Q{item.index + 1}</span>
                   <span className="flex gap-1.5 flex-wrap justify-end">
                     {item.unanswered && <Badge variant="outline" className="text-xs">Unanswered</Badge>}
-                    {item.marked && <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">Marked</Badge>}
+                    {!exam.showExplanations && item.marked && <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">Marked</Badge>}
                   </span>
                 </button>
               ))}
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowReview(false)}>Keep Reviewing</Button>
+              <Button variant="outline" className="flex-1" onClick={() => needsReview[0] && openReviewQuestion(needsReview[0].index)}>
+                {exam.showExplanations ? 'Review Unanswered' : 'Keep Reviewing'}
+              </Button>
               <Button className="flex-1" onClick={() => { setShowReview(false); setShowConfirm(true) }}>Submit Anyway</Button>
             </div>
           </div>
