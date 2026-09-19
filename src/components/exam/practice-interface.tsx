@@ -69,36 +69,37 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
 
-  function revealFeedback() {
-    // Run after React has committed the answered state, then move the actual
-    // question scroller (not the fixed page) to the feedback block.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        document.getElementById(`feedback-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
-    })
-  }
-
   function selectAnswer(opt: string) {
-    if (answers[q.id]) return // lock once answered
+    if (answers[q.id]) return // lock once submitted
 
     if (!multi) {
-      setAnswers((prev) => ({ ...prev, [q.id]: opt }))
-      revealFeedback()
+      setPending([opt])
       return
     }
-    // Multiple-response: gather the picks, and only commit once the taker has
-    // chosen as many as the question asks for, so feedback is not revealed
-    // halfway through.
+
     const next = pending.includes(opt)
       ? pending.filter((k) => k !== opt)
       : pending.length >= selectCount ? pending : [...pending, opt]
     setPending(next)
-    if (next.length === selectCount) {
-      setAnswers((prev) => ({ ...prev, [q.id]: normalizeAnswer(next.join(',')) }))
-      setPending([])
-      revealFeedback()
-    }
+  }
+
+  function submitAnswer() {
+    if (answers[q.id]) return
+    if ((!multi && pending.length !== 1) || (multi && pending.length !== selectCount)) return
+
+    const committed = normalizeAnswer(pending.join(','))
+    setAnswers((prev) => ({ ...prev, [q.id]: committed }))
+    setPending([])
+
+    // Feedback is inserted exactly where the learner just submitted. Focus it
+    // after React commits so mobile browsers/assistive tech announce it too.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const feedback = document.getElementById(`feedback-${q.id}`)
+        feedback?.focus({ preventScroll: true })
+        feedback?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    })
   }
 
   async function toggleBookmark(questionId: string) {
@@ -213,7 +214,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               <p className="text-base leading-relaxed font-medium">{q.text}</p>
               {multi && !revealed && (
                 <p className="mt-3 text-sm font-semibold text-primary">
-                  Select {selectCount === 2 ? 'two' : selectCount === 3 ? 'three' : selectCount}.
+                  Select {selectCount === 2 ? 'two' : selectCount === 3 ? 'three' : selectCount}, then submit your answer.
                   {pending.length > 0 && ` ${pending.length} of ${selectCount} chosen.`}
                 </p>
               )}
@@ -273,6 +274,18 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               })}
             </div>
 
+            {!revealed && (
+              <div className="mt-4">
+                <Button
+                  className="w-full"
+                  onClick={submitAnswer}
+                  disabled={multi ? pending.length !== selectCount : pending.length !== 1}
+                >
+                  Submit Answer
+                </Button>
+              </div>
+            )}
+
             {/* Result + Explanation (shown after answering) */}
             {revealed && (
               <div id={`feedback-${q.id}`} tabIndex={-1} className={cn(
@@ -297,7 +310,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+                onClick={() => { setPending([]); setCurrent((c) => Math.max(0, c - 1)) }}
                 disabled={current === 0}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />Previous
@@ -326,7 +339,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               ) : (
                 <Button
                   size="sm"
-                  onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
+                  onClick={() => { setPending([]); setCurrent((c) => Math.min(questions.length - 1, c + 1)) }}
                 >
                   Next<ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -345,7 +358,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               return (
                 <button
                   key={i}
-                  onClick={() => setCurrent(i)}
+                  onClick={() => { setPending([]); setCurrent(i) }}
                   className={cn(
                     'h-7 w-7 rounded text-xs font-medium border transition-colors',
                     isCurrent ? 'bg-primary text-white border-primary' :
@@ -387,7 +400,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 return (
                   <button
                     key={i}
-                    onClick={() => { setCurrent(i); setShowPanel(false) }}
+                    onClick={() => { setPending([]); setCurrent(i); setShowPanel(false) }}
                     className={cn(
                       'h-9 w-9 rounded-lg text-sm font-medium border',
                       isCurrent ? 'bg-primary text-white border-primary' :
