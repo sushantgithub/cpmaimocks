@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { ExamSubmissionError, submitExam } from '@/lib/quiz'
+import { prisma } from '@/lib/db'
 
 export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
   try {
