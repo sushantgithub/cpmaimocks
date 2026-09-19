@@ -18,18 +18,26 @@ interface Props {
   exam: { id: string; title: string; timeLimitMinutes: number; passingScore: number }
   timeLeftSeconds: number
   questions: ExamQuestion[]
+  initialAnswers?: Record<string, string>
+  initialMarked?: string[]
 }
 
-export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: Props) {
+export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [] }: Props) {
   const router = useRouter()
   const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
-  const [marked, setMarked] = useState<Set<string>>(new Set())
+  const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers)
+  const [marked, setMarked] = useState<Set<string>>(() => new Set(initialMarked))
   const [timeLeft, setTimeLeft] = useState(timeLeftSeconds)
   const [showPanel, setShowPanel] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const submitted = useRef(false)
+  const dirty = useRef<Set<string>>(new Set())
+  const answersRef = useRef(answers)
+  const markedRef = useRef(marked)
+
+  useEffect(() => { answersRef.current = answers }, [answers])
+  useEffect(() => { markedRef.current = marked }, [marked])
 
   const q = questions[current]
   const totalAnswered = Object.values(answers).filter(Boolean).length
@@ -66,6 +74,50 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
     }
   }, [attemptId, answers, router])
 
+  const saveDirty = useCallback(async () => {
+    const ids = Array.from(dirty.current)
+    if (ids.length === 0 || submitted.current) return
+
+    ids.forEach((id) => dirty.current.delete(id))
+    const payload = ids.map((questionId) => ({
+      questionId,
+      selectedAnswer: answersRef.current[questionId] ?? null,
+      isMarked: markedRef.current.has(questionId),
+    }))
+
+    try {
+      const res = await fetch(`/api/attempts/${attemptId}/answers`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: payload }),
+        keepalive: true,
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        if (body.code === 'ATTEMPT_CLOSED' || body.code === 'TIME_EXPIRED') return
+        throw new Error(body.error || 'Autosave failed')
+      }
+    } catch {
+      ids.forEach((id) => dirty.current.add(id))
+    }
+  }, [attemptId])
+
+  // Save only changed questions after a short idle period.
+  useEffect(() => {
+    if (dirty.current.size === 0) return
+    const timer = window.setTimeout(() => { void saveDirty() }, 2500)
+    return () => window.clearTimeout(timer)
+  }, [answers, marked, saveDirty])
+
+  // Best-effort flush when the tab/app is backgrounded.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') void saveDirty()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [saveDirty])
+
   // Timer
   useEffect(() => {
     const timer = setInterval(() => {
@@ -85,6 +137,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
   const chosen = answerLetters(answers[q.id])
 
   function selectAnswer(opt: string) {
+    dirty.current.add(q.id)
     setAnswers((prev) => {
       if (!multi) return { ...prev, [q.id]: opt }
       // Multiple-response: toggle, and stop at the number asked for so the
@@ -98,6 +151,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
   }
 
   function toggleMark() {
+    dirty.current.add(q.id)
     setMarked((prev) => {
       const next = new Set(prev)
       next.has(q.id) ? next.delete(q.id) : next.add(q.id)
