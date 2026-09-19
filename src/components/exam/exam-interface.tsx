@@ -235,7 +235,10 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     .map((question, index) => ({
       question,
       index,
-      unanswered: !answers[question.id],
+      // In learning mocks a selection is only provisional until Check Answer
+      // returns feedback. This prevents a selected-but-unchecked Q1 from making
+      // Submit incorrectly report only Q10 (or any other missing placeholder).
+      unanswered: exam.showExplanations ? !feedback[question.id] : !answers[question.id],
       marked: marked.has(question.id),
     }))
     .filter((item) => item.unanswered || (!exam.showExplanations && item.marked))
