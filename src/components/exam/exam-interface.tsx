@@ -233,12 +233,14 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
           </div>
         </div>
 
-        <div className={cn(
-          'font-mono font-bold text-lg tabular-nums px-3 py-1 rounded-lg',
-          isWarning ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-800'
-        )}>
-          {untimed ? 'Untimed' : formatTime(timeLeft)}
-        </div>
+        {!untimed && (
+          <div className={cn(
+            'font-mono font-bold text-lg tabular-nums px-3 py-1 rounded-lg',
+            isWarning ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-800'
+          )}>
+            {formatTime(timeLeft)}
+          </div>
+        )}
 
         <Button variant="outline" size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
           <Send className="h-3.5 w-3.5 mr-1.5" />
