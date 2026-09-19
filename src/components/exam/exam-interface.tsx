@@ -32,6 +32,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const [showPanel, setShowPanel] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showReview, setShowReview] = useState(false)
+  const [reviewMode, setReviewMode] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, any>>({})
   const [feedbackLoading, setFeedbackLoading] = useState(false)
@@ -200,9 +201,25 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   }
 
   function nextQuestion() {
-    // An unanswered learning-mock question is a deliberate skip. Advance
-    // without selecting, saving, or revealing anything so Finish can surface
-    // it later under Review Unanswered.
+    // During missed-question review, Next must jump to the next unanswered
+    // question rather than resuming the normal sequential exam order.
+    if (reviewMode) {
+      if (exam.showExplanations && answers[q.id] && !feedback[q.id]) {
+        void revealCurrentFeedback()
+        return
+      }
+      const nextMissed = needsReview.find((item) => item.unanswered && item.index > current)
+        ?? needsReview.find((item) => item.unanswered && item.index !== current)
+      if (nextMissed) {
+        setCurrent(nextMissed.index)
+      } else {
+        setReviewMode(false)
+        setShowConfirm(true)
+      }
+      return
+    }
+
+    // An unanswered learning-mock question is a deliberate skip.
     if (exam.showExplanations && !answers[q.id]) {
       setCurrent((current) => Math.min(questions.length - 1, current + 1))
       return
@@ -224,8 +241,14 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     .filter((item) => item.unanswered || (!exam.showExplanations && item.marked))
 
   function openReviewQuestion(index: number) {
+    setReviewMode(true)
     setCurrent(index)
     setShowReview(false)
+  }
+
+  function startUnansweredReview() {
+    const first = needsReview.find((item) => item.unanswered)
+    if (first) openReviewQuestion(first.index)
   }
 
   function toggleMark() {
@@ -491,7 +514,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               ))}
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => needsReview[0] && openReviewQuestion(needsReview[0].index)}>
+              <Button variant="outline" className="flex-1" onClick={exam.showExplanations ? startUnansweredReview : () => needsReview[0] && openReviewQuestion(needsReview[0].index)}>
                 {exam.showExplanations ? 'Review Unanswered' : 'Keep Reviewing'}
               </Button>
               <Button className="flex-1" onClick={() => { setShowReview(false); setShowConfirm(true) }}>Submit Anyway</Button>
