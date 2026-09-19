@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import type { PracticeConfig } from '@/types'
 import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
-import { answerForFinalScoring, questionHistoryState } from '@/lib/exam-progress'
+import { answerForFinalScoring, latestCheckedVerdicts, questionHistoryState } from '@/lib/exam-progress'
 
 export class ExamSubmissionError extends Error {
   constructor(public code: 'ALREADY_SUBMITTED' | 'TIME_EXPIRED', message: string) {
@@ -326,26 +326,27 @@ export async function getAttemptResults(attemptId: string, userId: string) {
 }
 
 export async function getUserStats(userId: string) {
-  const attempts = await prisma.examAttempt.findMany({
-    where: { userId, status: 'COMPLETED' },
-    select: {
-      score: true,
-      correctCount: true,
-      totalQuestions: true,
-      examId: true,
-      answers: {
-        where: { selectedAnswer: { not: null } },
-        select: { questionId: true },
+  const [attempts, checkedAnswers] = await Promise.all([
+    prisma.examAttempt.findMany({
+      where: { userId, status: 'COMPLETED' },
+      select: { score: true, correctCount: true, totalQuestions: true, examId: true },
+    }),
+    prisma.examAnswer.findMany({
+      where: {
+        attempt: { userId },
+        isCorrect: { not: null },
       },
-    },
-  })
+      select: { questionId: true, isCorrect: true },
+      orderBy: { updatedAt: 'asc' },
+    }),
+  ])
 
   const totalExams = attempts.length
-  // "Questions Done" is a learning-progress metric, not an attempt-volume
-  // metric. Repeating the same question in later mocks must not inflate it.
-  const totalQuestions = new Set(
-    attempts.flatMap((attempt) => attempt.answers.map((answer) => answer.questionId))
-  ).size
+  // Progress is based on checked/scored answers, not merely selected drafts.
+  // The latest verdict wins, matching the quiz progress model.
+  const latest = latestCheckedVerdicts(checkedAnswers)
+  const totalQuestions = latest.size
+  const masteredQuestions = Array.from(latest.values()).filter(Boolean).length
   const avgScore = totalExams > 0
     ? attempts.reduce((s, a) => s + (a.score ?? 0), 0) / totalExams
     : 0
@@ -356,6 +357,7 @@ export async function getUserStats(userId: string) {
   return {
     totalExams,
     totalQuestions,
+    masteredQuestions,
     avgScore: Math.round(avgScore * 10) / 10,
     bestScore: Math.round(bestScore * 10) / 10,
   }

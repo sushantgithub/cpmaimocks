@@ -86,10 +86,10 @@ async function poolFilter(key: QuizKey) {
 }
 
 /**
- * Questions this user has answered for real, ignoring anything from before
- * they restarted the quiz. Rows are created for every question the moment a
- * sitting starts, so an unanswered row must not count as seen — otherwise
- * abandoning a sitting would silently bury the questions it had served.
+ * Questions this user has actually completed, ignoring anything from before
+ * they restarted the quiz. Rows are created when a sitting starts and draft
+ * selections may exist before completion, so only a persisted correctness
+ * verdict counts as answered.
  */
 async function answeredIn(userId: string, key: QuizKey, questionIds: string[]) {
   if (questionIds.length === 0) return []
@@ -101,7 +101,7 @@ async function answeredIn(userId: string, key: QuizKey, questionIds: string[]) {
   return prisma.examAnswer.findMany({
     where: {
       questionId: { in: questionIds },
-      selectedAnswer: { not: null },
+      isCorrect: { not: null },
       attempt: { userId },
       ...(reset ? { updatedAt: { gt: reset.resetAt } } : {}),
     },

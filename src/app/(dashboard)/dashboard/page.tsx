@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [stats, subscription, accessible, examCount, recentAttempts, exams, masteredQuestions] = await Promise.all([
+  const [stats, subscription, accessible, examCount, recentAttempts, exams] = await Promise.all([
     getUserStats(userId),
     getUserActiveSubscriptions(userId),
     getAccessibleCertificationIds(userId),
@@ -42,14 +42,6 @@ export default async function DashboardPage() {
       where: { status: 'PUBLISHED' },
       orderBy: { sortOrder: 'asc' },
       take: 6,
-    }),
-    prisma.examAnswer.findMany({
-      where: {
-        attempt: { userId, status: 'COMPLETED' },
-        isCorrect: true,
-      },
-      select: { questionId: true },
-      distinct: ['questionId'],
     }),
   ])
 
@@ -82,8 +74,8 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Exams Taken', value: stats.totalExams, icon: Trophy, color: 'text-blue-600', help: undefined },
-          { label: 'Questions Attempted', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600', help: 'Unique questions you have answered at least once.' },
-          { label: 'Questions Mastered', value: masteredQuestions.length, icon: CheckCircle2, color: 'text-green-600', help: 'Unique questions you have answered correctly at least once.' },
+          { label: 'Questions Attempted', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600', help: 'Unique questions with a checked or scored answer.' },
+          { label: 'Questions Mastered', value: stats.masteredQuestions, icon: CheckCircle2, color: 'text-green-600', help: 'Unique questions whose latest checked answer is correct.' },
           { label: 'Average Score', value: `${stats.avgScore}%`, icon: Target, color: 'text-yellow-600', help: undefined },
           { label: 'Best Score', value: `${stats.bestScore}%`, icon: TrendingUp, color: 'text-green-600', help: undefined },
         ].map((s) => (

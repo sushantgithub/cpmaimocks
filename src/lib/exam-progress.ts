@@ -46,3 +46,13 @@ export function nextReviewIndex(current: number, pending: number[]): number | nu
   // pending question is completed, review should finish.
   return pending.find((index) => index > current) ?? null
 }
+
+export function latestCheckedVerdicts(
+  rows: { questionId: string; isCorrect: boolean | null }[],
+): Map<string, boolean> {
+  const latest = new Map<string, boolean>()
+  for (const row of rows) {
+    if (row.isCorrect !== null) latest.set(row.questionId, row.isCorrect)
+  }
+  return latest
+}

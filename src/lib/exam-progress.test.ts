@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerForFinalScoring, nextReviewIndex, questionHistoryState } from './exam-progress'
+import { answerForFinalScoring, latestCheckedVerdicts, nextReviewIndex, questionHistoryState } from './exam-progress'
 
 describe('learning mock progress rules', () => {
   it('treats incorrect and unanswered history as missed', () => {
@@ -49,6 +49,21 @@ describe('learning mock progress rules', () => {
       browserAnswer: 'B',
       expired: true,
     })).toBe('A')
+  })
+
+  it('uses the latest checked verdict for dashboard progress', () => {
+    const latest = latestCheckedVerdicts([
+      { questionId: 'q1', isCorrect: false },
+      { questionId: 'q2', isCorrect: true },
+      { questionId: 'draft', isCorrect: null },
+      { questionId: 'q1', isCorrect: true },
+      { questionId: 'q2', isCorrect: false },
+    ])
+
+    expect(latest.size).toBe(2)
+    expect(latest.get('q1')).toBe(true)
+    expect(latest.get('q2')).toBe(false)
+    expect(latest.has('draft')).toBe(false)
   })
 
   it('moves forward through pending review questions and finishes without wrapping', () => {
