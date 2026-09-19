@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         createdAt: true,
         subscriptions: {
           where: { status: 'ACTIVE' },
-          select: { plan: { select: { name: true } }, endDate: true },
+          select: { plan: { select: { name: true, durationDays: true } }, endDate: true },
           take: 1,
         },
         _count: { select: { examAttempts: true } },

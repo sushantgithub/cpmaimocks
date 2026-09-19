@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
 import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2 } from 'lucide-react'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, isLifetime } from '@/lib/utils'
 
 interface User {
   id: string
@@ -18,7 +18,7 @@ interface User {
   emailVerified: string | null
   signInMethods: string[]
   createdAt: string
-  subscriptions: { plan: { name: string }; endDate: string | null }[]
+  subscriptions: { plan: { name: string; durationDays: number }; endDate: string | null }[]
   _count: { examAttempts: number }
   payments: { amount: number; currency: string }[]
 }
@@ -188,7 +188,11 @@ export default function AdminUsersPage() {
                         {sub ? (
                           <div>
                             <Badge variant="success" className="text-xs">{sub.plan.name}</Badge>
-                            {sub.endDate && <p className="text-xs text-gray-500 mt-0.5">Until {formatDate(new Date(sub.endDate))}</p>}
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {isLifetime(sub.plan.durationDays)
+                                ? 'Lifetime'
+                                : sub.endDate ? `Until ${formatDate(new Date(sub.endDate))}` : ''}
+                            </p>
                           </div>
                         ) : (
                           <span className="text-xs text-gray-400">Free</span>

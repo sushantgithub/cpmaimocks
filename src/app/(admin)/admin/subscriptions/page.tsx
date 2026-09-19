@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, isLifetime } from '@/lib/utils'
 
 export default async function AdminSubscriptionsPage() {
   const subscriptions = await prisma.subscription.findMany({
@@ -9,7 +9,7 @@ export default async function AdminSubscriptionsPage() {
     take: 100,
     include: {
       user: { select: { name: true, email: true } },
-      plan: { select: { name: true, price: true } },
+      plan: { select: { name: true, price: true, durationDays: true, currency: true } },
       payments: {
         where: { status: 'SUCCESS' },
         select: { amount: true, createdAt: true },
@@ -82,10 +82,12 @@ export default async function AdminSubscriptionsPage() {
                       {sub.startDate ? formatDate(sub.startDate) : '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
-                      {sub.endDate ? formatDate(sub.endDate) : '—'}
+                      {isLifetime(sub.plan.durationDays)
+                        ? <Badge variant="outline" className="text-xs">Lifetime</Badge>
+                        : sub.endDate ? formatDate(sub.endDate) : '—'}
                     </td>
                     <td className="px-4 py-3 text-gray-700 font-medium">
-                      {sub.payments[0] ? formatCurrency(sub.payments[0].amount) : '—'}
+                      {sub.payments[0] ? formatCurrency(sub.payments[0].amount, sub.plan.currency) : '—'}
                     </td>
                   </tr>
                 ))}
