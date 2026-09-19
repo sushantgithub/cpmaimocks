@@ -68,31 +68,19 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const totalAnswered = Object.values(answers).filter(Boolean).length
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
+  const hasPendingSelection = !revealed && pending.length > 0
+  const pendingReady = multi ? pending.length === selectCount : pending.length === 1
 
-  function selectAnswer(opt: string) {
-    if (answers[q.id]) return // lock once submitted
-
-    if (!multi) {
-      setPending([opt])
-      return
-    }
-
-    const next = pending.includes(opt)
-      ? pending.filter((k) => k !== opt)
-      : pending.length >= selectCount ? pending : [...pending, opt]
-    setPending(next)
-  }
-
-  function submitAnswer() {
+  function commitAnswer(selection: string[]) {
     if (answers[q.id]) return
-    if ((!multi && pending.length !== 1) || (multi && pending.length !== selectCount)) return
+    if ((!multi && selection.length !== 1) || (multi && selection.length !== selectCount)) return
 
-    const committed = normalizeAnswer(pending.join(','))
+    const committed = normalizeAnswer(selection.join(','))
     setAnswers((prev) => ({ ...prev, [q.id]: committed }))
     setPending([])
 
-    // Feedback is inserted exactly where the learner just submitted. Focus it
-    // after React commits so mobile browsers/assistive tech announce it too.
+    // Feedback should be the immediate result of answering in Practice/Quiz.
+    // Wait for React to insert it, then bring it into view on mobile.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const feedback = document.getElementById(`feedback-${q.id}`)
@@ -100,6 +88,27 @@ export function PracticeInterface({ attemptId, questions }: Props) {
         feedback?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       })
     })
+  }
+
+  function selectAnswer(opt: string) {
+    if (answers[q.id]) return // lock once submitted
+
+    // Single-choice practice questions reveal feedback immediately on tap.
+    if (!multi) {
+      commitAnswer([opt])
+      return
+    }
+
+    // Multi-select questions need an explicit Check Answer because the learner
+    // must be able to choose/change the requested number of options first.
+    const next = pending.includes(opt)
+      ? pending.filter((k) => k !== opt)
+      : pending.length >= selectCount ? pending : [...pending, opt]
+    setPending(next)
+  }
+
+  function submitAnswer() {
+    commitAnswer(pending)
   }
 
   async function toggleBookmark(questionId: string) {
@@ -191,9 +200,13 @@ export function PracticeInterface({ attemptId, questions }: Props) {
           <span className="text-xs text-muted-foreground hidden sm:inline">{totalAnswered}/{questions.length} done</span>
         </div>
 
-        <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+        <Button
+          size="sm"
+          onClick={() => hasPendingSelection ? submitAnswer() : setShowConfirm(true)}
+          disabled={submitting || (hasPendingSelection && !pendingReady)}
+        >
           <Send className="h-3.5 w-3.5 mr-1.5" />
-          Finish
+          {hasPendingSelection ? 'Check Answer' : 'Finish'}
         </Button>
       </header>
 
@@ -274,14 +287,14 @@ export function PracticeInterface({ attemptId, questions }: Props) {
               })}
             </div>
 
-            {!revealed && (
+            {!revealed && multi && (
               <div className="mt-4">
                 <Button
                   className="w-full"
                   onClick={submitAnswer}
-                  disabled={multi ? pending.length !== selectCount : pending.length !== 1}
+                  disabled={!pendingReady}
                 >
-                  Submit Answer
+                  Check Answer
                 </Button>
               </div>
             )}
@@ -332,7 +345,11 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 }
               </button>
 
-              {current === questions.length - 1 ? (
+              {hasPendingSelection ? (
+                <Button size="sm" onClick={submitAnswer} disabled={!pendingReady}>
+                  Check Answer<ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : current === questions.length - 1 ? (
                 <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
                   <Send className="h-4 w-4 mr-1" />Finish
                 </Button>
