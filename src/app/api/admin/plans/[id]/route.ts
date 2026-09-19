@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { PLAN_CURRENCIES } from '@/lib/utils'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -30,6 +31,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return NextResponse.json({ error: 'Duration must be at least 1 day' }, { status: 400 })
     }
     update.durationDays = durationDays
+  }
+
+  // Razorpay settles in the account's own currency, so this is a display
+  // choice rather than a payment one — but a typo here misprices the page.
+  if (data.currency !== undefined) {
+    const currency = String(data.currency).toUpperCase()
+    if (!(PLAN_CURRENCIES as readonly string[]).includes(currency)) {
+      return NextResponse.json({ error: `Currency must be one of ${PLAN_CURRENCIES.join(', ')}` }, { status: 400 })
+    }
+    update.currency = currency
   }
 
   if (data.trialDays !== undefined) update.trialDays = Number(data.trialDays) || 0

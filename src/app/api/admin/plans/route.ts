@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { slugify } from '@/lib/utils'
+import { PLAN_CURRENCIES, slugify } from '@/lib/utils'
 
 export async function GET() {
   const session = await auth()
@@ -27,6 +27,10 @@ export async function POST(req: Request) {
 
   const price = Number(data.price)
   const durationDays = Number(data.durationDays)
+  const currency = String(data.currency ?? 'INR').toUpperCase()
+  if (!(PLAN_CURRENCIES as readonly string[]).includes(currency)) {
+    return NextResponse.json({ error: `Currency must be one of ${PLAN_CURRENCIES.join(', ')}` }, { status: 400 })
+  }
   if (!Number.isFinite(price) || price < 0) {
     return NextResponse.json({ error: 'Price must be zero or more' }, { status: 400 })
   }
@@ -46,7 +50,7 @@ export async function POST(req: Request) {
       slug,
       description: data.description?.trim() || null,
       price,
-      currency: 'INR',
+      currency,
       durationDays,
       trialDays: Number(data.trialDays) || 0,
       features: Array.isArray(data.features) ? data.features : [],

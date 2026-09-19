@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
-import { formatCurrency, approxUsd, LIFETIME_DAYS, isLifetime, planPeriodLabel } from '@/lib/utils'
+import { formatCurrency, approxUsd, LIFETIME_DAYS, isLifetime, planPeriodLabel, PLAN_CURRENCIES } from '@/lib/utils'
 import { Plus, Trash2, Save } from 'lucide-react'
 
 interface Certification { id: string; name: string }
@@ -16,6 +16,7 @@ interface Plan {
   slug: string
   description: string | null
   price: number
+  currency: string
   durationDays: number
   trialDays: number
   features: string[]
@@ -27,7 +28,7 @@ interface Plan {
 }
 
 const EMPTY = {
-  name: '', description: '', price: '499', durationDays: '30', trialDays: '0',
+  name: '', description: '', price: '499', currency: 'INR', durationDays: '30', trialDays: '0',
   features: '', certificationId: '', lifetime: false,
 }
 
@@ -150,6 +151,14 @@ export default function AdminPlansPage() {
                   value={form.price} onChange={(e) => setForm((p) => ({ ...p, price: e.target.value }))} />
               </div>
               <div>
+                <label className="text-sm font-medium text-gray-700">Currency</label>
+                <select className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
+                  value={form.currency}
+                  onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}>
+                  {PLAN_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="text-sm font-medium text-gray-700">Duration (days) *</label>
                 <input type="number" min={1} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-400"
                   disabled={form.lifetime}
@@ -203,6 +212,7 @@ export default function AdminPlansPage() {
             const patch = edits[plan.id] ?? {}
             const price = patch.price ?? plan.price
             const durationDays = patch.durationDays ?? plan.durationDays
+            const currency = patch.currency ?? plan.currency ?? 'INR'
             const lifetime = isLifetime(durationDays)
             const dirty = Object.keys(patch).length > 0
             return (
@@ -226,15 +236,24 @@ export default function AdminPlansPage() {
                     </Button>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                     <div>
-                      <label className="text-xs font-medium text-gray-600">Price (₹)</label>
+                      <label className="text-xs font-medium text-gray-600">Price</label>
                       <input type="number" min={0} className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
                         value={price}
                         onChange={(e) => edit(plan.id, { price: Number(e.target.value) })} />
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {formatCurrency(Number(price))} {approxUsd(Number(price)) && `· ${approxUsd(Number(price))}`}
+                        {formatCurrency(Number(price), currency)}
+                        {currency === 'INR' && approxUsd(Number(price)) && ` · ${approxUsd(Number(price))}`}
                       </p>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-gray-600">Currency</label>
+                      <select className="mt-1 w-full border rounded-lg px-2 py-1.5 text-sm"
+                        value={currency}
+                        onChange={(e) => edit(plan.id, { currency: e.target.value })}>
+                        {PLAN_CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs font-medium text-gray-600">Days</label>

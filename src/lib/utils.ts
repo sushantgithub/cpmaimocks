@@ -5,6 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Currencies a plan may be priced in. Kept short on purpose. */
+export const PLAN_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'SGD', 'AED'] as const
+
 export function formatCurrency(amount: number, currency: string = 'INR') {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
