@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { formatDate, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
 import { freshExamHref } from '@/lib/exam-links'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { Trophy, BookOpen, Target, TrendingUp, ArrowRight, Lock, CheckCircle2 } from 'lucide-react'
 
 /**
@@ -80,17 +81,18 @@ export default async function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Exams Taken', value: stats.totalExams, icon: Trophy, color: 'text-blue-600' },
-          { label: 'Questions Attempted', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600' },
-          { label: 'Questions Mastered', value: masteredQuestions.length, icon: CheckCircle2, color: 'text-green-600' },
-          { label: 'Average Score', value: `${stats.avgScore}%`, icon: Target, color: 'text-yellow-600' },
-          { label: 'Best Score', value: `${stats.bestScore}%`, icon: TrendingUp, color: 'text-green-600' },
+          { label: 'Exams Taken', value: stats.totalExams, icon: Trophy, color: 'text-blue-600', help: undefined },
+          { label: 'Questions Attempted', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600', help: 'Unique questions you have answered at least once.' },
+          { label: 'Questions Mastered', value: masteredQuestions.length, icon: CheckCircle2, color: 'text-green-600', help: 'Unique questions you have answered correctly at least once.' },
+          { label: 'Average Score', value: `${stats.avgScore}%`, icon: Target, color: 'text-yellow-600', help: undefined },
+          { label: 'Best Score', value: `${stats.bestScore}%`, icon: TrendingUp, color: 'text-green-600', help: undefined },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
                 <s.icon className={`h-4 w-4 ${s.color}`} />
                 <span className="text-xs text-muted-foreground">{s.label}</span>
+                {s.help && <InfoTooltip label={`About ${s.label}`} content={s.help} />}
               </div>
               <div className="text-2xl font-bold">{s.value}</div>
             </CardContent>
