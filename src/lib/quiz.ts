@@ -144,7 +144,7 @@ export async function submitExam(
   let unansweredCount = 0
 
   const scoredAnswers = attempt.answers.map((ea) => {
-    const selected = normalizeAnswer(answers[ea.questionId]) || null
+    const selected = normalizeAnswer(answers[ea.questionId] ?? ea.selectedAnswer ?? '') || null
     const isCorrect = selected ? isAnswerCorrect(selected, ea.question.correctAnswer) : null
 
     if (isCorrect === true) correctCount++
