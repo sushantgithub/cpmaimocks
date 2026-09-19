@@ -12,6 +12,13 @@ const questionSelect = {
   optionA: true, optionB: true, optionC: true, optionD: true,
   optionE: true, optionF: true,
   correctAnswer: true,
+  explanation: true,
+  explanationA: true,
+  explanationB: true,
+  explanationC: true,
+  explanationD: true,
+  explanationE: true,
+  explanationF: true,
   difficulty: true,
   category: { select: { name: true } },
   topic: { select: { name: true } },
@@ -89,6 +96,22 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
       const initialChecked = running.answers
         .filter((a) => a.isCorrect !== null)
         .map((a) => a.question.id)
+      const initialFeedback = Object.fromEntries(
+        running.answers
+          .filter((a) => a.isCorrect !== null && a.selectedAnswer)
+          .map((a) => [a.question.id, {
+            selectedAnswer: a.selectedAnswer as string,
+            isCorrect: a.isCorrect as boolean,
+            correctAnswer: a.question.correctAnswer,
+            explanation: a.question.explanation,
+            explanationA: a.question.explanationA,
+            explanationB: a.question.explanationB,
+            explanationC: a.question.explanationC,
+            explanationD: a.question.explanationD,
+            explanationE: a.question.explanationE,
+            explanationF: a.question.explanationF,
+          }])
+      )
 
       return (
         <ExamInterface
@@ -100,6 +123,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
           initialAnswers={initialAnswers}
           initialMarked={initialMarked}
           initialChecked={initialChecked}
+          initialFeedback={initialFeedback}
         />
       )
     }
@@ -144,6 +168,13 @@ function toExamQuestion(q: {
   optionA: string; optionB: string; optionC: string; optionD: string
   optionE?: string | null; optionF?: string | null
   correctAnswer: string
+  explanation?: string
+  explanationA?: string | null
+  explanationB?: string | null
+  explanationC?: string | null
+  explanationD?: string | null
+  explanationE?: string | null
+  explanationF?: string | null
   difficulty: ExamQuestion['difficulty']
   category?: { name: string } | null
   topic?: { name: string } | null
