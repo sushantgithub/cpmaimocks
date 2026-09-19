@@ -9,6 +9,18 @@ import { formatDate, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
 import { Trophy, BookOpen, Target, TrendingUp, ArrowRight, Lock } from 'lucide-react'
 
+/**
+ * How many questions one attempt serves, shown against the pool it is drawn
+ * from when those differ. Null, zero or a count that covers the whole pool all
+ * mean the attempt receives everything.
+ */
+function examQuestionSummary(questionCount: number, questionsPerAttempt: number | null) {
+  const samples =
+    questionsPerAttempt !== null && questionsPerAttempt > 0 && questionsPerAttempt < questionCount
+  const served = samples ? questionsPerAttempt : questionCount
+  return `${served} question${served === 1 ? '' : 's'}${samples ? ` of ${questionCount}` : ''}`
+}
+
 export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
@@ -97,7 +109,13 @@ export default async function DashboardPage() {
                     ) : null}
                   </div>
                   <div className="text-xs text-muted-foreground mb-3 space-y-1">
-                    <p>{exam.questionCount} questions • {exam.timeLimitMinutes} mins</p>
+                    <p>
+                      {/* A domain mock serves part of its pool, so say how many an
+                          attempt gives rather than how many exist. Zero minutes
+                          means untimed, so the time is left off entirely. */}
+                      {examQuestionSummary(exam.questionCount, exam.questionsPerAttempt)}
+                      {exam.timeLimitMinutes > 0 && ` • ${exam.timeLimitMinutes} mins`}
+                    </p>
                     <p>Passing score: {exam.passingScore}%</p>
                   </div>
                   {locked ? (
