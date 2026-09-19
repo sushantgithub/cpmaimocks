@@ -21,13 +21,15 @@ interface Props {
   questions: ExamQuestion[]
   initialAnswers?: Record<string, string>
   initialMarked?: string[]
+  initialChecked?: string[]
 }
 
-export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [] }: Props) {
+export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [] }: Props) {
   const router = useRouter()
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers)
   const [marked, setMarked] = useState<Set<string>>(() => new Set(initialMarked))
+  const [checked, setChecked] = useState<Set<string>>(() => new Set(initialChecked))
   const [timeLeft, setTimeLeft] = useState(timeLeftSeconds)
   const [showPanel, setShowPanel] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -46,7 +48,9 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   useEffect(() => { markedRef.current = marked }, [marked])
 
   const q = questions[current]
-  const totalAnswered = Object.values(answers).filter(Boolean).length
+  const totalAnswered = exam.showExplanations
+    ? checked.size
+    : Object.values(answers).filter(Boolean).length
   const unanswered = questions.length - totalAnswered
 
   const submitExam = useCallback(async (auto = false) => {
@@ -153,7 +157,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
 
   function selectAnswer(opt: string) {
     if (timeLeft <= 0 && deadline.current !== null) return
-    if (feedback[q.id]) return
+    if (feedback[q.id] || checked.has(q.id)) return
     dirty.current.add(q.id)
     setAnswers((prev) => {
       if (!multi) return { ...prev, [q.id]: opt }
@@ -190,6 +194,11 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       dirty.current.delete(q.id)
       setAnswers((prev) => ({ ...prev, [q.id]: data.selectedAnswer }))
       setFeedback((prev) => ({ ...prev, [q.id]: data }))
+      setChecked((prev) => {
+        const next = new Set(prev)
+        next.add(q.id)
+        return next
+      })
       requestAnimationFrame(() => {
         document.getElementById(`exam-feedback-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       })
@@ -201,17 +210,24 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   }
 
   function nextQuestion() {
-    // During missed-question review, Next must jump to the next unanswered
-    // question rather than resuming the normal sequential exam order.
+    // During missed-question review, only reviewed/missed questions participate.
+    // A selected answer is still incomplete until Check Answer has returned.
     if (reviewMode) {
-      if (exam.showExplanations && answers[q.id] && !feedback[q.id]) {
+      if (exam.showExplanations && answers[q.id] && !checked.has(q.id)) {
         void revealCurrentFeedback()
         return
       }
+
       const nextMissed = needsReview.find((item) => item.unanswered && item.index > current)
         ?? needsReview.find((item) => item.unanswered && item.index !== current)
+
       if (nextMissed) {
         setCurrent(nextMissed.index)
+      } else if (needsReview.some((item) => item.unanswered)) {
+        // The current question is still unanswered. Return to the review list
+        // instead of allowing an accidental final submission.
+        setReviewMode(false)
+        setShowReview(true)
       } else {
         setReviewMode(false)
         setShowConfirm(true)
@@ -224,7 +240,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       setCurrent((current) => Math.min(questions.length - 1, current + 1))
       return
     }
-    if (exam.showExplanations && !feedback[q.id]) {
+    if (exam.showExplanations && !checked.has(q.id)) {
       void revealCurrentFeedback()
       return
     }
@@ -238,7 +254,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       // In learning mocks a selection is only provisional until Check Answer
       // returns feedback. This prevents a selected-but-unchecked Q1 from making
       // Submit incorrectly report only Q10 (or any other missing placeholder).
-      unanswered: exam.showExplanations ? !feedback[question.id] : !answers[question.id],
+      unanswered: exam.showExplanations ? !checked.has(question.id) : !answers[question.id],
       marked: marked.has(question.id),
     }))
     .filter((item) => item.unanswered || (!exam.showExplanations && item.marked))
@@ -290,9 +306,14 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
           </div>
         )}
 
-        <Button variant="outline" size="sm" onClick={() => needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true)} disabled={submitting}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => reviewMode ? nextQuestion() : (needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true))}
+          disabled={submitting || feedbackLoading}
+        >
           <Send className="h-3.5 w-3.5 mr-1.5" />
-          Submit
+          {reviewMode ? (answers[q.id] && !checked.has(q.id) ? 'Check' : 'Continue') : 'Submit'}
         </Button>
       </header>
 
@@ -401,13 +422,22 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                 </Button>
               )}
 
-              {current === questions.length - 1 ? (
+              {reviewMode ? (
+                <Button size="sm" onClick={nextQuestion} loading={feedbackLoading}>
+                  {answers[q.id] && !checked.has(q.id)
+                    ? 'Check Answer'
+                    : checked.has(q.id)
+                      ? (needsReview.length > 0 ? 'Next Unanswered' : 'Finish Review')
+                      : 'Next Unanswered'}
+                  {!feedbackLoading && <ChevronRight className="h-4 w-4 ml-1" />}
+                </Button>
+              ) : current === questions.length - 1 ? (
                 <Button size="sm" onClick={() => needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true)} disabled={submitting}>
                   <Send className="h-3.5 w-3.5 mr-1.5" />Finish
                 </Button>
               ) : (
                 <Button size="sm" onClick={nextQuestion} loading={feedbackLoading}>
-                  {exam.showExplanations && answers[q.id] && !feedback[q.id] ? 'Check Answer' : 'Next'}
+                  {exam.showExplanations && answers[q.id] && !checked.has(q.id) ? 'Check Answer' : 'Next'}
                   {!feedbackLoading && <ChevronRight className="h-4 w-4 ml-1" />}
                 </Button>
               )}
@@ -421,7 +451,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
           <div className="grid grid-cols-5 gap-1.5 mb-4">
             {questions.map((_, i) => {
               const qId = questions[i].id
-              const isAnswered = !!answers[qId]
+              const isAnswered = exam.showExplanations ? checked.has(qId) : !!answers[qId]
               const isMarked = marked.has(qId)
               const isCurrent = i === current
               return (
@@ -464,7 +494,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
             <div className="grid grid-cols-8 gap-2">
               {questions.map((_, i) => {
                 const qId = questions[i].id
-                const isAnswered = !!answers[qId]
+                const isAnswered = exam.showExplanations ? checked.has(qId) : !!answers[qId]
                 const isMarked = marked.has(qId)
                 const isCurrent = i === current
                 return (
@@ -539,7 +569,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                 You have <strong>{unanswered} unanswered</strong> questions. They will be marked incorrect.
               </p>
             )}
-            {marked.size > 0 && (
+            {!exam.showExplanations && marked.size > 0 && (
               <p className="text-sm text-yellow-800 bg-yellow-50 rounded-lg p-3 mb-4">
                 <strong>{marked.size}</strong> still marked for review.
               </p>
