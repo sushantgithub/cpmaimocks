@@ -52,7 +52,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
   const running = await prisma.examAttempt.findFirst({
     where: { userId, examId: exam.id, status: 'IN_PROGRESS' },
     orderBy: { startedAt: 'desc' },
-    include: { answers: { select: { selectedAnswer: true, isMarked: true, question: { select: questionSelect } } } },
+    include: { answers: { select: { selectedAnswer: true, isCorrect: true, isMarked: true, question: { select: questionSelect } } } },
   })
 
   if (running) {
@@ -76,7 +76,11 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
     if (!expired && stillValid) {
       const initialAnswers = Object.fromEntries(
         running.answers
-          .filter((a) => a.selectedAnswer)
+          // In immediate-feedback learning mocks, only an answer whose
+          // feedback was actually revealed (isCorrect populated) counts as
+          // completed. A merely autosaved/draft selection must not make an
+          // untouched question look answered when the attempt is resumed.
+          .filter((a) => a.selectedAnswer && (!exam.showExplanations || a.isCorrect !== null))
           .map((a) => [a.question.id, a.selectedAnswer as string])
       )
       const initialMarked = running.answers
