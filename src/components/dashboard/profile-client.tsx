@@ -13,10 +13,10 @@ import { User, Lock, Trash2, Trophy, BookOpen, Target, TrendingUp } from 'lucide
 interface Props {
   user: { name: string; email: string; memberSince: string }
   stats: { totalExams: number; totalQuestions: number; avgScore: number; bestScore: number }
-  subscription: { planName: string; status: string; access: string } | null
+  subscriptions: { planName: string; status: string; access: string }[]
 }
 
-export function ProfileClient({ user, stats, subscription }: Props) {
+export function ProfileClient({ user, stats, subscriptions }: Props) {
   const router = useRouter()
   const [name, setName] = useState(user.name)
   const [savingName, setSavingName] = useState(false)
@@ -67,20 +67,25 @@ export function ProfileClient({ user, stats, subscription }: Props) {
         ))}
       </div>
 
-      {/* Subscription */}
+      {/* Subscriptions */}
       <Card>
-        <CardContent className="p-4 flex items-center justify-between">
-          <div>
-            <p className="font-medium">{subscription?.planName ?? 'Free Plan'}</p>
-            {subscription ? (
-              <p className="text-sm text-muted-foreground">{subscription.access}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Limited access</p>
-            )}
-          </div>
-          <Badge variant={subscription?.status === 'ACTIVE' ? 'success' : 'secondary'}>
-            {subscription?.status ?? 'Free'}
-          </Badge>
+        <CardContent className="p-4 space-y-3">
+          {subscriptions.length > 0 ? subscriptions.map((subscription) => (
+            <div key={subscription.planName} className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-medium">{subscription.planName}</p>
+                <p className="text-sm text-muted-foreground">{subscription.access}</p>
+              </div>
+              <Badge variant={subscription.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                {subscription.status}
+              </Badge>
+            </div>
+          )) : (
+            <div className="flex items-center justify-between">
+              <div><p className="font-medium">Free Plan</p><p className="text-sm text-muted-foreground">Limited access</p></div>
+              <Badge variant="secondary">Free</Badge>
+            </div>
+          )}
         </CardContent>
       </Card>
 
