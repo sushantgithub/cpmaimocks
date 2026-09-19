@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDate, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
+import { freshExamHref } from '@/lib/exam-links'
 import { Trophy, BookOpen, Target, TrendingUp, ArrowRight, Lock } from 'lucide-react'
 
 /**
@@ -124,7 +125,7 @@ export default async function DashboardPage() {
                     </Button>
                   ) : (
                     <Button size="sm" className="w-full" asChild>
-                      <Link href={`/exams/${exam.id}`}>Start Exam <ArrowRight className="h-3 w-3" /></Link>
+                      <Link href={freshExamHref(exam.id)}>Start Exam <ArrowRight className="h-3 w-3" /></Link>
                     </Button>
                   )}
                 </CardContent>
