@@ -50,6 +50,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const [showConfirm, setShowConfirm] = useState(false)
   const [showReview, setShowReview] = useState(false)
   const [reviewMode, setReviewMode] = useState(false)
+  const [reviewQueue, setReviewQueue] = useState<number[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<Record<string, FeedbackData>>(() => initialFeedback)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
@@ -233,20 +234,19 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
         return
       }
 
-      const nextIndex = nextReviewIndex(
-        current,
-        needsReview.filter((item) => item.unanswered).map((item) => item.index),
+      const pendingReview = reviewQueue.filter(
+        (index) => index !== current && !checked.has(questions[index].id),
       )
+      const nextIndex = nextReviewIndex(current, pendingReview)
 
       if (nextIndex !== null) {
         setCurrent(nextIndex)
-      } else if (needsReview.some((item) => item.unanswered)) {
-        // The current question is still unanswered. Return to the review list
-        // instead of allowing an accidental final submission.
-        setReviewMode(false)
-        setShowReview(true)
       } else {
+        // This review pass is complete. Questions deliberately skipped during
+        // review remain unanswered and are reported by the final confirmation,
+        // but the queue never wraps back to an earlier item.
         setReviewMode(false)
+        setReviewQueue([])
         setShowConfirm(true)
       }
       return
@@ -276,15 +276,16 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     }))
     .filter((item) => item.unanswered || (!exam.showExplanations && item.marked))
 
-  function openReviewQuestion(index: number) {
+  function openReviewQuestion(index: number, queue?: number[]) {
+    setReviewQueue(queue ?? needsReview.filter((item) => item.unanswered).map((item) => item.index))
     setReviewMode(true)
     setCurrent(index)
     setShowReview(false)
   }
 
   function startUnansweredReview() {
-    const first = needsReview.find((item) => item.unanswered)
-    if (first) openReviewQuestion(first.index)
+    const queue = needsReview.filter((item) => item.unanswered).map((item) => item.index)
+    if (queue.length > 0) openReviewQuestion(queue[0], queue)
   }
 
   function toggleMark() {
@@ -444,7 +445,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                   {answers[q.id] && !checked.has(q.id)
                     ? 'Check Answer'
                     : checked.has(q.id)
-                      ? (needsReview.length > 0 ? 'Next Unanswered' : 'Finish Review')
+                      ? (nextReviewIndex(current, reviewQueue.filter((index) => index !== current && !checked.has(questions[index].id))) !== null ? 'Next Unanswered' : 'Finish Review')
                       : 'Next Unanswered'}
                   {!feedbackLoading && <ChevronRight className="h-4 w-4 ml-1" />}
                 </Button>
@@ -554,7 +555,10 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               {needsReview.map((item) => (
                 <button
                   key={item.question.id}
-                  onClick={() => openReviewQuestion(item.index)}
+                  onClick={() => {
+                    const queue = needsReview.filter((reviewItem) => reviewItem.unanswered).map((reviewItem) => reviewItem.index)
+                    openReviewQuestion(item.index, queue.filter((index) => index >= item.index))
+                  }}
                   className="w-full flex items-center justify-between gap-3 rounded-lg border p-3 text-left hover:bg-gray-50"
                 >
                   <span className="font-medium">Q{item.index + 1}</span>
