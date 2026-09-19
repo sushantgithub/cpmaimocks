@@ -30,3 +30,61 @@ export function isAnswerCorrect(selected: string | null | undefined, correct: st
   const s = normalizeAnswer(selected)
   return s.length > 0 && s === normalizeAnswer(correct)
 }
+
+export interface ExplanationRow {
+  key: OptionKey
+  text: string
+  why: string
+  correct: boolean
+  chosen: boolean
+}
+
+interface ExplainableQuestion {
+  optionA: string; optionB: string; optionC: string; optionD: string
+  optionE?: string | null; optionF?: string | null
+  correctAnswer: string
+  explanationA?: string | null; explanationB?: string | null
+  explanationC?: string | null; explanationD?: string | null
+  explanationE?: string | null; explanationF?: string | null
+}
+
+/**
+ * The options that have both text and an explanation, in A-F order. An option
+ * with no explanation written for it is left out rather than shown blank,
+ * which is what keeps questions imported before these columns existed working.
+ */
+export function explanationRows(
+  q: ExplainableQuestion,
+  selected: string | null | undefined,
+): ExplanationRow[] {
+  const options: Record<string, string | null | undefined> = {
+    A: q.optionA, B: q.optionB, C: q.optionC, D: q.optionD, E: q.optionE, F: q.optionF,
+  }
+  const whys: Record<string, string | null | undefined> = {
+    A: q.explanationA, B: q.explanationB, C: q.explanationC,
+    D: q.explanationD, E: q.explanationE, F: q.explanationF,
+  }
+  const correct = answerLetters(q.correctAnswer)
+  const chosen = answerLetters(selected)
+
+  return OPTION_KEYS.filter((k) => options[k]?.trim() && whys[k]?.trim()).map((k) => ({
+    key: k,
+    text: options[k]!.trim(),
+    why: whys[k]!.trim(),
+    correct: correct.includes(k),
+    chosen: chosen.includes(k),
+  }))
+}
+
+/**
+ * Splits the rows into what a learner sees straight away and what stays folded
+ * away: their own option and the correct one lead, the rest follow. With
+ * nothing selected — a bookmark, or a question they skipped — the correct
+ * option leads alone.
+ */
+export function splitExplanationRows(rows: ExplanationRow[]) {
+  const primary = rows.filter((r) => r.chosen || r.correct)
+  const lead = primary.length > 0 ? primary : rows.filter((r) => r.correct)
+  const leadKeys = new Set(lead.map((r) => r.key))
+  return { lead, rest: rows.filter((r) => !leadKeys.has(r.key)) }
+}

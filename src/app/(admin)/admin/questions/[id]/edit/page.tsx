@@ -11,8 +11,12 @@ interface Category { id: string; name: string }
 interface Question {
   id: string; text: string; optionA: string; optionB: string; optionC: string; optionD: string;
   correctAnswer: string; explanation: string; difficulty: string; status: string;
+  explanationA: string | null; explanationB: string | null;
+  explanationC: string | null; explanationD: string | null;
   categoryId: string | null; topicId: string | null;
 }
+
+const OPTION_EXPLANATIONS = ['explanationA', 'explanationB', 'explanationC', 'explanationD'] as const
 
 export default function EditQuestionPage() {
   const { id } = useParams<{ id: string }>()
@@ -48,6 +52,8 @@ export default function EditQuestionPage() {
           text: form.text, optionA: form.optionA, optionB: form.optionB,
           optionC: form.optionC, optionD: form.optionD,
           correctAnswer: form.correctAnswer, explanation: form.explanation,
+          explanationA: form.explanationA ?? '', explanationB: form.explanationB ?? '',
+          explanationC: form.explanationC ?? '', explanationD: form.explanationD ?? '',
           difficulty: form.difficulty, status: form.status,
           categoryId: form.categoryId || null,
         }),
@@ -128,13 +134,35 @@ export default function EditQuestionPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700">Explanation *</label>
+            <label className="text-sm font-medium text-gray-700">Key idea *</label>
             <textarea
               className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              rows={2}
+              placeholder="One line naming the principle this question tests..."
               value={form.explanation}
               onChange={field('explanation')}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Why each option is right or wrong</p>
+              <p className="text-xs text-muted-foreground">
+                Optional. Fill these in and the learner sees their own option explained first,
+                then the correct one. Leave them blank and only the key idea is shown.
+              </p>
+            </div>
+            {OPTION_EXPLANATIONS.map((key, i) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-gray-600">Option {String.fromCharCode(65 + i)}</label>
+                <textarea
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                  value={form[key] ?? ''}
+                  onChange={field(key)}
+                />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

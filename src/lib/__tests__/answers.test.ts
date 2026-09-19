@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeAnswer, answerLetters, expectedCount, isAnswerCorrect } from '@/lib/answers'
+import {
+  normalizeAnswer, answerLetters, expectedCount, isAnswerCorrect,
+  explanationRows, splitExplanationRows,
+} from '@/lib/answers'
 
 describe('normalizeAnswer', () => {
   it('sorts letters so the order they were clicked does not matter', () => {
@@ -63,5 +66,77 @@ describe('answerLetters', () => {
     expect(answerLetters('A,C')).toEqual(['A', 'C'])
     expect(answerLetters('B')).toEqual(['B'])
     expect(answerLetters(null)).toEqual([])
+  })
+})
+
+describe('explanationRows', () => {
+  const base = {
+    optionA: 'Alpha', optionB: 'Beta', optionC: 'Gamma', optionD: 'Delta',
+    correctAnswer: 'C',
+    explanationA: 'no', explanationB: 'no', explanationC: 'yes', explanationD: 'no',
+  }
+
+  it('returns nothing when no per-option text was written', () => {
+    const { optionA, optionB, optionC, optionD, correctAnswer } = base
+    expect(explanationRows({ optionA, optionB, optionC, optionD, correctAnswer }, 'A')).toEqual([])
+  })
+
+  it('skips options that have text but no explanation', () => {
+    const rows = explanationRows({ ...base, explanationB: '   ' }, 'A')
+    expect(rows.map((r) => r.key)).toEqual(['A', 'C', 'D'])
+  })
+
+  it('skips explanations written against an option that does not exist', () => {
+    const rows = explanationRows({ ...base, explanationE: 'orphan' }, 'A')
+    expect(rows.map((r) => r.key)).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('marks the chosen and correct options', () => {
+    const rows = explanationRows(base, 'A')
+    expect(rows.find((r) => r.key === 'A')).toMatchObject({ chosen: true, correct: false })
+    expect(rows.find((r) => r.key === 'C')).toMatchObject({ chosen: false, correct: true })
+  })
+
+  it('treats every letter of a multiple-response answer as correct', () => {
+    const rows = explanationRows(
+      { ...base, optionE: 'Epsilon', explanationE: 'yes', correctAnswer: 'A,C' },
+      'C,E',
+    )
+    expect(rows.filter((r) => r.correct).map((r) => r.key)).toEqual(['A', 'C'])
+    expect(rows.filter((r) => r.chosen).map((r) => r.key)).toEqual(['C', 'E'])
+  })
+})
+
+describe('splitExplanationRows', () => {
+  const base = {
+    optionA: 'Alpha', optionB: 'Beta', optionC: 'Gamma', optionD: 'Delta',
+    correctAnswer: 'C',
+    explanationA: 'no', explanationB: 'no', explanationC: 'yes', explanationD: 'no',
+  }
+
+  it('leads with the answer the learner gave and the correct one', () => {
+    const { lead, rest } = splitExplanationRows(explanationRows(base, 'A'))
+    expect(lead.map((r) => r.key)).toEqual(['A', 'C'])
+    expect(rest.map((r) => r.key)).toEqual(['B', 'D'])
+  })
+
+  it('leads with one row when the learner was right', () => {
+    const { lead, rest } = splitExplanationRows(explanationRows(base, 'C'))
+    expect(lead.map((r) => r.key)).toEqual(['C'])
+    expect(rest.map((r) => r.key)).toEqual(['A', 'B', 'D'])
+  })
+
+  it('leads with the correct option when nothing was selected', () => {
+    const { lead, rest } = splitExplanationRows(explanationRows(base, null))
+    expect(lead.map((r) => r.key)).toEqual(['C'])
+    expect(rest.map((r) => r.key)).toEqual(['A', 'B', 'D'])
+  })
+
+  it('never repeats a row between lead and rest', () => {
+    const rows = explanationRows({ ...base, correctAnswer: 'A,C' }, 'A,B')
+    const { lead, rest } = splitExplanationRows(rows)
+    const overlap = lead.filter((l) => rest.some((r) => r.key === l.key))
+    expect(overlap).toEqual([])
+    expect(lead.length + rest.length).toBe(rows.length)
   })
 })

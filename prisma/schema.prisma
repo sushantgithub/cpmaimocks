@@ -312,7 +312,18 @@ model Question {
   /// One letter, or several comma separated in alphabetical order ("A,C") for
   /// a multiple-response question. Marked all-or-nothing, as PMI marks them.
   correctAnswer   String
+  /// The key idea: one line naming the principle the question tests. Shown
+  /// above the per-option explanations, and the only explanation older
+  /// questions carry.
   explanation     String         @db.Text
+  /// Why each option is right or wrong, one per option. Written so a learner
+  /// who picked B is told why B fails without reading all four.
+  explanationA    String?        @db.Text
+  explanationB    String?        @db.Text
+  explanationC    String?        @db.Text
+  explanationD    String?        @db.Text
+  explanationE    String?        @db.Text
+  explanationF    String?        @db.Text
   certificationId String
   categoryId      String?
   topicId         String?

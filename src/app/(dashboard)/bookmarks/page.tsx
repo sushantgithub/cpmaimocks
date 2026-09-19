@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast'
 import { BookmarkX, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { answerLetters } from '@/lib/answers'
+import { AnswerExplanation } from '@/components/exam/answer-explanation'
 
 interface BookmarkedQuestion {
   id: string
@@ -23,6 +24,12 @@ interface BookmarkedQuestion {
     optionF?: string | null
     correctAnswer: string
     explanation: string
+    explanationA?: string | null
+    explanationB?: string | null
+    explanationC?: string | null
+    explanationD?: string | null
+    explanationE?: string | null
+    explanationF?: string | null
     difficulty: string
     category?: { name: string } | null
     topic?: { name: string } | null
@@ -158,12 +165,8 @@ export default function BookmarksPage() {
                       ))}
                     </div>
 
-                    {q.explanation && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                        <p className="text-xs font-semibold text-blue-700 mb-1">Explanation</p>
-                        <p className="text-sm text-gray-700 leading-relaxed">{q.explanation}</p>
-                      </div>
-                    )}
+                    {/* No attempt behind a bookmark, so every option is shown. */}
+                    <AnswerExplanation question={q} selectedAnswer={null} expanded />
 
                     <div className="flex justify-end">
                       <Button

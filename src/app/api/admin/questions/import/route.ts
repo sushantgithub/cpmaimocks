@@ -8,6 +8,10 @@ interface ImportRow {
   question_id?: string; question: string; option_a: string; option_b: string
   option_c: string; option_d: string; option_e?: string; option_f?: string
   correct_answer: string; explanation: string
+  // Why each option is right or wrong. Optional: questions imported before
+  // these columns existed still render with the explanation alone.
+  explanation_a?: string; explanation_b?: string; explanation_c?: string
+  explanation_d?: string; explanation_e?: string; explanation_f?: string
   domain?: string; topic?: string; difficulty?: string; source?: string
   status?: string
   // Comma-separated labels that group questions across domains, e.g. the
@@ -76,6 +80,18 @@ export async function POST(req: Request) {
           continue
         }
 
+        // An explanation for an option that does not exist means the columns
+        // are misaligned — worth catching before hundreds of rows land.
+        const explanations: Record<string, string | undefined> = {
+          A: row.explanation_a, B: row.explanation_b, C: row.explanation_c,
+          D: row.explanation_d, E: row.explanation_e, F: row.explanation_f,
+        }
+        const orphan = OPTION_KEYS.find((k) => explanations[k]?.trim() && !options[k]?.trim())
+        if (orphan) {
+          errors.push(`Row ${rowNum}: explanation_${orphan.toLowerCase()} is filled in but option_${orphan.toLowerCase()} is empty`)
+          continue
+        }
+
         // Match the existing category by name or slug before creating a new one,
         // since Category.name is unique and would otherwise collide.
         let categoryId: string | undefined
@@ -128,6 +144,12 @@ export async function POST(req: Request) {
             optionF: row.option_f?.trim() || null,
             correctAnswer,
             explanation: row.explanation.trim(),
+            explanationA: row.explanation_a?.trim() || null,
+            explanationB: row.explanation_b?.trim() || null,
+            explanationC: row.explanation_c?.trim() || null,
+            explanationD: row.explanation_d?.trim() || null,
+            explanationE: row.explanation_e?.trim() || null,
+            explanationF: row.explanation_f?.trim() || null,
             difficulty,
             source: row.source?.trim(),
             tags: parseTags(row.tags),

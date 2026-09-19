@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '@/lib/answers'
+import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle
@@ -24,6 +25,12 @@ interface PracticeQuestion {
   optionF?: string | null
   correctAnswer: string
   explanation: string
+  explanationA?: string | null
+  explanationB?: string | null
+  explanationC?: string | null
+  explanationD?: string | null
+  explanationE?: string | null
+  explanationF?: string | null
   difficulty: string
   category?: string
   topic?: string
@@ -250,19 +257,12 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 'mt-5 rounded-xl border-2 p-4',
                 isCorrect ? 'border-green-300 bg-green-50' : 'border-red-200 bg-red-50'
               )}>
-                <div className="flex items-center gap-2 mb-2">
-                  {isCorrect ? (
-                    <><CheckCircle2 className="h-5 w-5 text-green-600" /><span className="font-semibold text-green-800">Correct!</span></>
-                  ) : (
-                    <><XCircle className="h-5 w-5 text-red-600" /><span className="font-semibold text-red-800">Incorrect</span>
-                    <span className="text-sm text-red-700">— Correct answer: <strong>{correctLetters.join(' and ')}</strong></span></>
-                  )}
-                </div>
-                {q.explanation && (
-                  <p className="text-sm text-gray-700 leading-relaxed border-t border-gray-200 pt-2 mt-2">
-                    {q.explanation}
-                  </p>
-                )}
+                <AnswerVerdict isCorrect={isCorrect} correctAnswer={q.correctAnswer} />
+                <AnswerExplanation
+                  question={q}
+                  selectedAnswer={selectedAnswer}
+                  className="border-t border-gray-200 pt-3 mt-3"
+                />
               </div>
             )}
 

@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { CheckCircle2, XCircle, MinusCircle, Trophy, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { answerLetters } from '@/lib/answers'
+import { AnswerExplanation } from '@/components/exam/answer-explanation'
 
 export default async function ResultsPage({ params }: { params: { attemptId: string } }) {
   const session = await auth()
@@ -140,10 +141,12 @@ export default async function ResultsPage({ params }: { params: { attemptId: str
                     })}
                   </div>
 
-                  <div className="ml-6 bg-blue-50 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-blue-700 mb-1">Explanation</p>
-                    <p className="text-sm text-blue-900 leading-relaxed">{q.explanation}</p>
-                  </div>
+                  <AnswerExplanation
+                    question={q}
+                    selectedAnswer={answer.selectedAnswer}
+                    expanded
+                    className="ml-6"
+                  />
 
                   <div className="ml-6 mt-2 flex gap-2">
                     <Badge variant="outline" className="text-xs capitalize">{q.difficulty.toLowerCase()}</Badge>

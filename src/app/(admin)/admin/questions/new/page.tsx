@@ -12,6 +12,7 @@ interface Category { id: string; name: string }
 const EMPTY = {
   text: '', optionA: '', optionB: '', optionC: '', optionD: '',
   correctAnswer: 'A', explanation: '', difficulty: 'MEDIUM',
+  explanationA: '', explanationB: '', explanationC: '', explanationD: '',
   categoryId: '', status: 'DRAFT',
 }
 
@@ -41,20 +42,38 @@ export default function NewQuestionPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // The import endpoint speaks the CSV column names, not form state.
           questions: [{
-            ...form,
+            question: form.text,
+            option_a: form.optionA,
+            option_b: form.optionB,
+            option_c: form.optionC,
+            option_d: form.optionD,
+            correct_answer: form.correctAnswer,
+            explanation: form.explanation,
+            explanation_a: form.explanationA,
+            explanation_b: form.explanationB,
+            explanation_c: form.explanationC,
+            explanation_d: form.explanationD,
+            difficulty: form.difficulty,
+            domain: categories.find(c => c.id === form.categoryId)?.name ?? '',
             status: publish ? 'PUBLISHED' : 'DRAFT',
-            category: categories.find(c => c.id === form.categoryId)?.name ?? '',
-            topic: '',
-            tags: '',
           }],
         }),
       })
-      if (!res.ok) throw new Error('Save failed')
+      const result = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(result?.error ?? 'Save failed')
+      // A row rejected by the importer still returns 200, so check the count
+      // rather than reporting a success that never happened.
+      if (!result?.imported) throw new Error(result?.errors?.[0] ?? 'Question was not saved')
       toast({ title: publish ? 'Question published' : 'Question saved as draft', variant: 'success' })
       router.push('/admin/questions')
-    } catch {
-      toast({ title: 'Failed to save', variant: 'destructive' })
+    } catch (err) {
+      toast({
+        title: 'Failed to save',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      })
     } finally { setSaving(false) }
   }
 
@@ -115,14 +134,35 @@ export default function NewQuestionPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700">Explanation *</label>
+            <label className="text-sm font-medium text-gray-700">Key idea *</label>
             <textarea
               className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
-              placeholder="Explain why the correct answer is right..."
+              rows={2}
+              placeholder="One line naming the principle this question tests..."
               value={form.explanation}
               onChange={field('explanation')}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Why each option is right or wrong</p>
+              <p className="text-xs text-muted-foreground">
+                Optional. Fill these in and the learner sees their own option explained first,
+                then the correct one. Leave them blank and only the key idea is shown.
+              </p>
+            </div>
+            {(['explanationA', 'explanationB', 'explanationC', 'explanationD'] as const).map((key, i) => (
+              <div key={key}>
+                <label className="text-xs font-medium text-gray-600">Option {String.fromCharCode(65 + i)}</label>
+                <textarea
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                  value={form[key]}
+                  onChange={field(key)}
+                />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

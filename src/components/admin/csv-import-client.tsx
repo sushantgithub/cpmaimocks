@@ -21,6 +21,8 @@ interface RowData {
   question_id?: string; question: string; option_a: string; option_b: string
   option_c: string; option_d: string; option_e?: string; option_f?: string
   correct_answer: string; explanation: string
+  explanation_a?: string; explanation_b?: string; explanation_c?: string
+  explanation_d?: string; explanation_e?: string; explanation_f?: string
   domain?: string; topic?: string; difficulty?: string; source?: string
   tags?: string
   is_test?: string
@@ -42,6 +44,13 @@ function validateRow(row: RowData, index: number): string[] {
   if (!row.correct_answer?.trim()) errors.push('Missing correct answer')
   else if (!ANSWER_PATTERN.test(row.correct_answer.trim())) errors.push('Correct answer must be A-F, or several separated by commas (e.g. A,C)')
   if (!row.explanation?.trim()) errors.push('Missing explanation')
+  // Per-option explanations are optional, but one written against an option
+  // that does not exist means the columns have slipped.
+  for (const k of ['a', 'b', 'c', 'd', 'e', 'f'] as const) {
+    const why = row[`explanation_${k}` as keyof RowData] as string | undefined
+    const opt = row[`option_${k}` as keyof RowData] as string | undefined
+    if (why?.trim() && !opt?.trim()) errors.push(`explanation_${k} is filled in but option_${k} is empty`)
+  }
   if (row.difficulty && !VALID_DIFFICULTIES.includes(row.difficulty.trim())) errors.push('Difficulty must be EASY, MEDIUM, or HARD')
   return errors
 }
@@ -143,7 +152,7 @@ export function CsvImportClient() {
             Your CSV must have these column headers (case sensitive):
           </p>
           <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono overflow-x-auto">
-            question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,domain,topic,difficulty,source,tags,is_test,option_e,option_f
+            question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,explanation_a,explanation_b,explanation_c,explanation_d,domain,topic,difficulty,source,tags,is_test,option_e,option_f,explanation_e,explanation_f
           </div>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             {[
@@ -154,7 +163,11 @@ export function CsvImportClient() {
               { col: 'option_c', req: true, note: 'Option C text' },
               { col: 'option_d', req: true, note: 'Option D text' },
               { col: 'correct_answer', req: true, note: 'A-F, or A,C for select-two' },
-              { col: 'explanation', req: true, note: 'Detailed explanation' },
+              { col: 'explanation', req: true, note: 'Key idea — the principle tested' },
+              { col: 'explanation_a', req: false, note: 'Why option A is right or wrong' },
+              { col: 'explanation_b', req: false, note: 'Why option B is right or wrong' },
+              { col: 'explanation_c', req: false, note: 'Why option C is right or wrong' },
+              { col: 'explanation_d', req: false, note: 'Why option D is right or wrong' },
               { col: 'domain', req: false, note: 'CPMAI domain name' },
               { col: 'topic', req: false, note: 'Topic within domain' },
               { col: 'difficulty', req: false, note: 'EASY, MEDIUM, or HARD' },
@@ -163,6 +176,8 @@ export function CsvImportClient() {
               { col: 'is_test', req: false, note: 'true to mark as throwaway test data' },
               { col: 'option_e', req: false, note: 'Only for 5-option questions' },
               { col: 'option_f', req: false, note: 'Only for 6-option questions' },
+              { col: 'explanation_e', req: false, note: 'Only if option_e is used' },
+              { col: 'explanation_f', req: false, note: 'Only if option_f is used' },
             ].map((c) => (
               <div key={c.col} className="flex items-start gap-1">
                 <span className={`font-mono ${c.req ? 'text-red-600' : 'text-gray-500'}`}>{c.col}</span>

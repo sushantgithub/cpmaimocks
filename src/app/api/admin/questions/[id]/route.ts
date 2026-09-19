@@ -30,7 +30,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!answer) return NextResponse.json({ error: 'correctAnswer must be one or more of A-F' }, { status: 400 })
     data.correctAnswer = answer
   }
-  for (const key of ['optionE', 'optionF'] as const) {
+  // Nullable text: an empty string clears the field rather than storing "".
+  const NULLABLE_TEXT = [
+    'optionE', 'optionF',
+    'explanationA', 'explanationB', 'explanationC',
+    'explanationD', 'explanationE', 'explanationF',
+  ] as const
+  for (const key of NULLABLE_TEXT) {
     if (body[key] === null || typeof body[key] === 'string') data[key] = body[key]?.trim() || null
   }
   if (body.difficulty !== undefined) {
