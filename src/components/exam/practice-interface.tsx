@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -57,6 +57,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null)
   const submitted = useRef(false)
+  const explanationRef = useRef<HTMLDivElement>(null)
 
   const q = questions[current]
   const selectCount = expectedCount(q.correctAnswer)
@@ -68,6 +69,13 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const totalAnswered = Object.values(answers).filter(Boolean).length
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
+
+  // Feedback sits below the options and can otherwise appear off-screen on
+  // smaller displays, making it look as though no explanation was shown.
+  useEffect(() => {
+    if (!revealed) return
+    explanationRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [current, revealed])
 
   function selectAnswer(opt: string) {
     if (answers[q.id]) return // lock once answered
@@ -121,7 +129,17 @@ export function PracticeInterface({ attemptId, questions }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers }),
       })
-      if (!res.ok) throw new Error('Submission failed')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        // A retry can arrive after the server has already completed the
+        // attempt but before the first response/navigation reached the client.
+        // In that case the submission succeeded; take the learner to results.
+        if (res.status === 409 && data.code === 'ALREADY_SUBMITTED') {
+          router.push(`/results/${attemptId}`)
+          return
+        }
+        throw new Error('Submission failed')
+      }
       router.push(`/results/${attemptId}`)
     } catch {
       toast({ title: 'Submission failed. Please try again.', variant: 'destructive' })
@@ -253,7 +271,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
 
             {/* Result + Explanation (shown after answering) */}
             {revealed && (
-              <div className={cn(
+              <div ref={explanationRef} className={cn(
                 'mt-5 rounded-xl border-2 p-4',
                 isCorrect ? 'border-green-300 bg-green-50' : 'border-red-200 bg-red-50'
               )}>
@@ -297,13 +315,18 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 }
               </button>
 
-              <Button
-                size="sm"
-                onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-                disabled={current === questions.length - 1}
-              >
-                Next<ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
+              {current === questions.length - 1 ? (
+                <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+                  <Send className="h-4 w-4 mr-1" />Finish
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
+                >
+                  Next<ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              )}
             </div>
           </div>
         </main>
