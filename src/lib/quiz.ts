@@ -190,8 +190,20 @@ export async function submitExam(
     )
   }, { timeout: 15000, maxWait: 5000 })
 
+  try {
+    await prisma.analyticsEvent.create({
+      data: {
+        event: 'EXAM_COMPLETED',
+        userId: attempt.userId,
+        metadata: { attemptId, score, expired },
+      },
+    })
+  } catch (err) {
+    console.error('[SubmitExam] analytics failed', err)
+  }
+
   return {
-    score:
+    score,
     correctCount,
     incorrectCount,
     unansweredCount,
