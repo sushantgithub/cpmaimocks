@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
+import { freshExamHref } from '@/lib/exam-links'
 import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
 
 export default async function ExamsPage() {
@@ -112,7 +113,7 @@ export default async function ExamsPage() {
                   </Button>
                 ) : (
                   <Button className="w-full" asChild>
-                    <Link href={`/exams/${exam.id}?fresh=1`}>{prev ? (samplesPool ? 'Continue Practice' : 'Retake Exam') : 'Start Exam'}</Link>
+                    <Link href={freshExamHref(exam.id)}>{prev ? (samplesPool ? 'Continue Practice' : 'Retake Exam') : 'Start Exam'}</Link>
                   </Button>
                 )}
               </CardContent>
