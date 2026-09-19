@@ -328,11 +328,24 @@ export async function getAttemptResults(attemptId: string, userId: string) {
 export async function getUserStats(userId: string) {
   const attempts = await prisma.examAttempt.findMany({
     where: { userId, status: 'COMPLETED' },
-    select: { score: true, correctCount: true, totalQuestions: true, examId: true },
+    select: {
+      score: true,
+      correctCount: true,
+      totalQuestions: true,
+      examId: true,
+      answers: {
+        where: { selectedAnswer: { not: null } },
+        select: { questionId: true },
+      },
+    },
   })
 
   const totalExams = attempts.length
-  const totalQuestions = attempts.reduce((s, a) => s + a.totalQuestions, 0)
+  // "Questions Done" is a learning-progress metric, not an attempt-volume
+  // metric. Repeating the same question in later mocks must not inflate it.
+  const totalQuestions = new Set(
+    attempts.flatMap((attempt) => attempt.answers.map((answer) => answer.questionId))
+  ).size
   const avgScore = totalExams > 0
     ? attempts.reduce((s, a) => s + (a.score ?? 0), 0) / totalExams
     : 0
