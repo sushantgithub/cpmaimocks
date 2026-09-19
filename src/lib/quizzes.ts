@@ -42,12 +42,26 @@ async function poolFilter(key: QuizKey) {
       include: { certification: { select: { id: true, name: true } } },
     })
     if (!category) return null
+
+    // A question claimed by a tag quiz belongs to that quiz alone, so the
+    // algorithm questions sitting in this domain are served by the Algorithms
+    // drill instead of appearing in both and completing one by way of the other.
+    const claimed = await prisma.quiz.findMany({
+      where: { isActive: true, certificationId: category.certificationId },
+      select: { tag: true },
+    })
+    const claimedTags = Array.from(new Set(claimed.map((q) => q.tag)))
+
     return {
       title: category.name,
       description: null as string | null,
       certificationId: category.certificationId,
       certificationName: category.certification.name,
-      where: { status: 'PUBLISHED' as const, categoryId: category.id },
+      where: {
+        status: 'PUBLISHED' as const,
+        categoryId: category.id,
+        ...(claimedTags.length > 0 ? { NOT: { tags: { hasSome: claimedTags } } } : {}),
+      },
     }
   }
   if (kind === 'tag') {
