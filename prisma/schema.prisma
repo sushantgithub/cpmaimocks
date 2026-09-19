@@ -356,7 +356,12 @@ model MockExam {
   slug                String     @unique
   certificationId     String
   description         String?
+  /// How many questions are linked to this exam: the pool it draws from.
   questionCount       Int
+  /// How many of that pool a single attempt serves. Null serves all of them,
+  /// which is what a full-length mock does; a domain mock sets it to 10.
+  questionsPerAttempt Int?
+  /// Zero means untimed, which is how domain mocks run.
   timeLimitMinutes    Int
   passingScore        Int        @default(70)
   status              ExamStatus @default(DRAFT)

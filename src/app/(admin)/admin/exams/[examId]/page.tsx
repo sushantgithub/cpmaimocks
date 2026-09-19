@@ -30,6 +30,7 @@ interface Exam {
   description: string | null
   timeLimitMinutes: number
   passingScore: number
+  questionsPerAttempt: number | null
   status: string
   requireSubscription: boolean
   randomizeQuestions: boolean
@@ -48,7 +49,7 @@ export default function EditExamPage() {
   const [autoFillCount, setAutoFillCount] = useState('120')
   const [autoFilling, setAutoFilling] = useState(false)
   const [form, setForm] = useState({
-    title: '', description: '', timeLimitMinutes: '120', passingScore: '70',
+    title: '', description: '', timeLimitMinutes: '120', passingScore: '70', questionsPerAttempt: '',
     requireSubscription: true, randomizeQuestions: true, status: 'DRAFT',
   })
 
@@ -62,6 +63,7 @@ export default function EditExamPage() {
           description: data.description ?? '',
           timeLimitMinutes: String(data.timeLimitMinutes),
           passingScore: String(data.passingScore),
+          questionsPerAttempt: data.questionsPerAttempt === null ? '' : String(data.questionsPerAttempt),
           requireSubscription: data.requireSubscription,
           randomizeQuestions: data.randomizeQuestions,
           status: data.status,
@@ -155,6 +157,7 @@ export default function EditExamPage() {
           description: form.description || null,
           timeLimitMinutes: parseInt(form.timeLimitMinutes),
           passingScore: parseInt(form.passingScore),
+          questionsPerAttempt: form.questionsPerAttempt.trim() === '' ? null : parseInt(form.questionsPerAttempt),
           requireSubscription: form.requireSubscription,
           randomizeQuestions: form.randomizeQuestions,
           status: form.status,
@@ -205,11 +208,20 @@ export default function EditExamPage() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Time Limit (minutes)</label>
-            <input type="number" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.timeLimitMinutes} onChange={e => setForm(p => ({ ...p, timeLimitMinutes: e.target.value }))} />
+            <input type="number" min={0} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.timeLimitMinutes} onChange={e => setForm(p => ({ ...p, timeLimitMinutes: e.target.value }))} />
+            <p className="text-xs text-muted-foreground mt-1">Zero means untimed.</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Passing Score (%)</label>
-            <input type="number" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.passingScore} onChange={e => setForm(p => ({ ...p, passingScore: e.target.value }))} />
+            <input type="number" min={1} max={100} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.passingScore} onChange={e => setForm(p => ({ ...p, passingScore: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Questions per attempt</label>
+            <input type="number" min={1} placeholder="All of them" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.questionsPerAttempt} onChange={e => setForm(p => ({ ...p, questionsPerAttempt: e.target.value }))} />
+            <p className="text-xs text-muted-foreground mt-1">
+              How many of the {assignedIds.length} assigned questions one attempt serves.
+              Leave empty to serve the whole pool.
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Status</label>

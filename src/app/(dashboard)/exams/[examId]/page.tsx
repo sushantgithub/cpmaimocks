@@ -45,18 +45,23 @@ export default async function ExamPage({ params }: { params: { examId: string } 
 
   if (running) {
     const elapsed = Math.floor((Date.now() - running.startedAt.getTime()) / 1000)
-    // Resume only while the attempt still mirrors the exam. If its questions
-    // have since been changed, resuming would pin the taker to the old set —
-    // someone who started when the exam held one question would otherwise be
-    // served that same question until the time limit expired.
-    const attemptQuestionIds = new Set(running.answers.map((a) => a.question.id))
-    const matchesExam =
-      attemptQuestionIds.size === questions.length &&
-      questions.every((q) => attemptQuestionIds.has(q.id))
+    // An attempt receives a sample of the pool, so it can never equal a freshly
+    // drawn one and cannot be validated by comparison. What has to hold is that
+    // every question it was served is still published and still linked to this
+    // exam: that still catches a question withdrawn or unlinked mid-attempt,
+    // without abandoning every resume the moment sampling is switched on.
+    const pool = await prisma.mockExamQuestion.findMany({
+      where: { examId: exam.id, question: { status: 'PUBLISHED' } },
+      select: { questionId: true },
+    })
+    const poolIds = new Set(pool.map((row) => row.questionId))
+    const attemptQuestionIds = running.answers.map((a) => a.question.id)
+    const stillValid =
+      attemptQuestionIds.length > 0 && attemptQuestionIds.every((id) => poolIds.has(id))
 
     const expired = limitSeconds > 0 && elapsed >= limitSeconds
 
-    if (!expired && matchesExam) {
+    if (!expired && stillValid) {
       const initialAnswers = Object.fromEntries(
         running.answers
           .filter((a) => a.selectedAnswer)
@@ -78,7 +83,7 @@ export default async function ExamPage({ params }: { params: { examId: string } 
       )
     }
 
-    if (expired && matchesExam) {
+    if (expired && stillValid) {
       // Autosaved selections are the source of truth when the learner returns
       // after time has expired. submitExam merges them before grading.
       await submitExam(running.id, {})

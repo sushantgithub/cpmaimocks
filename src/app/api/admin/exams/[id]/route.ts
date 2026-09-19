@@ -29,9 +29,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const data: Record<string, unknown> = {}
   if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim()
   if (body.description === null || typeof body.description === 'string') data.description = body.description?.trim() || null
-  // sortOrder may be zero; the other two may not. A zero time limit expires the
-  // exam on its first timer tick, and a zero pass mark passes every attempt.
-  const MINIMUM: Record<string, number> = { timeLimitMinutes: 1, passingScore: 1, sortOrder: 0 }
+  // Zero is meaningful for a time limit: a domain mock is untimed. It is not
+  // meaningful for a pass mark, where it would pass every attempt.
+  const MINIMUM: Record<string, number> = { timeLimitMinutes: 0, passingScore: 1, sortOrder: 0 }
   for (const key of ['timeLimitMinutes', 'passingScore', 'sortOrder'] as const) {
     if (body[key] !== undefined) {
       const value = Number(body[key])
@@ -44,6 +44,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   if (data.passingScore !== undefined && (data.passingScore as number) > 100) {
     return NextResponse.json({ error: 'passingScore cannot exceed 100' }, { status: 400 })
+  }
+  // Null serves the whole pool. A number must be at least 1, and is capped
+  // below against the pool size once that is known.
+  if (body.questionsPerAttempt !== undefined) {
+    if (body.questionsPerAttempt === null || body.questionsPerAttempt === '') {
+      data.questionsPerAttempt = null
+    } else {
+      const value = Number(body.questionsPerAttempt)
+      if (!Number.isInteger(value) || value < 1) {
+        return NextResponse.json(
+          { error: 'questionsPerAttempt must be a whole number of at least 1, or empty to serve the whole pool' },
+          { status: 400 })
+      }
+      data.questionsPerAttempt = value
+    }
   }
   for (const key of ['requireSubscription', 'randomizeQuestions', 'showExplanations'] as const) {
     if (typeof body[key] === 'boolean') data[key] = body[key]

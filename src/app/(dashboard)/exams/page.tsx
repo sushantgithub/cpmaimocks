@@ -17,6 +17,8 @@ export default async function ExamsPage() {
       where: { status: 'PUBLISHED' },
       orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
       include: { certification: { select: { id: true, name: true } } },
+      // questionsPerAttempt comes through the model, and the card needs both it
+      // and questionCount to describe a sample rather than the whole pool.
     }),
     prisma.examAttempt.findMany({
       where: { userId, status: 'COMPLETED', examId: { not: null } },
@@ -42,7 +44,7 @@ export default async function ExamsPage() {
       <div>
         <h1 className="text-2xl font-bold">Mock Exams</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Full-length timed exams in real exam format
+          Timed and untimed exams drawn from each certification&rsquo;s question pool
           {certificationNames.length > 0 && ` for ${certificationNames.join(', ')}`}.
         </p>
       </div>
@@ -64,6 +66,11 @@ export default async function ExamsPage() {
           const locked = exam.requireSubscription && !canAccess(exam.certification.id)
           const prev = attemptMap.get(exam.id)
           const passed = prev && prev.score >= exam.passingScore
+          // A domain mock serves part of its pool, so the card has to say how
+          // many an attempt gives rather than how many exist.
+          const perAttempt = exam.questionsPerAttempt
+          const samplesPool = perAttempt !== null && perAttempt > 0 && perAttempt < exam.questionCount
+          const served = samplesPool ? perAttempt : exam.questionCount
 
           return (
             <Card key={exam.id} className={locked ? 'opacity-60' : ''}>
@@ -80,13 +87,21 @@ export default async function ExamsPage() {
                 </div>
                 {exam.description && <p className="text-sm text-muted-foreground mb-3">{exam.description}</p>}
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                  <span className="flex items-center gap-1"><HelpCircle className="h-3.5 w-3.5" />{exam.questionCount} questions</span>
-                  <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{exam.timeLimitMinutes} mins</span>
+                  <span className="flex items-center gap-1">
+                    <HelpCircle className="h-3.5 w-3.5" />
+                    {served} question{served === 1 ? '' : 's'}
+                    {samplesPool && <span className="text-gray-400"> of {exam.questionCount}</span>}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {exam.timeLimitMinutes > 0 ? `${exam.timeLimitMinutes} mins` : 'Untimed'}
+                  </span>
                   <span>Pass: {exam.passingScore}%</span>
                 </div>
                 {prev && (
                   <p className="text-xs text-muted-foreground mb-3">
                     Last attempt: {Math.round(prev.score)}% — {prev.date.toLocaleDateString()}
+                    {samplesPool && <span> · a new set is drawn each attempt</span>}
                   </p>
                 )}
                 {locked ? (

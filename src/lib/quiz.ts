@@ -49,11 +49,45 @@ export async function getExamQuestions(examId: string) {
 
   let questions = exam.questions.map((eq) => eq.question)
 
-  if (exam.randomizeQuestions) {
-    questions = questions.sort(() => Math.random() - 0.5)
-  }
+  return { exam, questions: selectForAttempt(questions, exam.randomizeQuestions, exam.questionsPerAttempt) }
+}
 
-  return { exam, questions }
+/**
+ * Fisher-Yates. `sort(() => Math.random() - 0.5)` is not a shuffle: the
+ * comparator is inconsistent, so the result stays biased towards the original
+ * order. That bias did not matter while every attempt received the whole pool;
+ * it does once a sample decides which questions a learner sees at all.
+ */
+export function shuffle<T>(items: T[]): T[] {
+  const out = [...items]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
+/**
+ * What one attempt is served. A domain mock links a pool of sixty and serves
+ * ten of it; a full-length mock leaves `perAttempt` null and serves everything.
+ *
+ * Sampling runs after the caller has filtered to published questions, so a
+ * withdrawn question cannot take up a slot. With randomisation off the sample
+ * is the first N in the exam's own order, which keeps a fixed-order exam
+ * reproducible.
+ *
+ * Attempts are independent: each draws from the whole pool, so a question can
+ * recur across attempts. That matches how this exam already behaved when it
+ * served the full pool every time.
+ */
+export function selectForAttempt<T>(
+  pool: T[],
+  randomize: boolean,
+  perAttempt: number | null,
+): T[] {
+  const ordered = randomize ? shuffle(pool) : [...pool]
+  if (perAttempt === null || perAttempt <= 0 || perAttempt >= ordered.length) return ordered
+  return ordered.slice(0, perAttempt)
 }
 
 export async function getPracticeQuestions(userId: string, config: PracticeConfig) {
