@@ -74,7 +74,7 @@ export default async function ExamPage({ params }: { params: { examId: string } 
       return (
         <ExamInterface
           attemptId={running.id}
-          exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore }}
+          exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: exam.showExplanations }}
           timeLeftSeconds={limitSeconds > 0 ? Math.max(0, limitSeconds - elapsed) : 0}
           questions={running.answers.map((a) => toExamQuestion(a.question))}
           initialAnswers={initialAnswers}
@@ -110,7 +110,7 @@ export default async function ExamPage({ params }: { params: { examId: string } 
   return (
     <ExamInterface
       attemptId={attempt.id}
-      exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore }}
+      exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: exam.showExplanations }}
       timeLeftSeconds={limitSeconds}
       questions={questions.map(toExamQuestion)}
     />
