@@ -41,7 +41,8 @@ export function answerForFinalScoring(args: {
 }
 
 export function nextReviewIndex(current: number, pending: number[]): number | null {
-  return pending.find((index) => index > current)
-    ?? pending.find((index) => index !== current)
-    ?? null
+  // Review is a forward-only pass through the questions that were unfinished
+  // when review started. Do not wrap to earlier questions: once the last
+  // pending question is completed, review should finish.
+  return pending.find((index) => index > current) ?? null
 }
