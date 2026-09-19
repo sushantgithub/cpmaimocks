@@ -9,13 +9,14 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import type { ExamQuestion } from '@/types'
 import { answerLetters, normalizeAnswer } from '@/lib/answers'
+import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import {
   Flag, ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu
 } from 'lucide-react'
 
 interface Props {
   attemptId: string
-  exam: { id: string; title: string; timeLimitMinutes: number; passingScore: number }
+  exam: { id: string; title: string; timeLimitMinutes: number; passingScore: number; showExplanations: boolean }
   timeLeftSeconds: number
   questions: ExamQuestion[]
   initialAnswers?: Record<string, string>
@@ -31,6 +32,8 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const [showPanel, setShowPanel] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [feedback, setFeedback] = useState<Record<string, any>>({})
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
   const submitted = useRef(false)
   const deadline = useRef(timeLeftSeconds > 0 ? Date.now() + timeLeftSeconds * 1000 : null)
   const dirty = useRef<Set<string>>(new Set())
@@ -148,6 +151,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
 
   function selectAnswer(opt: string) {
     if (timeLeft <= 0 && deadline.current !== null) return
+    if (feedback[q.id]) return
     dirty.current.add(q.id)
     setAnswers((prev) => {
       if (!multi) return { ...prev, [q.id]: opt }
@@ -159,6 +163,47 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
         : current.length >= q.selectCount ? current : [...current, opt]
       return { ...prev, [q.id]: normalizeAnswer(next.join(',')) }
     })
+  }
+
+  async function revealCurrentFeedback() {
+    const selected = answers[q.id]
+    if (!selected || feedback[q.id] || feedbackLoading) return
+    if (multi && answerLetters(selected).length !== q.selectCount) {
+      toast({ title: `Select ${q.selectCount} answers first.`, variant: 'destructive' })
+      return
+    }
+
+    setFeedbackLoading(true)
+    try {
+      const res = await fetch(`/api/attempts/${attemptId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: q.id, selectedAnswer: selected }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not load feedback')
+
+      // The server has now persisted and locked this answer, so it no longer
+      // needs to participate in the normal autosave queue.
+      dirty.current.delete(q.id)
+      setAnswers((prev) => ({ ...prev, [q.id]: data.selectedAnswer }))
+      setFeedback((prev) => ({ ...prev, [q.id]: data }))
+      requestAnimationFrame(() => {
+        document.getElementById(`exam-feedback-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : 'Could not load feedback', variant: 'destructive' })
+    } finally {
+      setFeedbackLoading(false)
+    }
+  }
+
+  function nextQuestion() {
+    if (exam.showExplanations && answers[q.id] && !feedback[q.id]) {
+      void revealCurrentFeedback()
+      return
+    }
+    setCurrent((current) => Math.min(questions.length - 1, current + 1))
   }
 
   function toggleMark() {
@@ -258,6 +303,27 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               })}
             </div>
 
+            {exam.showExplanations && feedback[q.id] && (
+              <div
+                id={`exam-feedback-${q.id}`}
+                tabIndex={-1}
+                className={cn(
+                  'mt-5 rounded-xl border-2 p-4',
+                  feedback[q.id].isCorrect ? 'border-green-300 bg-green-50' : 'border-red-200 bg-red-50'
+                )}
+              >
+                <AnswerVerdict
+                  isCorrect={feedback[q.id].isCorrect}
+                  correctAnswer={feedback[q.id].correctAnswer}
+                />
+                <AnswerExplanation
+                  question={{ ...q, ...feedback[q.id] }}
+                  selectedAnswer={feedback[q.id].selectedAnswer}
+                  className="border-t border-gray-200 pt-3 mt-3"
+                />
+              </div>
+            )}
+
           </div>
           </div>
 
@@ -288,8 +354,9 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                   <Send className="h-3.5 w-3.5 mr-1.5" />Finish
                 </Button>
               ) : (
-                <Button size="sm" onClick={() => setCurrent((c) => c + 1)}>
-                  Next<ChevronRight className="h-4 w-4 ml-1" />
+                <Button size="sm" onClick={nextQuestion} loading={feedbackLoading}>
+                  {exam.showExplanations && answers[q.id] && !feedback[q.id] ? 'Check Answer' : 'Next'}
+                  {!feedbackLoading && <ChevronRight className="h-4 w-4 ml-1" />}
                 </Button>
               )}
             </div>
