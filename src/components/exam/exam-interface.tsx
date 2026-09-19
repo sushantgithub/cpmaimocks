@@ -46,8 +46,18 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers }),
       })
-      if (!res.ok) throw new Error('Submission failed')
-      if (auto) toast({ title: 'Time up! Exam auto-submitted.', variant: 'default' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        if (body.code === 'ALREADY_SUBMITTED') {
+          router.push(`/results/${attemptId}`)
+          return
+        }
+        throw new Error(body.error || 'Submission failed')
+      }
+      const result = await res.json()
+      if (auto || result.expired) {
+        toast({ title: 'Time up! Exam submitted with your saved answers.', variant: 'default' })
+      }
       router.push(`/results/${attemptId}`)
     } catch {
       toast({ title: 'Submission failed. Please try again.', variant: 'destructive' })
