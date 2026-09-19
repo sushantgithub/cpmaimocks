@@ -92,10 +92,12 @@ export default async function ExamsPage() {
                     {served} question{served === 1 ? '' : 's'}
                     {samplesPool && <span className="text-gray-400"> of {exam.questionCount}</span>}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    {exam.timeLimitMinutes > 0 ? `${exam.timeLimitMinutes} mins` : 'Untimed'}
-                  </span>
+                  {exam.timeLimitMinutes > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {exam.timeLimitMinutes} mins
+                    </span>
+                  )}
                   <span>Pass: {exam.passingScore}%</span>
                 </div>
                 {prev && (
