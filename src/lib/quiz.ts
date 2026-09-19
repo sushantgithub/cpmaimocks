@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import type { PracticeConfig } from '@/types'
+import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
 
 export async function getExamQuestions(examId: string) {
   const exam = await prisma.mockExam.findUnique({
@@ -20,10 +21,15 @@ export async function getExamQuestions(examId: string) {
               optionB: true,
               optionC: true,
               optionD: true,
+              optionE: true,
+              optionF: true,
+              // The count alone, never which ones: enough to render checkboxes
+              // and say "select two" without giving the answer away.
+              correctAnswer: true,
               difficulty: true,
               category: { select: { name: true } },
               topic: { select: { name: true } },
-              // correctAnswer and explanation NOT returned before submission
+              // explanation NOT returned before submission
             },
           },
         },
@@ -86,6 +92,9 @@ export async function getPracticeQuestions(userId: string, config: PracticeConfi
       optionB: true,
       optionC: true,
       optionD: true,
+      optionE: true,
+      optionF: true,
+      correctAnswer: true,
       difficulty: true,
       category: { select: { name: true } },
       topic: { select: { name: true } },
@@ -118,8 +127,8 @@ export async function submitExam(
   let unansweredCount = 0
 
   const answerUpdates = attempt.answers.map((ea) => {
-    const selected = answers[ea.questionId] ?? null
-    const isCorrect = selected ? selected === ea.question.correctAnswer : null
+    const selected = normalizeAnswer(answers[ea.questionId]) || null
+    const isCorrect = selected ? isAnswerCorrect(selected, ea.question.correctAnswer) : null
 
     if (isCorrect === true) correctCount++
     else if (isCorrect === false) incorrectCount++
@@ -169,6 +178,8 @@ export async function getAttemptResults(attemptId: string, userId: string) {
               optionB: true,
               optionC: true,
               optionD: true,
+              optionE: true,
+              optionF: true,
               correctAnswer: true,
               explanation: true,
               difficulty: true,

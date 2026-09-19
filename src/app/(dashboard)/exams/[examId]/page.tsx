@@ -5,10 +5,13 @@ import { getExamQuestions } from '@/lib/quiz'
 import { redirect } from 'next/navigation'
 import { ExamInterface } from '@/components/exam/exam-interface'
 import type { ExamQuestion } from '@/types'
+import { expectedCount } from '@/lib/answers'
 
 const questionSelect = {
   id: true, questionId: true, text: true,
   optionA: true, optionB: true, optionC: true, optionD: true,
+  optionE: true, optionF: true,
+  correctAnswer: true,
   difficulty: true,
   category: { select: { name: true } },
   topic: { select: { name: true } },
@@ -89,6 +92,8 @@ export default async function ExamPage({ params }: { params: { examId: string } 
 function toExamQuestion(q: {
   id: string; questionId: string; text: string
   optionA: string; optionB: string; optionC: string; optionD: string
+  optionE?: string | null; optionF?: string | null
+  correctAnswer: string
   difficulty: ExamQuestion['difficulty']
   category?: { name: string } | null
   topic?: { name: string } | null
@@ -101,6 +106,10 @@ function toExamQuestion(q: {
     optionB: q.optionB,
     optionC: q.optionC,
     optionD: q.optionD,
+    optionE: q.optionE,
+    optionF: q.optionF,
+    // Only the number reaches the browser, never the letters themselves.
+    selectCount: expectedCount(q.correctAnswer),
     difficulty: q.difficulty,
     category: q.category?.name,
     topic: q.topic?.name,

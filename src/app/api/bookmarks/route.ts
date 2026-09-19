@@ -18,6 +18,8 @@ export async function GET() {
           optionB: true,
           optionC: true,
           optionD: true,
+          optionE: true,
+          optionF: true,
           correctAnswer: true,
           explanation: true,
           difficulty: true,

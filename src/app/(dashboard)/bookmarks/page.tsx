@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
 import { BookmarkX, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { answerLetters } from '@/lib/answers'
 
 interface BookmarkedQuestion {
   id: string
@@ -18,6 +19,8 @@ interface BookmarkedQuestion {
     optionB: string
     optionC: string
     optionD: string
+    optionE?: string | null
+    optionF?: string | null
     correctAnswer: string
     explanation: string
     difficulty: string
@@ -97,12 +100,15 @@ export default function BookmarksPage() {
         bookmarks.map((b) => {
           const q = b.question
           const isExpanded = expanded.has(b.id)
+          const correctKeys = answerLetters(q.correctAnswer)
           const OPTIONS = [
             { key: 'A', text: q.optionA },
             { key: 'B', text: q.optionB },
             { key: 'C', text: q.optionC },
             { key: 'D', text: q.optionD },
-          ]
+            { key: 'E', text: q.optionE },
+            { key: 'F', text: q.optionF },
+          ].filter((o) => o.text)
 
           return (
             <Card key={b.id} className="overflow-hidden">
@@ -134,14 +140,14 @@ export default function BookmarksPage() {
                           key={opt.key}
                           className={cn(
                             'flex items-start gap-3 p-3 rounded-lg border',
-                            opt.key === q.correctAnswer
+                            correctKeys.includes(opt.key)
                               ? 'border-green-400 bg-green-50'
                               : 'border-gray-200 bg-gray-50'
                           )}
                         >
                           <span className={cn(
                             'flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center text-xs font-bold',
-                            opt.key === q.correctAnswer
+                            correctKeys.includes(opt.key)
                               ? 'border-green-500 bg-green-500 text-white'
                               : 'border-gray-300 text-gray-600'
                           )}>

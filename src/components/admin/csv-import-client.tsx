@@ -10,7 +10,8 @@ import { Upload, AlertCircle, CheckCircle2, X, FileText } from 'lucide-react'
 
 const REQUIRED_COLS = ['question', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation']
 const VALID_DIFFICULTIES = ['EASY', 'MEDIUM', 'HARD', 'easy', 'medium', 'hard']
-const VALID_ANSWERS = ['A', 'B', 'C', 'D', 'a', 'b', 'c', 'd']
+// One letter, or several comma separated for a multiple-response question.
+const ANSWER_PATTERN = /^[A-Fa-f](\s*,\s*[A-Fa-f])*$/
 
 interface Certification {
   id: string; name: string; slug: string; fullName?: string | null
@@ -18,7 +19,8 @@ interface Certification {
 
 interface RowData {
   question_id?: string; question: string; option_a: string; option_b: string
-  option_c: string; option_d: string; correct_answer: string; explanation: string
+  option_c: string; option_d: string; option_e?: string; option_f?: string
+  correct_answer: string; explanation: string
   domain?: string; topic?: string; difficulty?: string; source?: string
   tags?: string
   is_test?: string
@@ -38,7 +40,7 @@ function validateRow(row: RowData, index: number): string[] {
   if (!row.option_c?.trim()) errors.push('Missing option C')
   if (!row.option_d?.trim()) errors.push('Missing option D')
   if (!row.correct_answer?.trim()) errors.push('Missing correct answer')
-  else if (!VALID_ANSWERS.includes(row.correct_answer.trim())) errors.push('Correct answer must be A, B, C, or D')
+  else if (!ANSWER_PATTERN.test(row.correct_answer.trim())) errors.push('Correct answer must be A-F, or several separated by commas (e.g. A,C)')
   if (!row.explanation?.trim()) errors.push('Missing explanation')
   if (row.difficulty && !VALID_DIFFICULTIES.includes(row.difficulty.trim())) errors.push('Difficulty must be EASY, MEDIUM, or HARD')
   return errors
@@ -141,7 +143,7 @@ export function CsvImportClient() {
             Your CSV must have these column headers (case sensitive):
           </p>
           <div className="bg-gray-900 text-green-400 rounded-lg p-3 text-xs font-mono overflow-x-auto">
-            question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,domain,topic,difficulty,source,tags,is_test
+            question_id,question,option_a,option_b,option_c,option_d,correct_answer,explanation,domain,topic,difficulty,source,tags,is_test,option_e,option_f
           </div>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             {[
@@ -151,7 +153,7 @@ export function CsvImportClient() {
               { col: 'option_b', req: true, note: 'Option B text' },
               { col: 'option_c', req: true, note: 'Option C text' },
               { col: 'option_d', req: true, note: 'Option D text' },
-              { col: 'correct_answer', req: true, note: 'A, B, C, or D' },
+              { col: 'correct_answer', req: true, note: 'A-F, or A,C for select-two' },
               { col: 'explanation', req: true, note: 'Detailed explanation' },
               { col: 'domain', req: false, note: 'CPMAI domain name' },
               { col: 'topic', req: false, note: 'Topic within domain' },
@@ -159,6 +161,8 @@ export function CsvImportClient() {
               { col: 'source', req: false, note: 'Optional reference' },
               { col: 'tags', req: false, note: 'Comma-separated, e.g. algorithm' },
               { col: 'is_test', req: false, note: 'true to mark as throwaway test data' },
+              { col: 'option_e', req: false, note: 'Only for 5-option questions' },
+              { col: 'option_f', req: false, note: 'Only for 6-option questions' },
             ].map((c) => (
               <div key={c.col} className="flex items-start gap-1">
                 <span className={`font-mono ${c.req ? 'text-red-600' : 'text-gray-500'}`}>{c.col}</span>

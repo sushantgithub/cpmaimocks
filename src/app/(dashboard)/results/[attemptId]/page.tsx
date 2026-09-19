@@ -8,6 +8,7 @@ import { formatTime, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
 import { CheckCircle2, XCircle, MinusCircle, Trophy, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { answerLetters } from '@/lib/answers'
 
 export default async function ResultsPage({ params }: { params: { attemptId: string } }) {
   const session = await auth()
@@ -115,9 +116,11 @@ export default async function ResultsPage({ params }: { params: { attemptId: str
                       { key: 'B', text: q.optionB },
                       { key: 'C', text: q.optionC },
                       { key: 'D', text: q.optionD },
-                    ].map((opt) => {
-                      const isSelected = answer.selectedAnswer === opt.key
-                      const isRight = q.correctAnswer === opt.key
+                      { key: 'E', text: q.optionE },
+                      { key: 'F', text: q.optionF },
+                    ].filter((opt) => opt.text).map((opt) => {
+                      const isSelected = answerLetters(answer.selectedAnswer).includes(opt.key)
+                      const isRight = answerLetters(q.correctAnswer).includes(opt.key)
                       return (
                         <div
                           key={opt.key}

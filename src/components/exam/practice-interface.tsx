@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '@/lib/answers'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle
@@ -19,6 +20,8 @@ interface PracticeQuestion {
   optionB: string
   optionC: string
   optionD: string
+  optionE?: string | null
+  optionF?: string | null
   correctAnswer: string
   explanation: string
   difficulty: string
@@ -49,14 +52,34 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const submitted = useRef(false)
 
   const q = questions[current]
+  const selectCount = expectedCount(q.correctAnswer)
+  const multi = selectCount > 1
+  const [pending, setPending] = useState<string[]>([])
   const selectedAnswer = answers[q.id]
   const revealed = !!selectedAnswer
-  const isCorrect = revealed && selectedAnswer === q.correctAnswer
-  const totalAnswered = Object.keys(answers).length
+  const isCorrect = revealed && isAnswerCorrect(selectedAnswer, q.correctAnswer)
+  const totalAnswered = Object.values(answers).filter(Boolean).length
+  const correctLetters = answerLetters(q.correctAnswer)
+  const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
 
   function selectAnswer(opt: string) {
-    if (answers[q.id]) return // lock after first answer
-    setAnswers((prev) => ({ ...prev, [q.id]: opt }))
+    if (answers[q.id]) return // lock once answered
+
+    if (!multi) {
+      setAnswers((prev) => ({ ...prev, [q.id]: opt }))
+      return
+    }
+    // Multiple-response: gather the picks, and only commit once the taker has
+    // chosen as many as the question asks for, so feedback is not revealed
+    // halfway through.
+    const next = pending.includes(opt)
+      ? pending.filter((k) => k !== opt)
+      : pending.length >= selectCount ? pending : [...pending, opt]
+    setPending(next)
+    if (next.length === selectCount) {
+      setAnswers((prev) => ({ ...prev, [q.id]: normalizeAnswer(next.join(',')) }))
+      setPending([])
+    }
   }
 
   async function toggleBookmark(questionId: string) {
@@ -104,7 +127,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
     const qId = questions[index].id
     const ans = answers[qId]
     if (!ans) return 'unanswered'
-    return ans === questions[index].correctAnswer ? 'correct' : 'incorrect'
+    return isAnswerCorrect(ans, questions[index].correctAnswer) ? 'correct' : 'incorrect'
   }
 
   return (
@@ -130,7 +153,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
           </span>
           <Badge variant="outline" className="hidden sm:flex gap-1 items-center">
             <span className="text-green-600 font-bold">
-              {questions.filter((q) => answers[q.id] === q.correctAnswer).length}
+              {questions.filter((q) => isAnswerCorrect(answers[q.id], q.correctAnswer)).length}
             </span>
             <span className="text-muted-foreground">/</span>
             <span>{totalAnswered}</span>
@@ -159,6 +182,12 @@ export function PracticeInterface({ attemptId, questions }: Props) {
             {/* Question text */}
             <div className="bg-white rounded-xl border p-5 mb-5 shadow-sm">
               <p className="text-base leading-relaxed font-medium">{q.text}</p>
+              {multi && !revealed && (
+                <p className="mt-3 text-sm font-semibold text-primary">
+                  Select {selectCount === 2 ? 'two' : selectCount === 3 ? 'three' : selectCount}.
+                  {pending.length > 0 && ` ${pending.length} of ${selectCount} chosen.`}
+                </p>
+              )}
             </div>
 
             {/* Options */}
@@ -168,9 +197,11 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 { key: 'B', text: q.optionB },
                 { key: 'C', text: q.optionC },
                 { key: 'D', text: q.optionD },
-              ].map((opt) => {
-                const isSelected = selectedAnswer === opt.key
-                const isRight = opt.key === q.correctAnswer
+                { key: 'E', text: q.optionE },
+                { key: 'F', text: q.optionF },
+              ].filter((opt) => opt.text).map((opt) => {
+                const isSelected = chosenLetters.includes(opt.key)
+                const isRight = correctLetters.includes(opt.key)
                 let optClass = 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 cursor-pointer'
 
                 if (revealed) {
@@ -196,7 +227,8 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                     )}
                   >
                     <span className={cn(
-                      'flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm font-bold',
+                      'flex-shrink-0 w-7 h-7 border-2 flex items-center justify-center text-sm font-bold',
+                      multi ? 'rounded-md' : 'rounded-full',
                       revealed && isRight ? 'border-green-500 bg-green-500 text-white' :
                       revealed && isSelected && !isRight ? 'border-red-500 bg-red-500 text-white' :
                       isSelected ? 'border-primary bg-primary text-white' :
@@ -223,7 +255,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                     <><CheckCircle2 className="h-5 w-5 text-green-600" /><span className="font-semibold text-green-800">Correct!</span></>
                   ) : (
                     <><XCircle className="h-5 w-5 text-red-600" /><span className="font-semibold text-red-800">Incorrect</span>
-                    <span className="text-sm text-red-700">— Correct answer: <strong>{q.correctAnswer}</strong></span></>
+                    <span className="text-sm text-red-700">— Correct answer: <strong>{correctLetters.join(' and ')}</strong></span></>
                   )}
                 </div>
                 {q.explanation && (
@@ -306,8 +338,8 @@ export function PracticeInterface({ attemptId, questions }: Props) {
             <div className="flex items-center gap-2"><span className="w-3 h-3 rounded bg-white border border-gray-200 inline-block" />Not answered</div>
           </div>
           <div className="mt-4 pt-4 border-t text-xs space-y-1">
-            <p><span className="font-semibold text-green-700">{questions.filter((q) => answers[q.id] === q.correctAnswer).length}</span> correct</p>
-            <p><span className="font-semibold text-red-700">{questions.filter((q) => answers[q.id] && answers[q.id] !== q.correctAnswer).length}</span> incorrect</p>
+            <p><span className="font-semibold text-green-700">{questions.filter((q) => isAnswerCorrect(answers[q.id], q.correctAnswer)).length}</span> correct</p>
+            <p><span className="font-semibold text-red-700">{questions.filter((q) => answers[q.id] && !isAnswerCorrect(answers[q.id], q.correctAnswer)).length}</span> incorrect</p>
             <p className="text-muted-foreground">{questions.length - totalAnswered} remaining</p>
           </div>
         </aside>
@@ -361,10 +393,10 @@ export function PracticeInterface({ attemptId, questions }: Props) {
             </div>
             <div className="space-y-2 mb-6 text-sm">
               <p className="text-green-700">
-                <strong>{questions.filter((q) => answers[q.id] === q.correctAnswer).length}</strong> correct
+                <strong>{questions.filter((q) => isAnswerCorrect(answers[q.id], q.correctAnswer)).length}</strong> correct
               </p>
               <p className="text-red-700">
-                <strong>{questions.filter((q) => answers[q.id] && answers[q.id] !== q.correctAnswer).length}</strong> incorrect
+                <strong>{questions.filter((q) => answers[q.id] && !isAnswerCorrect(answers[q.id], q.correctAnswer)).length}</strong> incorrect
               </p>
               {questions.length - totalAnswered > 0 && (
                 <p className="text-muted-foreground">

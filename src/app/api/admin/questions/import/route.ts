@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
+import { normalizeAnswer, OPTION_KEYS } from '@/lib/answers'
 
 interface ImportRow {
   question_id?: string; question: string; option_a: string; option_b: string
-  option_c: string; option_d: string; correct_answer: string; explanation: string
+  option_c: string; option_d: string; option_e?: string; option_f?: string
+  correct_answer: string; explanation: string
   domain?: string; topic?: string; difficulty?: string; source?: string
   status?: string
   // Comma-separated labels that group questions across domains, e.g. the
@@ -57,9 +59,20 @@ export async function POST(req: Request) {
       const row = questions[index]
       const rowNum = index + 1
       try {
-        const correctAnswer = row.correct_answer?.trim().toUpperCase()
-        if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
-          errors.push(`Row ${rowNum}: correct_answer must be A, B, C or D (got "${row.correct_answer}")`)
+        // One letter, or several comma separated for a multiple-response
+        // question, e.g. "A,C". Every letter must have an option behind it.
+        const correctAnswer = normalizeAnswer(row.correct_answer)
+        const options: Record<string, string | undefined> = {
+          A: row.option_a, B: row.option_b, C: row.option_c,
+          D: row.option_d, E: row.option_e, F: row.option_f,
+        }
+        if (!correctAnswer) {
+          errors.push(`Row ${rowNum}: correct_answer must be one or more of A-F (got "${row.correct_answer}")`)
+          continue
+        }
+        const missingOption = correctAnswer.split(',').find((k) => !options[k]?.trim())
+        if (missingOption) {
+          errors.push(`Row ${rowNum}: correct_answer names ${missingOption} but option_${missingOption.toLowerCase()} is empty`)
           continue
         }
 
@@ -111,6 +124,8 @@ export async function POST(req: Request) {
             optionB: row.option_b.trim(),
             optionC: row.option_c.trim(),
             optionD: row.option_d.trim(),
+            optionE: row.option_e?.trim() || null,
+            optionF: row.option_f?.trim() || null,
             correctAnswer,
             explanation: row.explanation.trim(),
             difficulty,

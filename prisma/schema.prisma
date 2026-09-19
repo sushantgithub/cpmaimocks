@@ -305,6 +305,12 @@ model Question {
   optionB         String         @db.Text
   optionC         String         @db.Text
   optionD         String         @db.Text
+  /// Present only on multiple-response questions, which PMI writes with up to
+  /// six options; four remains the norm.
+  optionE         String?        @db.Text
+  optionF         String?        @db.Text
+  /// One letter, or several comma separated in alphabetical order ("A,C") for
+  /// a multiple-response question. Marked all-or-nothing, as PMI marks them.
   correctAnswer   String
   explanation     String         @db.Text
   certificationId String

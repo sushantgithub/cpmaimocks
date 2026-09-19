@@ -21,6 +21,8 @@ export async function GET(_req: Request, { params }: { params: { attemptId: stri
                 optionB: true,
                 optionC: true,
                 optionD: true,
+                optionE: true,
+                optionF: true,
                 correctAnswer: true,
                 explanation: true,
                 difficulty: true,

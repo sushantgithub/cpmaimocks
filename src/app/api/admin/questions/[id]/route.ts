@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { normalizeAnswer } from '@/lib/answers'
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -25,9 +26,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
   if (body.correctAnswer !== undefined) {
-    const answer = String(body.correctAnswer).toUpperCase()
-    if (!['A', 'B', 'C', 'D'].includes(answer)) return NextResponse.json({ error: 'correctAnswer must be A, B, C or D' }, { status: 400 })
+    const answer = normalizeAnswer(String(body.correctAnswer))
+    if (!answer) return NextResponse.json({ error: 'correctAnswer must be one or more of A-F' }, { status: 400 })
     data.correctAnswer = answer
+  }
+  for (const key of ['optionE', 'optionF'] as const) {
+    if (body[key] === null || typeof body[key] === 'string') data[key] = body[key]?.trim() || null
   }
   if (body.difficulty !== undefined) {
     if (!['EASY', 'MEDIUM', 'HARD'].includes(body.difficulty)) return NextResponse.json({ error: 'Invalid difficulty' }, { status: 400 })

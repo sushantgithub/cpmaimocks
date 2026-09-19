@@ -8,6 +8,7 @@ import { formatTime } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import type { ExamQuestion } from '@/types'
+import { answerLetters, normalizeAnswer } from '@/lib/answers'
 import {
   Flag, ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu
 } from 'lucide-react'
@@ -31,7 +32,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
   const submitted = useRef(false)
 
   const q = questions[current]
-  const totalAnswered = Object.keys(answers).length
+  const totalAnswered = Object.values(answers).filter(Boolean).length
   const unanswered = questions.length - totalAnswered
 
   const submitExam = useCallback(async (auto = false) => {
@@ -70,8 +71,20 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
     return () => clearInterval(timer)
   }, [submitExam])
 
+  const multi = (q.selectCount ?? 1) > 1
+  const chosen = answerLetters(answers[q.id])
+
   function selectAnswer(opt: string) {
-    setAnswers((prev) => ({ ...prev, [q.id]: opt }))
+    setAnswers((prev) => {
+      if (!multi) return { ...prev, [q.id]: opt }
+      // Multiple-response: toggle, and stop at the number asked for so the
+      // taker cannot tick every option and be marked correct by accident.
+      const current = answerLetters(prev[q.id])
+      const next = current.includes(opt)
+        ? current.filter((k) => k !== opt)
+        : current.length >= q.selectCount ? current : [...current, opt]
+      return { ...prev, [q.id]: normalizeAnswer(next.join(',')) }
+    })
   }
 
   function toggleMark() {
@@ -126,6 +139,11 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
             {/* Question text */}
             <div className="bg-white rounded-xl border p-5 mb-5 shadow-sm">
               <p className="text-base leading-relaxed font-medium">{q.text}</p>
+              {multi && (
+                <p className="mt-3 text-sm font-semibold text-primary">
+                  Select {q.selectCount === 2 ? 'two' : q.selectCount === 3 ? 'three' : q.selectCount}.
+                </p>
+              )}
             </div>
 
             {/* Options */}
@@ -135,8 +153,10 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
                 { key: 'B', text: q.optionB },
                 { key: 'C', text: q.optionC },
                 { key: 'D', text: q.optionD },
-              ].map((opt) => {
-                const selected = answers[q.id] === opt.key
+                { key: 'E', text: q.optionE },
+                { key: 'F', text: q.optionF },
+              ].filter((opt) => opt.text).map((opt) => {
+                const selected = chosen.includes(opt.key)
                 return (
                   <button
                     key={opt.key}
@@ -149,7 +169,8 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions }: P
                     )}
                   >
                     <span className={cn(
-                      'flex-shrink-0 w-7 h-7 rounded-full border-2 flex items-center justify-center text-sm font-bold',
+                      'flex-shrink-0 w-7 h-7 border-2 flex items-center justify-center text-sm font-bold',
+                      multi ? 'rounded-md' : 'rounded-full',
                       selected ? 'border-primary bg-primary text-white' : 'border-gray-300'
                     )}>
                       {opt.key}

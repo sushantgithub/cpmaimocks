@@ -36,6 +36,10 @@ export interface ExamQuestion {
   optionB: string
   optionC: string
   optionD: string
+  optionE?: string | null
+  optionF?: string | null
+  /** How many options to choose. Above one the question is multiple-response. */
+  selectCount: number
   difficulty: Difficulty
   category?: string
   topic?: string
