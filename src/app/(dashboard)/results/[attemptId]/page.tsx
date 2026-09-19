@@ -111,7 +111,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
       )}
 
       {/* Detailed review */}
-      <div>
+      <div id="question-review" className="scroll-mt-24">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <h3 className="font-semibold text-lg">Question Review</h3>
           <div className="flex flex-wrap gap-2">
@@ -122,7 +122,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
               ['unanswered', `Unanswered (${result.unansweredCount ?? 0})`],
             ].map(([value, label]) => (
               <Button key={value} size="sm" variant={reviewFilter === value ? 'default' : 'outline'} asChild>
-                <Link href={value === 'all' ? `/results/${params.attemptId}` : `/results/${params.attemptId}?review=${value}`}>
+                <Link href={value === 'all' ? `/results/${params.attemptId}#question-review` : `/results/${params.attemptId}?review=${value}#question-review`}>
                   {label}
                 </Link>
               </Button>
