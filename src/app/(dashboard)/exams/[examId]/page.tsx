@@ -89,6 +89,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
 
       return (
         <ExamInterface
+          key={running.id}
           attemptId={running.id}
           exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: exam.showExplanations }}
           timeLeftSeconds={limitSeconds > 0 ? Math.max(0, limitSeconds - elapsed) : 0}
@@ -125,6 +126,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
 
   return (
     <ExamInterface
+      key={attempt.id}
       attemptId={attempt.id}
       exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: exam.showExplanations }}
       timeLeftSeconds={limitSeconds}
