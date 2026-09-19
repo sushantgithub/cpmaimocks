@@ -179,7 +179,16 @@ export async function submitExam(
   let unansweredCount = 0
 
   const scoredAnswers = attempt.answers.map((ea) => {
-    const selected = normalizeAnswer(expired ? (ea.selectedAnswer ?? '') : (answers[ea.questionId] ?? ea.selectedAnswer ?? '')) || null
+    // Feedback-enabled mocks lock an answer by populating isCorrect before
+    // final submission. Never let a later browser payload replace a selection
+    // after the learner has already seen the answer key.
+    const selected = normalizeAnswer(
+      ea.isCorrect !== null
+        ? (ea.selectedAnswer ?? '')
+        : expired
+          ? (ea.selectedAnswer ?? '')
+          : (answers[ea.questionId] ?? ea.selectedAnswer ?? '')
+    ) || null
     const isCorrect = selected ? isAnswerCorrect(selected, ea.question.correctAnswer) : null
 
     if (isCorrect === true) correctCount++
