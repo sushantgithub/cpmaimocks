@@ -187,10 +187,10 @@ export async function submitExam(
         })
       )
     )
-  })
+  }, { timeout: 15000, maxWait: 5000 })
 
   return {
-    score,
+    score:
     correctCount,
     incorrectCount,
     unansweredCount,
