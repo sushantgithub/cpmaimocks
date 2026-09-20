@@ -35,6 +35,7 @@ export async function POST(req: Request) {
       slug,
       fullName: data.fullName?.trim() || null,
       description: data.description?.trim() || null,
+      usesDomains: typeof data.usesDomains === 'boolean' ? data.usesDomains : true,
       sortOrder: count,
     },
   })
