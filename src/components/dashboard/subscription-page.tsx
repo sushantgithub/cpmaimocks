@@ -279,8 +279,24 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
                     </Button>
                   </div>
                 ) : (
-                  <div className={`mt-4 h-5 rounded-full border-2 ${isOwned ? 'border-green-500 bg-green-500' : isSelected ? 'border-primary bg-primary' : 'border-gray-300'} flex items-center justify-center`}>
-                    {(isOwned || isSelected) && <div className="h-2 w-2 rounded-full bg-white" />}
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      className="w-full"
+                      variant={isSelected ? 'default' : 'outline'}
+                      disabled={isOwned}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        if (isOwned) return
+                        setSelectedPlan(isSelected ? null : plan)
+                      }}
+                    >
+                      {isOwned
+                        ? 'Already owned'
+                        : isSelected
+                          ? `${plan.name} selected`
+                          : `Choose ${plan.name}`}
+                    </Button>
                   </div>
                 )}
               </CardContent>
@@ -293,7 +309,12 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
       {selectedPlan && (
         <Card>
           <CardContent className="p-5 space-y-4">
-            <h3 className="font-semibold">Complete Purchase</h3>
+            <div>
+              <h3 className="font-semibold">Complete Purchase</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Selected plan: {selectedPlan.name}
+              </p>
+            </div>
 
             <div className="flex gap-2">
               <Input placeholder="Coupon code (optional)" value={coupon} onChange={(e) => setCoupon(e.target.value.toUpperCase())} className="uppercase" />
