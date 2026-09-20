@@ -8,7 +8,7 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '@/lib/answers'
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
-import { buildUnansweredQueue, reviewQueueTarget } from '@/lib/review-unanswered'
+import { buildUnansweredQueue, finishNeedsConfirmation, reviewQueueTarget } from '@/lib/review-unanswered'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle, Lock
@@ -235,6 +235,14 @@ export function PracticeInterface({
     }
   }, [attemptId, answers, router])
 
+  function finishAttempt() {
+    if (finishNeedsConfirmation(unansweredCount)) {
+      setShowConfirm(true)
+      return
+    }
+    void submitPractice()
+  }
+
   function getQuestionStatus(index: number) {
     const qId = questions[index].id
     const ans = answers[qId]
@@ -274,11 +282,11 @@ export function PracticeInterface({
 
         <Button
           size="sm"
-          onClick={() => hasPendingSelection ? submitAnswer() : setShowConfirm(true)}
+          onClick={() => hasPendingSelection ? submitAnswer() : finishAttempt()}
           disabled={submitting || answerSaving === q.id || (hasPendingSelection && !pendingReady)}
         >
           <Send className="h-3.5 w-3.5 mr-1.5" />
-          {hasPendingSelection ? 'Check Answer' : 'Finish'}
+          {hasPendingSelection ? 'Check Answer' : unansweredCount === 0 ? 'See Results' : 'Finish'}
         </Button>
       </header>
 
@@ -436,8 +444,9 @@ export function PracticeInterface({
                 </Button>
               ) : reviewMode && reviewQueue ? (
                 reviewCursor === reviewQueue.length - 1 ? (
-                  <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting || answerSaving === q.id}>
-                    <Send className="h-4 w-4 mr-1" />Finish Review
+                  <Button size="sm" onClick={finishAttempt} disabled={submitting || answerSaving === q.id}>
+                    <Send className="h-4 w-4 mr-1" />
+                    {unansweredCount === 0 ? 'See Results' : 'Finish Review'}
                   </Button>
                 ) : (
                   <Button size="sm" className="min-w-0 flex-shrink" onClick={() => moveReviewQueue(1)} disabled={answerSaving === q.id}>
@@ -447,8 +456,9 @@ export function PracticeInterface({
                   </Button>
                 )
               ) : current === questions.length - 1 ? (
-                <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting || answerSaving === q.id}>
-                  <Send className="h-4 w-4 mr-1" />Finish
+                <Button size="sm" onClick={finishAttempt} disabled={submitting || answerSaving === q.id}>
+                  <Send className="h-4 w-4 mr-1" />
+                  {unansweredCount === 0 ? 'See Results' : 'Finish'}
                 </Button>
               ) : (
                 <Button
@@ -560,7 +570,7 @@ export function PracticeInterface({
       )}
 
       {/* Finish confirmation */}
-      {showConfirm && (
+      {showConfirm && unansweredCount > 0 && (
         <div className="fixed inset-0 z-60 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center gap-3 mb-4">

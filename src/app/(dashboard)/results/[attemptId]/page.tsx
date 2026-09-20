@@ -126,6 +126,11 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
             </Badge>
           )}
           <p className="text-sm text-muted-foreground mt-3">{sessionTitle}</p>
+          {isMistakePractice && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Mistake practice does not add a full Quiz attempt. Use Retake full quiz to create the next numbered attempt.
+            </p>
+          )}
         </CardContent>
       </Card>
 

@@ -21,3 +21,8 @@ export function reviewQueueTarget(
     questionIndex: queue[nextCursor],
   }
 }
+
+
+export function finishNeedsConfirmation(unansweredCount: number): boolean {
+  return unansweredCount > 0
+}

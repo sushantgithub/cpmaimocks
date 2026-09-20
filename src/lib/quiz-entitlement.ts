@@ -146,3 +146,8 @@ export function latestQuizVerdicts(
   }
   return latest
 }
+
+
+export function countsAsFullQuizAttempt(sessionKind: QuizSessionKind): boolean {
+  return sessionKind === 'STANDARD'
+}

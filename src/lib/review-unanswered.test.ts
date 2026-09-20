@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildUnansweredQueue, reviewQueueTarget } from './review-unanswered'
+import { buildUnansweredQueue, finishNeedsConfirmation, reviewQueueTarget } from './review-unanswered'
 
 describe('unanswered review queue', () => {
   it('captures only unanswered questions in their original order', () => {
@@ -33,6 +33,12 @@ describe('unanswered review queue', () => {
       ['q1', 'q2'],
       { q1: 'A', q2: 'B' },
     )).toEqual([])
+  })
+
+  it('requires a finish confirmation only when unanswered questions remain', () => {
+    expect(finishNeedsConfirmation(0)).toBe(false)
+    expect(finishNeedsConfirmation(1)).toBe(true)
+    expect(finishNeedsConfirmation(7)).toBe(true)
   })
 
   it('does not wrap after the final unanswered question', () => {

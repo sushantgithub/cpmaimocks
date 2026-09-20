@@ -9,6 +9,7 @@ import {
   previousQuizAllowsNext,
   isFullyAnsweredQuizAttempt,
   latestQuizVerdicts,
+  countsAsFullQuizAttempt,
   type QuizAccessTier,
   type QuizAttemptConfig,
   type QuizSessionKind,
@@ -209,7 +210,7 @@ function normalizeAttemptsForKey(
 
 function standardForSlot(attempts: NormalizedAttempt[], quizNumber: number) {
   return attempts.filter(
-    (attempt) => attempt.sessionKind === 'STANDARD' && attempt.quizNumber === quizNumber
+    (attempt) => countsAsFullQuizAttempt(attempt.sessionKind) && attempt.quizNumber === quizNumber
   )
 }
 

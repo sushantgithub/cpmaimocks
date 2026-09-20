@@ -8,6 +8,7 @@ import {
   previousQuizAllowsNext,
   isFullyAnsweredQuizAttempt,
   latestQuizVerdicts,
+  countsAsFullQuizAttempt,
 } from './quiz-entitlement'
 
 describe('quiz entitlement helpers', () => {
@@ -112,6 +113,12 @@ describe('quiz entitlement helpers', () => {
       ['q2', false],
       ['q3', false],
     ])
+  })
+
+  it('counts only STANDARD sessions as full quiz attempts', () => {
+    expect(countsAsFullQuizAttempt('STANDARD')).toBe(true)
+    expect(countsAsFullQuizAttempt('INCORRECT_RETRY')).toBe(false)
+    expect(countsAsFullQuizAttempt('MIXED_REVIEW')).toBe(false)
   })
 
   it('reuses an assigned quiz set and fills only from unassigned questions', () => {
