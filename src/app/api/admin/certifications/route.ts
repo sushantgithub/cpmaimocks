@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
+import { isFullMockExam } from '@/lib/mock-exams'
 
 export async function GET() {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const [certifications, inventoryRows] = await Promise.all([
+  const [certifications, inventoryRows, examRows] = await Promise.all([
     prisma.certification.findMany({
       orderBy: { sortOrder: 'asc' },
       include: {
@@ -18,6 +19,14 @@ export async function GET() {
       by: ['certificationId', 'contentType'],
       where: { status: 'PUBLISHED' },
       _count: { _all: true },
+    }),
+    prisma.mockExam.findMany({
+      select: {
+        certificationId: true,
+        questionCount: true,
+        questionsPerAttempt: true,
+        timeLimitMinutes: true,
+      },
     }),
   ])
 
@@ -41,9 +50,19 @@ export async function GET() {
     inventory.set(row.certificationId, current)
   }
 
+  const visibleMockCount = new Map<string, number>()
+  for (const exam of examRows) {
+    if (!isFullMockExam(exam)) continue
+    visibleMockCount.set(
+      exam.certificationId,
+      (visibleMockCount.get(exam.certificationId) ?? 0) + 1
+    )
+  }
+
   return NextResponse.json(
     certifications.map((certification) => ({
       ...certification,
+      mockExamCount: visibleMockCount.get(certification.id) ?? 0,
       inventory: inventory.get(certification.id) ?? {
         quiz: 0,
         mockExam: 0,
