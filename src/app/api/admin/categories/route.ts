@@ -30,6 +30,12 @@ export async function POST(req: Request) {
 
   const certification = await prisma.certification.findUnique({ where: { id: certificationId } })
   if (!certification) return NextResponse.json({ error: 'Certification not found' }, { status: 404 })
+  if (!certification.usesDomains) {
+    return NextResponse.json(
+      { error: 'Domains are disabled for this certification' },
+      { status: 409 }
+    )
+  }
 
   const slug = slugify(name)
   const clash = await prisma.category.findFirst({
