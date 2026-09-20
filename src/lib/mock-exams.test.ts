@@ -10,6 +10,22 @@ describe('isFullMockExam', () => {
     })).toBe(true)
   })
 
+  it('accepts a timed mini mock that serves its full pool', () => {
+    expect(isFullMockExam({
+      questionCount: 50,
+      questionsPerAttempt: null,
+      timeLimitMinutes: 100,
+    })).toBe(true)
+  })
+
+  it('rejects an untimed full-pool legacy record', () => {
+    expect(isFullMockExam({
+      questionCount: 60,
+      questionsPerAttempt: null,
+      timeLimitMinutes: 0,
+    })).toBe(false)
+  })
+
   it('rejects a sampled domain learning mock', () => {
     expect(isFullMockExam({
       questionCount: 60,
