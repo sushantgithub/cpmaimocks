@@ -3,6 +3,7 @@ import {
   FREE_PRACTICE_QUESTION_LIMIT,
   countFreePracticeUsage,
   getFreePracticeAccess,
+  practiceAccessTier,
   practiceCertificationId,
 } from './free-practice-access'
 
@@ -15,16 +16,27 @@ describe('free practice access', () => {
 
   it('counts only attempts for the selected certification', () => {
     const attempts = [
-      { totalQuestions: 10, practiceConfig: { certificationId: 'cpmai' } },
+      { totalQuestions: 10, practiceConfig: { certificationId: 'cpmai', accessTier: 'FREE' } },
       { totalQuestions: 5, practiceConfig: { certificationId: 'cpmai', mode: 'RANDOM' } },
-      { totalQuestions: 20, practiceConfig: { certificationId: 'pmp' } },
+      { totalQuestions: 20, practiceConfig: { certificationId: 'pmp', accessTier: 'FREE' } },
     ]
 
     expect(countFreePracticeUsage(attempts, 'cpmai')).toBe(15)
     expect(countFreePracticeUsage(attempts, 'pmp')).toBe(20)
   })
 
-  it('ignores malformed or legacy practice configs without a certification', () => {
+  it('does not consume the free allowance for practice taken while premium', () => {
+    const attempts = [
+      { totalQuestions: 10, practiceConfig: { certificationId: 'cpmai', accessTier: 'FREE' } },
+      { totalQuestions: 50, practiceConfig: { certificationId: 'cpmai', accessTier: 'PREMIUM' } },
+    ]
+
+    expect(countFreePracticeUsage(attempts, 'cpmai')).toBe(10)
+    expect(practiceAccessTier(attempts[0].practiceConfig)).toBe('FREE')
+    expect(practiceAccessTier(attempts[1].practiceConfig)).toBe('PREMIUM')
+  })
+
+  it('ignores malformed configs and treats legacy matching attempts as free usage', () => {
     const attempts = [
       { totalQuestions: 10, practiceConfig: null },
       { totalQuestions: 10, practiceConfig: [] },
@@ -35,6 +47,7 @@ describe('free practice access', () => {
     expect(countFreePracticeUsage(attempts, 'cpmai')).toBe(5)
     expect(practiceCertificationId({ certificationId: 'cpmai' })).toBe('cpmai')
     expect(practiceCertificationId({})).toBeNull()
+    expect(practiceAccessTier({})).toBeNull()
   })
 
   it('never reports negative remaining questions after the allowance is exhausted', () => {
