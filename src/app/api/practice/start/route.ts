@@ -83,7 +83,10 @@ export async function POST(req: Request) {
       userId: session.user.id,
       mode: 'PRACTICE',
       totalQuestions: questions.length,
-      practiceConfig: JSON.parse(JSON.stringify(config)),
+      practiceConfig: JSON.parse(JSON.stringify({
+        ...config,
+        accessTier: hasAccess ? 'PREMIUM' : 'FREE',
+      })),
       answers: {
         create: questions.map((q) => ({ questionId: q.id })),
       },
