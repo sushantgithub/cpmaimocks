@@ -3,15 +3,50 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getPracticeQuestions } from '@/lib/quiz'
 import { hasAccessToCertification } from '@/lib/subscription'
+import {
+  countFreePracticeUsage,
+  getFreePracticeAccess,
+} from '@/lib/free-practice-access'
 import type { PracticeConfig } from '@/types'
-import { subHours } from 'date-fns'
 
-const FREE_PRACTICE_LIMIT = 10
-// Free sessions reveal answers and explanations, so without a daily cap the
-// whole bank could be read ten questions at a time.
-const FREE_PRACTICE_DAILY_LIMIT = 30
 const MAX_QUESTIONS = 100
 const MODES = ['RANDOM', 'INCORRECT', 'BOOKMARKED'] as const
+
+async function loadFreePracticeAccess(userId: string, certificationId: string) {
+  const attempts = await prisma.examAttempt.findMany({
+    where: { userId, mode: 'PRACTICE' },
+    select: { totalQuestions: true, practiceConfig: true },
+  })
+  return getFreePracticeAccess(countFreePracticeUsage(attempts, certificationId))
+}
+
+export async function GET(req: Request) {
+  try {
+    const session = await auth()
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const certificationId = new URL(req.url).searchParams.get('certificationId')
+    if (!certificationId) {
+      return NextResponse.json({ error: 'Pick a certification to practise' }, { status: 400 })
+    }
+
+    const hasAccess = await hasAccessToCertification(session.user.id, certificationId)
+    if (hasAccess) {
+      return NextResponse.json({
+        unlimited: true,
+        limit: null,
+        used: null,
+        remaining: null,
+      })
+    }
+
+    const access = await loadFreePracticeAccess(session.user.id, certificationId)
+    return NextResponse.json({ unlimited: false, ...access })
+  } catch (err) {
+    console.error('[PracticeAccess]', err)
+    return NextResponse.json({ error: 'Failed to load practice access' }, { status: 500 })
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -38,43 +73,59 @@ export async function POST(req: Request) {
     }
 
     const hasAccess = await hasAccessToCertification(session.user.id, config.certificationId)
-    if (!hasAccess) {
-      if (config.questionCount > FREE_PRACTICE_LIMIT) {
-        return NextResponse.json({
-          error: `Free practice is limited to ${FREE_PRACTICE_LIMIT} questions per session. Subscribe for unlimited practice.`,
-        }, { status: 402 })
-      }
-      const usedToday = await prisma.examAttempt.aggregate({
-        _sum: { totalQuestions: true },
-        where: { userId: session.user.id, mode: 'PRACTICE', createdAt: { gt: subHours(new Date(), 24) } },
-      })
-      const used = usedToday._sum.totalQuestions ?? 0
-      if (used + config.questionCount > FREE_PRACTICE_DAILY_LIMIT) {
-        const left = Math.max(0, FREE_PRACTICE_DAILY_LIMIT - used)
-        return NextResponse.json({
-          error: left > 0
-            ? `Free accounts get ${FREE_PRACTICE_DAILY_LIMIT} practice questions a day and you have ${left} left. Pick a smaller session or subscribe for unlimited practice.`
-            : `You have used today's ${FREE_PRACTICE_DAILY_LIMIT} free practice questions. Subscribe for unlimited practice, or come back tomorrow.`,
-        }, { status: 402 })
-      }
-    }
-
     const questions = await getPracticeQuestions(session.user.id, config)
+
     if (questions.length === 0) {
       return NextResponse.json({ error: 'No questions found for the selected filters. Try different options.' }, { status: 404 })
     }
 
-    const attempt = await prisma.examAttempt.create({
-      data: {
-        userId: session.user.id,
-        mode: 'PRACTICE',
-        totalQuestions: questions.length,
-        practiceConfig: JSON.parse(JSON.stringify(config)),
-        answers: {
-          create: questions.map((q) => ({ questionId: q.id })),
-        },
+    const createAttemptData = {
+      userId: session.user.id,
+      mode: 'PRACTICE',
+      totalQuestions: questions.length,
+      practiceConfig: JSON.parse(JSON.stringify(config)),
+      answers: {
+        create: questions.map((q) => ({ questionId: q.id })),
       },
-    })
+    }
+
+    let attempt
+
+    if (hasAccess) {
+      attempt = await prisma.examAttempt.create({ data: createAttemptData })
+    } else {
+      // Re-check the lifetime allowance inside a serializable transaction so
+      // parallel requests cannot consume more than the free 25-question grant.
+      const outcome = await prisma.$transaction(async (tx) => {
+        const priorAttempts = await tx.examAttempt.findMany({
+          where: { userId: session.user.id, mode: 'PRACTICE' },
+          select: { totalQuestions: true, practiceConfig: true },
+        })
+        const access = getFreePracticeAccess(
+          countFreePracticeUsage(priorAttempts, config.certificationId as string)
+        )
+
+        if (questions.length > access.remaining) {
+          return { blocked: true as const, access }
+        }
+
+        const created = await tx.examAttempt.create({ data: createAttemptData })
+        return { blocked: false as const, attempt: created }
+      }, { isolationLevel: 'Serializable' })
+
+      if (outcome.blocked) {
+        const { remaining, limit } = outcome.access
+        return NextResponse.json({
+          error: remaining > 0
+            ? `You have ${remaining} of ${limit} free practice questions remaining for this certification. Choose ${remaining} or fewer, or subscribe for unlimited practice.`
+            : `You have used all ${limit} free practice questions for this certification. Subscribe for unlimited practice.`,
+          remaining,
+          limit,
+        }, { status: 402 })
+      }
+
+      attempt = outcome.attempt
+    }
 
     return NextResponse.json({
       attemptId: attempt.id,
