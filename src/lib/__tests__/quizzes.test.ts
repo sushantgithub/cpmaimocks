@@ -27,6 +27,11 @@ describe('fixed domain quiz slots', () => {
   })
 
   it('handles a final partial quiz without exceeding the pool', () => {
+    expect(quizCountForQuestions(25)).toBe(3)
+    expect(questionCountForQuiz(25, 1)).toBe(10)
+    expect(questionCountForQuiz(25, 2)).toBe(10)
+    expect(questionCountForQuiz(25, 3)).toBe(5)
+
     expect(quizCountForQuestions(64)).toBe(7)
     expect(questionCountForQuiz(64, 7)).toBe(4)
   })
