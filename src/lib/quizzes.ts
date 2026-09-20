@@ -11,6 +11,8 @@ import {
   latestQuizVerdicts,
   countsAsFullQuizAttempt,
   isQuizMastered,
+  isEffectivelyCompleteRetry,
+  quizMasteryProgress,
   type QuizAccessTier,
   type QuizAttemptConfig,
   type QuizSessionKind,
@@ -236,19 +238,26 @@ function latestCompletedStandard(attempts: NormalizedAttempt[], quizNumber: numb
     .find((attempt) => attempt.status === 'COMPLETED') ?? null
 }
 
-function successfullyCompletedStandard(
+function learningForSlot(attempts: NormalizedAttempt[], quizNumber: number) {
+  return attempts.filter(
+    (attempt) =>
+      attempt.quizNumber === quizNumber &&
+      (attempt.sessionKind === 'STANDARD' || attempt.sessionKind === 'INCORRECT_RETRY')
+  )
+}
+
+function completedQuizMilestone(
   attempts: NormalizedAttempt[],
   quizNumber: number,
   expectedQuestionCount: number,
 ) {
-  const latest = latestStandard(attempts, quizNumber)
-  if (!latest || !isFullyAnsweredQuizAttempt(latest)) return null
-
   const canonical = canonicalQuestionIds(attempts, quizNumber)
   if (canonical.length !== expectedQuestionCount) return null
 
-  const verdicts = latestQuizVerdicts(standardForSlot(attempts, quizNumber))
-  return isQuizMastered(canonical, verdicts) ? latest : null
+  const progress = quizMasteryProgress(canonical, learningForSlot(attempts, quizNumber))
+  if (!progress.masteredEver) return null
+
+  return latestCompletedStandard(attempts, quizNumber)
 }
 
 function activeStandard(attempts: NormalizedAttempt[], quizNumber: number) {
@@ -264,13 +273,18 @@ function activeIncorrectRetry(attempts: NormalizedAttempt[], quizNumber: number)
       (attempt) =>
         attempt.sessionKind === 'INCORRECT_RETRY' &&
         attempt.quizNumber === quizNumber &&
-        attempt.status === 'IN_PROGRESS'
+        attempt.status === 'IN_PROGRESS' &&
+        !isEffectivelyCompleteRetry(attempt)
     ) ?? null
 }
 
-function latestLearningVerdicts(attempts: NormalizedAttempt[]) {
+function currentLearningVerdicts(attempts: NormalizedAttempt[]) {
   return latestQuizVerdicts(
-    attempts.filter((attempt) => attempt.sessionKind === 'STANDARD')
+    attempts.filter(
+      (attempt) =>
+        attempt.sessionKind === 'STANDARD' ||
+        attempt.sessionKind === 'INCORRECT_RETRY'
+    )
   )
 }
 
@@ -348,11 +362,7 @@ export async function quizSummary(
       : await hasAccessToCertification(userId, pool.certificationId)
 
   const freeState = freeSlotState(attempts)
-  const verdicts = latestLearningVerdicts(attempts)
-  const answered = Array.from(verdicts.keys()).filter((id) => ids.includes(id)).length
-  const wrong = Array.from(verdicts.entries()).filter(
-    ([id, correct]) => ids.includes(id) && !correct
-  ).length
+  const progressVerdicts = new Map<string, boolean>()
 
   const slots: QuizSlotSummary[] = Array.from({ length: quizCount }, (_, index) => {
     const number = index + 1
@@ -367,11 +377,9 @@ export async function quizSummary(
         : 0
     const previousCompleted =
       number === 1 ||
-      successfullyCompletedStandard(attempts, number - 1, previousExpected) !== null
-    const previousActiveRetake =
-      number > 1 && activeStandard(attempts, number - 1) !== null
+      completedQuizMilestone(attempts, number - 1, previousExpected) !== null
     const previousReady =
-      number === 1 || previousQuizAllowsNext(previousCompleted, previousActiveRetake)
+      number === 1 || previousQuizAllowsNext(previousCompleted)
     const activeRetry = activeIncorrectRetry(attempts, number)
 
     let lockReason: QuizLockReason = null
@@ -380,13 +388,17 @@ export async function quizSummary(
     else if (!hasAccess && number === 1 && freeState.locked && !active) lockReason = 'FREE_USED'
 
     const canonical = canonicalQuestionIds(attempts, number)
+    const progress = quizMasteryProgress(canonical, learningForSlot(attempts, number))
     const completed =
-      successfullyCompletedStandard(attempts, number, expected) !== null
-    const slotVerdicts = latestQuizVerdicts(slotAttempts)
-    const currentIncorrect = Array.from(slotVerdicts.entries()).filter(
-      ([questionId, correct]) =>
-        (canonical.length === 0 || canonical.includes(questionId)) && !correct
-    ).length
+      canonical.length === expected && progress.masteredEver
+
+    for (const [questionId, correct] of progress.verdicts.entries()) {
+      if (canonical.includes(questionId)) progressVerdicts.set(questionId, correct)
+    }
+
+    const currentIncorrect = completed
+      ? 0
+      : canonical.filter((questionId) => progress.verdicts.get(questionId) === false).length
 
     return {
       number,
@@ -405,12 +417,13 @@ export async function quizSummary(
     }
   })
 
+  const answered = Array.from(progressVerdicts.keys()).filter((id) => ids.includes(id)).length
+  const wrong = Array.from(progressVerdicts.entries()).filter(
+    ([id, correct]) => ids.includes(id) && !correct
+  ).length
   const completedQuizzes = slots.filter((slot) => slot.completed).length
   const activeAttemptId = slots.find((slot) => slot.activeAttemptId)?.activeAttemptId ?? null
-  const mastered =
-    completedQuizzes === quizCount &&
-    activeAttemptId === null &&
-    wrong === 0
+  const mastered = completedQuizzes === quizCount
 
   return {
     key,
@@ -519,12 +532,11 @@ export async function prepareQuizSitting(
     const firstIncomplete = Array.from({ length: quizCount }, (_, index) => index + 1)
       .find(
         (number) =>
-          successfullyCompletedStandard(
+          completedQuizMilestone(
             attempts,
             number,
             questionCountForQuiz(poolIds.length, number, QUIZ_QUESTIONS_PER_SITTING),
-          ) === null ||
-          activeStandard(attempts, number) !== null
+          ) === null
       )
     if (firstIncomplete) {
       return {
@@ -533,7 +545,7 @@ export async function prepareQuizSitting(
       }
     }
 
-    const verdicts = latestLearningVerdicts(attempts)
+    const verdicts = currentLearningVerdicts(attempts)
     const wrong = poolIds.filter((id) => verdicts.get(id) === false)
     if (wrong.length === 0) return { kind: 'mastered' }
 
@@ -563,7 +575,7 @@ export async function prepareQuizSitting(
   if (
     quizNumber > 1 &&
     !previousQuizAllowsNext(
-      successfullyCompletedStandard(
+      completedQuizMilestone(
         attempts,
         quizNumber - 1,
         questionCountForQuiz(
@@ -572,7 +584,6 @@ export async function prepareQuizSitting(
           QUIZ_QUESTIONS_PER_SITTING,
         ),
       ) !== null,
-      activeStandard(attempts, quizNumber - 1) !== null,
     )
   ) {
     return { kind: 'sequence_locked', previousQuizNumber: quizNumber - 1 }
@@ -584,19 +595,29 @@ export async function prepareQuizSitting(
   if (action === 'retryIncorrect') {
     if (!hasAccess) return { kind: 'locked', reason: 'subscription' }
 
+    const canonical = canonicalQuestionIds(attempts, quizNumber)
+    const expected = questionCountForQuiz(
+      poolIds.length,
+      quizNumber,
+      QUIZ_QUESTIONS_PER_SITTING,
+    )
+    if (completedQuizMilestone(attempts, quizNumber, expected)) {
+      return { kind: 'mastered' }
+    }
+
     const retryActive = activeIncorrectRetry(attempts, quizNumber)
     if (retryActive) return { kind: 'resume', attemptId: retryActive.id }
 
-    const standardAttempts = standardForSlot(attempts, quizNumber)
-    const canonical = canonicalQuestionIds(attempts, quizNumber)
-    const verdicts = latestQuizVerdicts(standardAttempts)
-    const incorrectIds = canonical.filter((questionId) => verdicts.get(questionId) === false)
+    const progress = quizMasteryProgress(canonical, learningForSlot(attempts, quizNumber))
+    const incorrectIds = canonical.filter(
+      (questionId) => progress.verdicts.get(questionId) === false
+    )
     if (incorrectIds.length === 0) return { kind: 'no_incorrect' }
 
     return {
       kind: 'questions',
       questionIds: incorrectIds,
-      title: pool.title + ' · Quiz ' + quizNumber + ' · Retry Incorrect',
+      title: pool.title + ' · Quiz ' + quizNumber + ' · Focused Practice',
       certificationId: pool.certificationId,
       accessTier: 'PAID',
       quizNumber,
@@ -604,7 +625,7 @@ export async function prepareQuizSitting(
     }
   }
 
-  const completed = successfullyCompletedStandard(
+  const completed = completedQuizMilestone(
     attempts,
     quizNumber,
     questionCountForQuiz(poolIds.length, quizNumber, QUIZ_QUESTIONS_PER_SITTING),

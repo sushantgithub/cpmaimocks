@@ -103,7 +103,7 @@ export default async function DashboardPage() {
                 label: 'Quizzes Completed',
                 value: `${completedQuizzes}/${quizCount}`,
                 icon: ListChecks,
-                help: 'Completed full 10-question quizzes. Mistake-practice sessions are not counted.',
+                help: 'Quizzes mastered successfully. Once completed, a later optional retake does not remove completion.',
               },
               {
                 label: 'Questions Attempted',
@@ -115,13 +115,13 @@ export default async function DashboardPage() {
                 label: 'Questions Mastered',
                 value: quizQuestionsMastered,
                 icon: CheckCircle2,
-                help: 'Quiz questions whose latest checked answer is correct.',
+                help: 'Questions currently mastered. Once a quiz is completed, its mastered questions stay credited even if you retake it later.',
               },
               {
                 label: 'Current Accuracy',
                 value: `${quizAccuracy}%`,
                 icon: Target,
-                help: 'Current mastered quiz questions divided by unique quiz questions attempted.',
+                help: 'Mastered quiz progress divided by unique quiz questions attempted. Completed quizzes keep their mastery credit after optional retakes.',
               },
             ].map((item) => (
               <div key={item.label} className="rounded-xl border bg-gray-50/50 p-3">

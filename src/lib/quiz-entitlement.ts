@@ -111,10 +111,9 @@ export function fixedQuizQuestionSet(
 }
 
 export function previousQuizAllowsNext(
-  hasSuccessfulCompletion: boolean,
-  hasActiveRetake: boolean,
+  hasCompletionMilestone: boolean,
 ): boolean {
-  return hasSuccessfulCompletion && !hasActiveRetake
+  return hasCompletionMilestone
 }
 
 
@@ -159,4 +158,75 @@ export function isQuizMastered(
 ): boolean {
   return questionIds.length > 0 &&
     questionIds.every((questionId) => verdicts.get(questionId) === true)
+}
+
+
+export interface QuizLearningAttempt {
+  status: string
+  sessionKind: QuizSessionKind
+  totalQuestions: number
+  unansweredCount: number | null
+  answers: { questionId: string; isCorrect: boolean | null }[]
+}
+
+export function isEffectivelyCompleteRetry(attempt: QuizLearningAttempt): boolean {
+  return (
+    attempt.sessionKind === 'INCORRECT_RETRY' &&
+    attempt.totalQuestions > 0 &&
+    attempt.answers.length >= attempt.totalQuestions &&
+    attempt.answers.every((answer) => answer.isCorrect !== null)
+  )
+}
+
+function isMasteryCheckpoint(attempt: QuizLearningAttempt): boolean {
+  if (attempt.sessionKind === 'STANDARD') {
+    return isFullyAnsweredQuizAttempt(attempt)
+  }
+
+  if (attempt.sessionKind === 'INCORRECT_RETRY') {
+    return isFullyAnsweredQuizAttempt(attempt) || isEffectivelyCompleteRetry(attempt)
+  }
+
+  return false
+}
+
+export function quizMasteryProgress(
+  questionIds: string[],
+  attempts: QuizLearningAttempt[],
+) {
+  const questionSet = new Set(questionIds)
+  const latest = new Map<string, boolean>()
+  let masteredEver = false
+
+  for (const attempt of attempts) {
+    if (
+      attempt.sessionKind !== 'STANDARD' &&
+      attempt.sessionKind !== 'INCORRECT_RETRY'
+    ) {
+      continue
+    }
+
+    for (const answer of attempt.answers) {
+      if (questionSet.has(answer.questionId) && answer.isCorrect !== null) {
+        latest.set(answer.questionId, answer.isCorrect === true)
+      }
+    }
+
+    if (
+      !masteredEver &&
+      isMasteryCheckpoint(attempt) &&
+      isQuizMastered(questionIds, latest)
+    ) {
+      masteredEver = true
+    }
+  }
+
+  if (masteredEver) {
+    return {
+      masteredEver: true,
+      verdicts: new Map(questionIds.map((questionId) => [questionId, true] as const)),
+    }
+  }
+
+  return { masteredEver: false, verdicts: latest }
 }

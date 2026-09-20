@@ -10,6 +10,8 @@ import {
   latestQuizVerdicts,
   countsAsFullQuizAttempt,
   isQuizMastered,
+  isEffectivelyCompleteRetry,
+  quizMasteryProgress,
 } from './quiz-entitlement'
 
 describe('quiz entitlement helpers', () => {
@@ -86,16 +88,84 @@ describe('quiz entitlement helpers', () => {
     expect(isQuizMastered(questionIds, eightyPercent)).toBe(false)
     expect(previousQuizAllowsNext(
       fullyAnswered && isQuizMastered(questionIds, eightyPercent),
-      false,
     )).toBe(false)
 
     expect(isQuizMastered(questionIds, oneHundredPercent)).toBe(true)
     expect(previousQuizAllowsNext(
       fullyAnswered && isQuizMastered(questionIds, oneHundredPercent),
-      false,
     )).toBe(true)
+  })
 
-    expect(previousQuizAllowsNext(true, true)).toBe(false)
+  it('lets focused practice complete the last weak question and create a permanent milestone', () => {
+    const ids = ['q1', 'q2', 'q3']
+    const progress = quizMasteryProgress(ids, [
+      {
+        status: 'COMPLETED',
+        sessionKind: 'STANDARD',
+        totalQuestions: 3,
+        unansweredCount: 0,
+        answers: [
+          { questionId: 'q1', isCorrect: true },
+          { questionId: 'q2', isCorrect: true },
+          { questionId: 'q3', isCorrect: false },
+        ],
+      },
+      {
+        status: 'IN_PROGRESS',
+        sessionKind: 'INCORRECT_RETRY',
+        totalQuestions: 1,
+        unansweredCount: null,
+        answers: [{ questionId: 'q3', isCorrect: true }],
+      },
+    ])
+
+    expect(progress.masteredEver).toBe(true)
+    expect(Array.from(progress.verdicts.values())).toEqual([true, true, true])
+  })
+
+  it('never revokes a completed quiz after a later low-scoring retake', () => {
+    const ids = ['q1', 'q2', 'q3']
+    const progress = quizMasteryProgress(ids, [
+      {
+        status: 'COMPLETED',
+        sessionKind: 'STANDARD',
+        totalQuestions: 3,
+        unansweredCount: 0,
+        answers: ids.map((questionId) => ({ questionId, isCorrect: true })),
+      },
+      {
+        status: 'COMPLETED',
+        sessionKind: 'STANDARD',
+        totalQuestions: 3,
+        unansweredCount: 0,
+        answers: [
+          { questionId: 'q1', isCorrect: false },
+          { questionId: 'q2', isCorrect: false },
+          { questionId: 'q3', isCorrect: true },
+        ],
+      },
+    ])
+
+    expect(progress.masteredEver).toBe(true)
+    expect(Array.from(progress.verdicts.entries())).toEqual([
+      ['q1', true],
+      ['q2', true],
+      ['q3', true],
+    ])
+    expect(previousQuizAllowsNext(progress.masteredEver)).toBe(true)
+  })
+
+  it('does not treat focused practice as finished while an assigned question is unchecked', () => {
+    expect(isEffectivelyCompleteRetry({
+      status: 'IN_PROGRESS',
+      sessionKind: 'INCORRECT_RETRY',
+      totalQuestions: 2,
+      unansweredCount: null,
+      answers: [
+        { questionId: 'q1', isCorrect: true },
+        { questionId: 'q2', isCorrect: null },
+      ],
+    })).toBe(false)
   })
 
   it('treats a submitted quiz with unanswered questions as incomplete', () => {

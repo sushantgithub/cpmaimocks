@@ -122,13 +122,13 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
             </Badge>
           ) : (
             <Badge variant="secondary" className="text-sm px-4 py-1">
-              {isMistakePractice ? 'Mistake practice' : isMixedReview ? 'Mixed review' : isQuiz ? 'Full quiz attempt' : 'Practice session'}
+              {isMistakePractice ? 'Focused practice' : isMixedReview ? 'Mixed review' : isQuiz ? 'Full quiz attempt' : 'Practice session'}
             </Badge>
           )}
           <p className="text-sm text-muted-foreground mt-3">{sessionTitle}</p>
           {isMistakePractice && (
             <p className="text-xs text-muted-foreground mt-2">
-              Mistake practice does not add a full Quiz attempt. Use Retake full quiz to create the next numbered attempt.
+              Focused practice can improve quiz mastery without adding a full Quiz attempt.
             </p>
           )}
         </CardContent>

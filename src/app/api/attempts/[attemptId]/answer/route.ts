@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { answerLetters, expectedCount, isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
+import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
 
 export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
   const session = await auth()
@@ -23,7 +24,13 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
       status: 'IN_PROGRESS',
       mode: { in: ['PRACTICE', 'QUIZ'] },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      mode: true,
+      practiceConfig: true,
+      totalQuestions: true,
+      startedAt: true,
+    },
   })
   if (!attempt) return NextResponse.json({ error: 'Attempt is not active' }, { status: 409 })
 
@@ -63,13 +70,57 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
     return NextResponse.json({ error: 'Invalid answer selection' }, { status: 400 })
   }
 
+  async function finalizeFocusedPracticeIfComplete() {
+    if (attempt.mode !== 'QUIZ') return false
+    const config = readQuizAttemptConfig(attempt.practiceConfig)
+    if (config?.sessionKind !== 'INCORRECT_RETRY') return false
+
+    const rows = await prisma.examAnswer.findMany({
+      where: { attemptId: attempt.id },
+      select: { isCorrect: true },
+    })
+    if (
+      rows.length < attempt.totalQuestions ||
+      rows.some((answer) => answer.isCorrect === null)
+    ) {
+      return false
+    }
+
+    const correctCount = rows.filter((answer) => answer.isCorrect === true).length
+    const incorrectCount = rows.filter((answer) => answer.isCorrect === false).length
+    const score = attempt.totalQuestions > 0
+      ? (correctCount / attempt.totalQuestions) * 100
+      : 0
+    const timeTakenSeconds = Math.max(
+      0,
+      Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000),
+    )
+
+    const completed = await prisma.examAttempt.updateMany({
+      where: { id: attempt.id, status: 'IN_PROGRESS' },
+      data: {
+        status: 'COMPLETED',
+        submittedAt: new Date(),
+        timeTakenSeconds,
+        score,
+        correctCount,
+        incorrectCount,
+        unansweredCount: 0,
+      },
+    })
+
+    return completed.count === 1
+  }
+
   // A checked answer is immutable. This makes retries idempotent and prevents
   // changing an answer after its explanation has been revealed.
   if (row.isCorrect !== null && row.selectedAnswer) {
+    const attemptCompleted = await finalizeFocusedPracticeIfComplete()
     return NextResponse.json({
       selectedAnswer: row.selectedAnswer,
       isCorrect: row.isCorrect,
       alreadySaved: true,
+      attemptCompleted,
     })
   }
 
@@ -94,5 +145,11 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
     return NextResponse.json({ error: 'Could not save answer' }, { status: 409 })
   }
 
-  return NextResponse.json({ selectedAnswer, isCorrect: correct, alreadySaved: false })
+  const attemptCompleted = await finalizeFocusedPracticeIfComplete()
+  return NextResponse.json({
+    selectedAnswer,
+    isCorrect: correct,
+    alreadySaved: false,
+    attemptCompleted,
+  })
 }

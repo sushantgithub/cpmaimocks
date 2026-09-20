@@ -149,7 +149,7 @@ export function QuizzesClient({
             )}
           </div>
 
-          {quiz.premiumAccess && slot.latestAttemptId && slot.latestIncorrect > 0 && (
+          {quiz.premiumAccess && !slot.completed && slot.latestAttemptId && slot.latestIncorrect > 0 && (
             <div className="rounded-lg bg-blue-50/60 p-2">
               <Button
                 variant="secondary"
@@ -159,11 +159,11 @@ export function QuizzesClient({
               >
                 <Target className="h-4 w-4 mr-2" />
                 {slot.activeRetryAttemptId
-                  ? 'Resume mistake practice'
-                  : `Practice ${slot.latestIncorrect} incorrect`}
+                  ? 'Resume practice'
+                  : `Practice ${slot.latestIncorrect} ${slot.latestIncorrect === 1 ? 'question' : 'questions'}`}
               </Button>
               <p className="text-[11px] text-muted-foreground mt-1.5 px-1">
-                Mistake practice is separate and does not count as a Quiz {slot.number} attempt.
+                Focused practice helps you master this quiz and does not add a full Quiz {slot.number} attempt.
               </p>
             </div>
           )}
