@@ -184,7 +184,14 @@ export async function submitExam(
   const attempt = await prisma.examAttempt.findUnique({
     where: { id: attemptId },
     include: {
-      exam: { select: { timeLimitMinutes: true, showExplanations: true } },
+      exam: {
+        select: {
+          timeLimitMinutes: true,
+          showExplanations: true,
+          questionCount: true,
+          questionsPerAttempt: true,
+        },
+      },
       answers: { include: { question: { select: { id: true, correctAnswer: true, categoryId: true, topicId: true } } } },
     },
   })
@@ -203,6 +210,14 @@ export async function submitExam(
     ? Math.min(timeTaken, timeLimitSeconds)
     : timeTaken
   const expired = timeLimitSeconds > 0 && timeTaken >= timeLimitSeconds
+  const immediateFeedback =
+    attempt.exam?.showExplanations === true &&
+    attempt.exam !== null &&
+    !isFullMockExam({
+      questionCount: attempt.exam.questionCount,
+      questionsPerAttempt: attempt.exam.questionsPerAttempt,
+      timeLimitMinutes: attempt.exam.timeLimitMinutes,
+    })
 
   let correctCount = 0
   let incorrectCount = 0
@@ -210,7 +225,7 @@ export async function submitExam(
 
   const scoredAnswers = attempt.answers.map((ea) => {
     const selected = answerForFinalScoring({
-      showExplanations: attempt.exam?.showExplanations ?? false,
+      showExplanations: immediateFeedback,
       storedAnswer: ea.selectedAnswer,
       storedIsCorrect: ea.isCorrect,
       browserAnswer: answers[ea.questionId],
@@ -286,7 +301,14 @@ export async function getAttemptResults(attemptId: string, userId: string) {
   const attempt = await prisma.examAttempt.findFirst({
     where: { id: attemptId, userId, status: 'COMPLETED' },
     include: {
-      exam: { select: { title: true, passingScore: true, timeLimitMinutes: true } },
+      exam: {
+        select: {
+          title: true,
+          passingScore: true,
+          timeLimitMinutes: true,
+          certification: { select: { usesDomains: true } },
+        },
+      },
       answers: {
         include: {
           question: {
