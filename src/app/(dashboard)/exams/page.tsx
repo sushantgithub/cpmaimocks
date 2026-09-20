@@ -23,9 +23,21 @@ export default async function ExamsPage() {
       // and questionCount to describe a sample rather than the whole pool.
     }),
     prisma.examAttempt.findMany({
-      where: { userId, status: 'COMPLETED', examId: { not: null } },
-      select: { examId: true, score: true, submittedAt: true },
-      orderBy: { submittedAt: 'desc' },
+      where: {
+        userId,
+        mode: 'EXAM',
+        status: { in: ['IN_PROGRESS', 'COMPLETED'] },
+        examId: { not: null },
+      },
+      select: {
+        id: true,
+        examId: true,
+        status: true,
+        score: true,
+        startedAt: true,
+        submittedAt: true,
+      },
+      orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
     }),
   ])
 
@@ -35,11 +47,17 @@ export default async function ExamsPage() {
   const isSubscribed = accessible === 'ALL' || accessible.length > 0
   const freeCount = exams.filter((exam) => !exam.requireSubscription).length
   const certificationNames = Array.from(new Set(exams.map((exam) => exam.certification.name)))
-  const attemptMap = new Map<string, { score: number; date: Date }>()
-  attempts.forEach((a) => {
-    if (a.examId && !attemptMap.has(a.examId)) {
-      attemptMap.set(a.examId, { score: a.score ?? 0, date: a.submittedAt! })
+  const completedByExam = new Map<string, typeof attempts>()
+  const activeByExam = new Map<string, (typeof attempts)[number]>()
+  attempts.forEach((attempt) => {
+    if (!attempt.examId) return
+    if (attempt.status === 'IN_PROGRESS') {
+      activeByExam.set(attempt.examId, attempt)
+      return
     }
+    const history = completedByExam.get(attempt.examId) ?? []
+    history.push(attempt)
+    completedByExam.set(attempt.examId, history)
   })
 
   return (
@@ -75,8 +93,10 @@ export default async function ExamsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {exams.map((exam) => {
           const locked = exam.requireSubscription && !canAccess(exam.certification.id)
-          const prev = attemptMap.get(exam.id)
-          const passed = prev && prev.score >= exam.passingScore
+          const history = completedByExam.get(exam.id) ?? []
+          const prev = history.length > 0 ? history[history.length - 1] : null
+          const active = activeByExam.get(exam.id) ?? null
+          const passed = history.some((attempt) => (attempt.score ?? 0) >= exam.passingScore)
 
           return (
             <Card key={exam.id} className={locked ? 'opacity-60' : ''}>
@@ -105,9 +125,33 @@ export default async function ExamsPage() {
                   )}
                   <span>Pass: {exam.passingScore}%</span>
                 </div>
-                {prev && (
+                {history.length > 0 && (
+                  <div className="mb-3 rounded-lg border overflow-hidden">
+                    <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-700">
+                      Attempt history
+                    </div>
+                    <div className="max-h-32 overflow-y-auto divide-y">
+                      {history.map((attempt, index) => (
+                        <Link
+                          key={attempt.id}
+                          href={`/results/${attempt.id}`}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-gray-50"
+                        >
+                          <span>Attempt {index + 1}</span>
+                          <span className="font-semibold">{Math.round(attempt.score ?? 0)}%</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {active && (
+                  <p className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mb-3">
+                    Attempt {history.length + 1} is in progress. The timer continues while you are away.
+                  </p>
+                )}
+                {prev && !active && (
                   <p className="text-xs text-muted-foreground mb-3">
-                    Last attempt: {Math.round(prev.score)}% — {prev.date.toLocaleDateString()}
+                    Latest: {Math.round(prev.score ?? 0)}% — {(prev.submittedAt ?? prev.startedAt).toLocaleDateString()}
                   </p>
                 )}
                 {locked ? (
@@ -116,7 +160,12 @@ export default async function ExamsPage() {
                   </Button>
                 ) : (
                   <Button className="w-full" asChild>
-                    <Link href={freshExamHref(exam.id)} prefetch={false}>{prev ? 'Retake Exam' : 'Start Exam'}</Link>
+                    <Link
+                      href={active ? `/exams/${exam.id}` : freshExamHref(exam.id)}
+                      prefetch={false}
+                    >
+                      {active ? 'Resume Exam' : history.length > 0 ? 'Retake Exam' : 'Start Exam'}
+                    </Link>
                   </Button>
                 )}
               </CardContent>
