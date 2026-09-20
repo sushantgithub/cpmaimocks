@@ -33,6 +33,7 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
     },
   })
   if (!attempt) return NextResponse.json({ error: 'Attempt is not active' }, { status: 409 })
+  const activeAttempt = attempt
 
   const row = await prisma.examAnswer.findUnique({
     where: { attemptId_questionId: { attemptId: params.attemptId, questionId } },
@@ -71,16 +72,16 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
   }
 
   async function finalizeFocusedPracticeIfComplete() {
-    if (attempt.mode !== 'QUIZ') return false
-    const config = readQuizAttemptConfig(attempt.practiceConfig)
+    if (activeAttempt.mode !== 'QUIZ') return false
+    const config = readQuizAttemptConfig(activeAttempt.practiceConfig)
     if (config?.sessionKind !== 'INCORRECT_RETRY') return false
 
     const rows = await prisma.examAnswer.findMany({
-      where: { attemptId: attempt.id },
+      where: { attemptId: activeAttempt.id },
       select: { isCorrect: true },
     })
     if (
-      rows.length < attempt.totalQuestions ||
+      rows.length < activeAttempt.totalQuestions ||
       rows.some((answer) => answer.isCorrect === null)
     ) {
       return false
@@ -88,16 +89,16 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
 
     const correctCount = rows.filter((answer) => answer.isCorrect === true).length
     const incorrectCount = rows.filter((answer) => answer.isCorrect === false).length
-    const score = attempt.totalQuestions > 0
-      ? (correctCount / attempt.totalQuestions) * 100
+    const score = activeAttempt.totalQuestions > 0
+      ? (correctCount / activeAttempt.totalQuestions) * 100
       : 0
     const timeTakenSeconds = Math.max(
       0,
-      Math.floor((Date.now() - attempt.startedAt.getTime()) / 1000),
+      Math.floor((Date.now() - activeAttempt.startedAt.getTime()) / 1000),
     )
 
     const completed = await prisma.examAttempt.updateMany({
-      where: { id: attempt.id, status: 'IN_PROGRESS' },
+      where: { id: activeAttempt.id, status: 'IN_PROGRESS' },
       data: {
         status: 'COMPLETED',
         submittedAt: new Date(),
