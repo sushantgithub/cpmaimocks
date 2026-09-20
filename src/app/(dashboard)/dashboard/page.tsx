@@ -92,11 +92,11 @@ export default async function DashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'Exams Taken', value: stats.totalExams, icon: Trophy, color: 'text-blue-600', help: undefined },
+          { label: 'Exams Taken', value: stats.totalExams, icon: Trophy, color: 'text-blue-600', help: 'Completed Mock Exams only. Quiz and Practice sessions are not counted.' },
           { label: 'Questions Attempted', value: stats.totalQuestions, icon: BookOpen, color: 'text-purple-600', help: 'Unique questions with a checked or scored answer.' },
           { label: 'Questions Mastered', value: stats.masteredQuestions, icon: CheckCircle2, color: 'text-green-600', help: 'Unique questions whose latest checked answer is correct.' },
-          { label: 'Average Score', value: `${stats.avgScore}%`, icon: Target, color: 'text-yellow-600', help: undefined },
-          { label: 'Best Score', value: `${stats.bestScore}%`, icon: TrendingUp, color: 'text-green-600', help: undefined },
+          { label: 'Average Score', value: `${stats.avgScore}%`, icon: Target, color: 'text-yellow-600', help: 'Average score across completed Mock Exams only. Quiz and Practice scores are excluded.' },
+          { label: 'Best Score', value: `${stats.bestScore}%`, icon: TrendingUp, color: 'text-green-600', help: 'Highest score achieved in a completed Mock Exam. Quiz and Practice scores are excluded.' },
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="p-4">
