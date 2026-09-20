@@ -11,6 +11,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof data.fullName === 'string') update.fullName = data.fullName.trim() || null
   if (typeof data.description === 'string') update.description = data.description.trim() || null
   if (typeof data.isActive === 'boolean') update.isActive = data.isActive
+  if (typeof data.usesDomains === 'boolean') update.usesDomains = data.usesDomains
   if (typeof data.sortOrder === 'number') update.sortOrder = data.sortOrder
 
   const certification = await prisma.certification.update({ where: { id: params.id }, data: update })
