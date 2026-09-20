@@ -115,12 +115,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: {
         id: { in: uniqueQuestionIds },
         certificationId,
-        contentType: 'MOCK_EXAM',
       },
     })
     if (eligibleCount !== uniqueQuestionIds.length) {
       return NextResponse.json(
-        { error: 'Every assigned question must belong to this certification and be Mock Exam content.' },
+        { error: 'Every assigned question must belong to this certification.' },
         { status: 400 }
       )
     }
@@ -164,40 +163,41 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data.requireSubscription = body.requireSubscription
   }
 
-  if (body.status !== undefined) {
-    if (!['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(body.status)) {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
-    }
-
-    if (body.status === 'PUBLISHED') {
-      if (assignedCountAfterSave !== targetQuestionCount) {
-        return NextResponse.json(
-          {
-            error: `Cannot publish yet. This mock needs ${targetQuestionCount} questions and currently has ${assignedCountAfterSave}.`,
-            code: 'QUESTION_COUNT_MISMATCH',
-          },
-          { status: 409 }
-        )
-      }
-
-      const publishedCount = uniqueQuestionIds
-        ? await prisma.question.count({
-            where: { id: { in: uniqueQuestionIds }, status: 'PUBLISHED' },
-          })
-        : await prisma.mockExamQuestion.count({
-            where: { examId: params.id, question: { status: 'PUBLISHED' } },
-          })
-
-      if (publishedCount !== targetQuestionCount) {
-        return NextResponse.json(
-          { error: 'All questions assigned to a published mock must themselves be published.' },
-          { status: 409 }
-        )
-      }
-    }
-
-    data.status = body.status
+  if (body.status !== undefined && !['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(body.status)) {
+    return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
+
+  const effectiveStatus =
+    body.status !== undefined ? body.status : current.status
+
+  if (effectiveStatus === 'PUBLISHED') {
+    if (assignedCountAfterSave !== targetQuestionCount) {
+      return NextResponse.json(
+        {
+          error: `A published mock must be complete. Set it to Draft first, then remove questions. Target: ${targetQuestionCount}; assigned: ${assignedCountAfterSave}.`,
+          code: 'QUESTION_COUNT_MISMATCH',
+        },
+        { status: 409 }
+      )
+    }
+
+    const publishedCount = uniqueQuestionIds
+      ? await prisma.question.count({
+          where: { id: { in: uniqueQuestionIds }, status: 'PUBLISHED' },
+        })
+      : await prisma.mockExamQuestion.count({
+          where: { examId: params.id, question: { status: 'PUBLISHED' } },
+        })
+
+    if (publishedCount !== targetQuestionCount) {
+      return NextResponse.json(
+        { error: 'All questions assigned to a published mock must themselves be published.' },
+        { status: 409 }
+      )
+    }
+  }
+
+  if (body.status !== undefined) data.status = body.status
 
   if (typeof body.certificationId === 'string' && body.certificationId) {
     data.certificationId = body.certificationId
