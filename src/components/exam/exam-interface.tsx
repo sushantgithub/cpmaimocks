@@ -131,7 +131,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   // Save only changed questions after a short idle period.
   useEffect(() => {
     if (dirty.current.size === 0) return
-    const timer = window.setTimeout(() => { void saveDirty() }, 1000)
+    const timer = window.setTimeout(() => { void saveDirty() }, 150)
     return () => window.clearTimeout(timer)
   }, [answers, marked, saveDirty])
 
@@ -587,18 +587,27 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
               <AlertCircle className="h-6 w-6 text-yellow-500" />
               <h3 className="font-bold text-lg">Submit Exam?</h3>
             </div>
+            <div className="rounded-xl border divide-y mb-4 text-sm">
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">Answered</span>
+                <strong>{totalAnswered}</strong>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">Unanswered</span>
+                <strong>{unanswered}</strong>
+              </div>
+              <div className="flex items-center justify-between px-3 py-2">
+                <span className="text-muted-foreground">Marked for Review</span>
+                <strong>{marked.size}</strong>
+              </div>
+            </div>
             {unanswered > 0 && (
               <p className="text-sm text-yellow-700 bg-yellow-50 rounded-lg p-3 mb-4">
-                You have <strong>{unanswered} unanswered</strong> questions. They will count as unanswered.
-              </p>
-            )}
-            {!exam.showExplanations && marked.size > 0 && (
-              <p className="text-sm text-yellow-800 bg-yellow-50 rounded-lg p-3 mb-4">
-                <strong>{marked.size}</strong> still marked for review.
+                Unanswered questions will remain unanswered in the final result.
               </p>
             )}
             <p className="text-sm text-muted-foreground mb-6">
-              {totalAnswered} of {questions.length} completed. This cannot be undone.
+              Final submission cannot be undone. You can review this exact attempt after it is submitted.
             </p>
             <div className="flex gap-3">
               <Button
