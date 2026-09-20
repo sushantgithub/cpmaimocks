@@ -17,7 +17,7 @@ describe('free practice access', () => {
   it('counts only attempts for the selected certification', () => {
     const attempts = [
       { totalQuestions: 10, practiceConfig: { certificationId: 'cpmai', accessTier: 'FREE' } },
-      { totalQuestions: 5, practiceConfig: { certificationId: 'cpmai', mode: 'RANDOM' } },
+      { totalQuestions: 5, practiceConfig: { certificationId: 'cpmai', accessTier: 'FREE', mode: 'RANDOM' } },
       { totalQuestions: 20, practiceConfig: { certificationId: 'pmp', accessTier: 'FREE' } },
     ]
 
