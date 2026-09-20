@@ -77,6 +77,7 @@ export default function PracticePage() {
   useEffect(() => {
     if (!config.certificationId) return
     let cancelled = false
+    setPracticeAccess(null)
     setAccessLoading(true)
 
     fetch(`/api/practice/start?certificationId=${encodeURIComponent(config.certificationId)}`)
