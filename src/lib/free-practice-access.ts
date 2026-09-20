@@ -38,9 +38,10 @@ export function countFreePracticeUsage(
   return attempts.reduce((total, attempt) => {
     if (practiceCertificationId(attempt.practiceConfig) !== certificationId) return total
 
-    // Premium practice must never consume the free allowance. Attempts created
-    // before this marker existed are treated as free to preserve prior usage.
-    if (practiceAccessTier(attempt.practiceConfig) === 'PREMIUM') return total
+    // Only sessions explicitly started under the free allowance consume it.
+    // Legacy attempts predate this policy, so every account starts the new
+    // 25-question allowance cleanly and past premium work cannot reduce it.
+    if (practiceAccessTier(attempt.practiceConfig) !== 'FREE') return total
 
     return total + Math.max(0, Math.floor(attempt.totalQuestions))
   }, 0)
