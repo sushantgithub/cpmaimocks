@@ -325,9 +325,11 @@ export default function AdminUsersPage() {
                               {sub.cancellationReason === 'ADMIN_TEST_ACCESS' ? 'Test access · ' : ''}{sub.plan.name}
                             </Badge>
                             <p className="text-xs text-gray-500 mt-0.5">
-                              {isLifetime(sub.plan.durationDays)
-                                ? 'Lifetime'
-                                : sub.endDate ? `Until ${formatDate(new Date(sub.endDate))}` : ''}
+                              {sub.cancellationReason === 'ADMIN_TEST_ACCESS'
+                                ? sub.endDate ? `Until ${formatDate(new Date(sub.endDate))}` : ''
+                                : isLifetime(sub.plan.durationDays)
+                                  ? 'Lifetime'
+                                  : sub.endDate ? `Until ${formatDate(new Date(sub.endDate))}` : ''}
                             </p>
                           </div>
                         ) : (

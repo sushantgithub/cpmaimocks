@@ -4,8 +4,6 @@ import { prisma } from '@/lib/db'
 import { isPremiumPlan } from '@/lib/subscription-plans'
 import { ADMIN_TEST_ACCESS_MARKER, adminAccessEndDate } from '@/lib/admin-test-access'
 
-const ADMIN_TEST_ACCESS = 'ADMIN_TEST_ACCESS'
-
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') {
