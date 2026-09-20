@@ -404,7 +404,7 @@ function usedByOtherSlots(attempts: NormalizedAttempt[], quizNumber: number) {
       .map((attempt) => attempt.quizNumber as number)
   )
 
-  for (const number of quizNumbers) {
+  for (const number of Array.from(quizNumbers)) {
     if (number === quizNumber) continue
     for (const id of canonicalQuestionIds(attempts, number)) used.add(id)
   }
