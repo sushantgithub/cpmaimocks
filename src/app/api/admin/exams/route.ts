@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
+import { isFullMockExam } from '@/lib/mock-exams'
 
 export async function GET() {
   const session = await auth()
@@ -15,7 +16,13 @@ export async function GET() {
     },
   })
 
-  return NextResponse.json(exams)
+  // Legacy domain learning mocks (for example 60-question untimed domain
+  // pools) are now represented by the Quiz 1–6 experience. Keep the legacy
+  // records intact for historical safety, but do not expose them as Mock Exams
+  // in Admin or in the Existing Mock import picker.
+  const mockExams = exams.filter(isFullMockExam)
+
+  return NextResponse.json(mockExams)
 }
 
 export async function POST(req: Request) {
