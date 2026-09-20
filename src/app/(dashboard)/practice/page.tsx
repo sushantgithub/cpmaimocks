@@ -12,7 +12,7 @@ const DIFFICULTY_OPTIONS = ['EASY', 'MEDIUM', 'HARD']
 const QUESTION_COUNTS = [10, 20, 30, 50]
 
 interface Category { id: string; name: string }
-interface Certification { id: string; name: string; fullName?: string | null }
+interface Certification { id: string; name: string; fullName?: string | null; usesDomains: boolean }
 
 export default function PracticePage() {
   const router = useRouter()
@@ -26,6 +26,7 @@ export default function PracticePage() {
     mode: 'RANDOM' as 'RANDOM' | 'INCORRECT' | 'BOOKMARKED',
   })
   const [loading, setLoading] = useState(false)
+  const selectedCertification = certifications.find((cert) => cert.id === config.certificationId) ?? null
 
   useEffect(() => {
     fetch('/api/certifications')
@@ -40,12 +41,18 @@ export default function PracticePage() {
   // Domains belong to a certification, so reload them whenever it changes
   useEffect(() => {
     if (!config.certificationId) return
+    const cert = certifications.find((item) => item.id === config.certificationId)
+    if (cert && !cert.usesDomains) {
+      setCategories([])
+      setConfig((p) => ({ ...p, categoryIds: [] }))
+      return
+    }
     fetch(`/api/categories?certificationId=${config.certificationId}`)
       .then((r) => r.json())
       .then(setCategories)
       .catch(() => {})
     setConfig((p) => ({ ...p, categoryIds: [] }))
-  }, [config.certificationId])
+  }, [config.certificationId, certifications])
 
   function toggleDifficulty(d: string) {
     setConfig((prev) => ({
@@ -190,7 +197,7 @@ export default function PracticePage() {
       </Card>
 
       {/* Domain filter */}
-      {categories.length > 0 && (
+      {selectedCertification?.usesDomains && categories.length > 0 && (
         <Card>
           <CardContent className="p-4">
             <h3 className="font-semibold mb-3">Domain <span className="text-muted-foreground font-normal text-sm">(leave blank for all)</span></h3>
