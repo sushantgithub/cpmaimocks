@@ -170,14 +170,14 @@ export default function AdminDomainsPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <Input
               placeholder="New domain name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && createDomain()}
             />
-            <Button onClick={createDomain} loading={creating} disabled={!certificationId || selectedCertification?.usesDomains === false}>
+            <Button className="w-full sm:w-auto" onClick={createDomain} loading={creating} disabled={!certificationId || selectedCertification?.usesDomains === false}>
               <Plus className="h-4 w-4 mr-1" />Add
             </Button>
           </div>
