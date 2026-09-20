@@ -14,10 +14,11 @@ interface Certification {
   fullName: string | null
   description: string | null
   isActive: boolean
+  usesDomains: boolean
   _count: { questions: number; exams: number; categories: number }
 }
 
-const EMPTY = { name: '', fullName: '', description: '' }
+const EMPTY = { name: '', fullName: '', description: '', usesDomains: true }
 
 export default function AdminCertificationsPage() {
   const [certifications, setCertifications] = useState<Certification[]>([])
@@ -63,6 +64,26 @@ export default function AdminCertificationsPage() {
       body: JSON.stringify({ isActive: !cert.isActive }),
     })
     toast({ title: cert.isActive ? `${cert.name} hidden` : `${cert.name} active`, variant: 'success' })
+    load()
+  }
+
+  async function toggleDomains(cert: Certification) {
+    const res = await fetch(`/api/admin/certifications/${cert.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usesDomains: !cert.usesDomains }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      toast({ title: data.error ?? 'Could not update domain setting', variant: 'destructive' })
+      return
+    }
+    toast({
+      title: cert.usesDomains
+        ? `Domains disabled for ${cert.name}`
+        : `Domains enabled for ${cert.name}`,
+      variant: 'success',
+    })
     load()
   }
 
@@ -119,6 +140,20 @@ export default function AdminCertificationsPage() {
               onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
             />
           </div>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.usesDomains}
+              onChange={(e) => setForm(p => ({ ...p, usesDomains: e.target.checked }))}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+            />
+            <span>
+              <span className="font-medium">Uses Domains</span>
+              <span className="block text-xs text-gray-500">
+                Enable for certifications whose questions must be organised and reported by domain.
+              </span>
+            </span>
+          </label>
           <div className="flex justify-end">
             <Button onClick={create} loading={saving}>
               <Plus className="h-4 w-4 mr-1" />Add Certification
@@ -141,13 +176,19 @@ export default function AdminCertificationsPage() {
                       <Badge variant={cert.isActive ? 'success' : 'secondary'} className="text-xs">
                         {cert.isActive ? 'Active' : 'Hidden'}
                       </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {cert.usesDomains ? 'Uses Domains' : 'No Domains'}
+                      </Badge>
                     </div>
                     {cert.fullName && <p className="text-sm text-gray-600 mt-0.5">{cert.fullName}</p>}
                     <p className="text-xs text-gray-500 mt-1">
                       {cert._count.questions} questions · {cert._count.exams} exams · {cert._count.categories} domains
                     </p>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+                    <Button size="sm" variant="outline" onClick={() => toggleDomains(cert)}>
+                      {cert.usesDomains ? 'Disable Domains' : 'Enable Domains'}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => toggleActive(cert)}>
                       {cert.isActive ? 'Hide' : 'Activate'}
                     </Button>
