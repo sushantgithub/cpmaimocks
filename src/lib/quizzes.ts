@@ -10,7 +10,6 @@ import {
   isFullyAnsweredQuizAttempt,
   latestQuizVerdicts,
   countsAsFullQuizAttempt,
-  isQuizMastered,
   isEffectivelyCompleteRetry,
   quizMasteryProgress,
   type QuizAccessTier,
@@ -392,7 +391,7 @@ export async function quizSummary(
     const completed =
       canonical.length === expected && progress.masteredEver
 
-    for (const [questionId, correct] of progress.verdicts.entries()) {
+    for (const [questionId, correct] of Array.from(progress.verdicts.entries())) {
       if (canonical.includes(questionId)) progressVerdicts.set(questionId, correct)
     }
 
