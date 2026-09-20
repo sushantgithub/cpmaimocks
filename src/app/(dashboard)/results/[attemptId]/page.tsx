@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatTime, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
-import { CheckCircle2, XCircle, MinusCircle, Trophy, Clock } from 'lucide-react'
+import { CheckCircle2, XCircle, MinusCircle, Trophy, Clock, Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { answerLetters } from '@/lib/answers'
 import { AnswerExplanation } from '@/components/exam/answer-explanation'
@@ -34,8 +34,20 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
   const isExam = result.mode === 'EXAM'
   const isQuiz = result.mode === 'QUIZ'
   const quizConfig = readQuizAttemptConfig(result.practiceConfig)
-  const questionOrder = quizConfig?.questionIds?.length
-    ? new Map(quizConfig.questionIds.map((id, index) => [id, index]))
+  const rawAttemptConfig = result.practiceConfig
+  const examQuestionIds =
+    isExam &&
+    rawAttemptConfig &&
+    typeof rawAttemptConfig === 'object' &&
+    !Array.isArray(rawAttemptConfig) &&
+    Array.isArray((rawAttemptConfig as { questionIds?: unknown }).questionIds)
+      ? (rawAttemptConfig as { questionIds: unknown[] }).questionIds.filter(
+          (id): id is string => typeof id === 'string'
+        )
+      : []
+  const storedQuestionIds = isExam ? examQuestionIds : (quizConfig?.questionIds ?? [])
+  const questionOrder = storedQuestionIds.length > 0
+    ? new Map(storedQuestionIds.map((id, index) => [id, index]))
     : null
   const orderedAnswers = questionOrder
     ? [...result.answers].sort(
@@ -82,31 +94,59 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
     if (index >= 0) quizAttemptNumber = index + 1
   }
 
+  let examAttemptNumber: number | null = null
+  if (isExam && result.examId) {
+    const examAttempts = await prisma.examAttempt.findMany({
+      where: {
+        userId: session!.user.id,
+        examId: result.examId,
+        mode: 'EXAM',
+        status: 'COMPLETED',
+      },
+      select: { id: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const index = examAttempts.findIndex((attempt) => attempt.id === result.id)
+    if (index >= 0) examAttemptNumber = index + 1
+  }
+
   const baseSessionTitle = result.exam?.title
     ?? (isQuiz ? (quizConfig?.quizTitle ?? 'Quiz Session') : 'Practice Session')
   const sessionTitle =
-    isStandardQuiz && quizAttemptNumber
-      ? baseSessionTitle + ' · Attempt ' + quizAttemptNumber
-      : baseSessionTitle
+    isExam && examAttemptNumber
+      ? baseSessionTitle + ' · Attempt ' + examAttemptNumber
+      : isStandardQuiz && quizAttemptNumber
+        ? baseSessionTitle + ' · Attempt ' + quizAttemptNumber
+        : baseSessionTitle
   const backHref = isExam ? '/exams' : isQuiz ? '/quizzes' : '/practice'
   const backLabel = isExam ? 'All Exams' : isQuiz ? 'All Quizzes' : 'Practice'
-  const reviewFilter = ['correct', 'incorrect', 'unanswered'].includes(searchParams?.review ?? '') ? searchParams!.review! : 'all'
+  const markedCount = orderedAnswers.filter((answer) => answer.isMarked).length
+  const reviewFilter = ['correct', 'incorrect', 'unanswered', 'marked'].includes(searchParams?.review ?? '')
+    ? searchParams!.review!
+    : 'all'
   const reviewAnswers = orderedAnswers.filter((answer) =>
     reviewFilter === 'all' ? true :
     reviewFilter === 'correct' ? answer.isCorrect === true :
     reviewFilter === 'incorrect' ? answer.isCorrect === false :
+    reviewFilter === 'marked' ? answer.isMarked :
     !answer.selectedAnswer
   )
 
-  // Domain breakdown
+  // Domain breakdown is shown only when domain data is meaningful.
+  // Certifications configured without Domains get overall performance only.
   const domainMap = new Map<string, { correct: number; total: number }>()
-  orderedAnswers.forEach((a) => {
-    const cat = a.question.category?.name ?? 'General'
-    const entry = domainMap.get(cat) ?? { correct: 0, total: 0 }
-    entry.total++
-    if (a.isCorrect) entry.correct++
-    domainMap.set(cat, entry)
-  })
+  const domainAnalyticsEnabled =
+    !isExam || result.exam?.certification?.usesDomains === true
+  if (domainAnalyticsEnabled) {
+    orderedAnswers.forEach((answer) => {
+      const domain = answer.question.category?.name
+      if (!domain) return
+      const entry = domainMap.get(domain) ?? { correct: 0, total: 0 }
+      entry.total++
+      if (answer.isCorrect) entry.correct++
+      domainMap.set(domain, entry)
+    })
+  }
 
   return (
     <div className="max-w-3xl mx-auto pb-20 md:pb-6 space-y-6">
@@ -191,6 +231,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
               ['correct', `Correct (${result.correctCount ?? 0})`],
               ['incorrect', `Incorrect (${result.incorrectCount ?? 0})`],
               ['unanswered', `Unanswered (${result.unansweredCount ?? 0})`],
+              ...(isExam ? [['marked', `Marked for Review (${markedCount})`]] : []),
             ].map(([value, label]) => (
               <Button key={value} size="sm" variant={reviewFilter === value ? 'default' : 'outline'} asChild>
                 <Link
@@ -213,7 +254,9 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
                     ? 'No correct answers in this attempt.'
                     : reviewFilter === 'incorrect'
                       ? 'No incorrect answers in this attempt.'
-                      : 'No questions are available to review.'}
+                      : reviewFilter === 'marked'
+                        ? 'No questions were marked for review in this attempt.'
+                        : 'No questions are available to review.'}
               </CardContent>
             </Card>
           )}
@@ -230,7 +273,14 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
                     {isCorrect ? <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" /> :
                      isUnanswered ? <MinusCircle className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" /> :
                      <XCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />}
-                    <p className="text-sm font-medium leading-relaxed">{i + 1}. {q.text}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-relaxed">{i + 1}. {q.text}</p>
+                      {answer.isMarked && (
+                        <Badge className="mt-2 text-xs bg-yellow-100 text-yellow-800 border-yellow-200">
+                          <Flag className="h-3 w-3 mr-1" />Marked for Review
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="ml-6 space-y-1.5 mb-3">
