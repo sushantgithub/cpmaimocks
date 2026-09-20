@@ -16,6 +16,7 @@ interface Certification {
   isActive: boolean
   usesDomains: boolean
   _count: { questions: number; exams: number; categories: number }
+  mockExamCount: number
   inventory: { quiz: number; mockExam: number; practiceOnly: number; practiceTotal: number }
 }
 
@@ -183,7 +184,7 @@ export default function AdminCertificationsPage() {
                     </div>
                     {cert.fullName && <p className="text-sm text-gray-600 mt-0.5">{cert.fullName}</p>}
                     <p className="text-xs text-gray-500 mt-1">
-                      {cert._count.questions} questions · {cert._count.exams} exams · {cert._count.categories} domains
+                      {cert._count.questions} questions · {cert.mockExamCount} mock exam{cert.mockExamCount === 1 ? '' : 's'} · {cert._count.categories} domains
                     </p>
                     <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       <div className="rounded-md border bg-gray-50 px-2.5 py-2">
