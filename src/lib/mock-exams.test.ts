@@ -18,6 +18,14 @@ describe('isFullMockExam', () => {
     })).toBe(true)
   })
 
+  it('rejects an empty timed record', () => {
+    expect(isFullMockExam({
+      questionCount: 0,
+      questionsPerAttempt: null,
+      timeLimitMinutes: 120,
+    })).toBe(false)
+  })
+
   it('rejects an untimed full-pool legacy record', () => {
     expect(isFullMockExam({
       questionCount: 60,
