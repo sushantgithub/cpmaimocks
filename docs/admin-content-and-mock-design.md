@@ -385,7 +385,9 @@ Practice-only questions must never automatically appear in Quiz or Mock.
 
 Removing a question from a Mock does not remove it from Practice.
 
-Current Practice filters such as Certification, Domain, Difficulty, question count, mistakes, and bookmarks should continue to work. Domain filters should be hidden where the selected Certification does not use Domains.
+Practice must NOT expose a Quiz / Mock Exam / Practice Only content-type filter to learners.
+
+The learner sees one combined Practice pool containing all published Quiz, Mock Exam, and Practice-only questions. Where the selected Certification uses Domains, the learner may narrow that combined pool by Domain. Existing learner filters such as Certification, Difficulty, question count, mistakes, and bookmarks may continue to work. Domain filters should be hidden where the selected Certification does not use Domains.
 
 ---
 
@@ -433,6 +435,8 @@ Practice Only:
 ---
 
 ## 17. Admin Reporting
+
+Content type is an Admin/import classification only; it is not a learner-facing Practice filter.
 
 Admin should be able to understand inventory by Certification, for example:
 
