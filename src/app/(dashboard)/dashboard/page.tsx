@@ -4,55 +4,38 @@ import { getUserStats } from '@/lib/quiz'
 import { listQuizzes } from '@/lib/quizzes'
 import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
 import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
-import { getUserActiveSubscriptions, getAccessibleCertificationIds } from '@/lib/subscription'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { getUserActiveSubscriptions } from '@/lib/subscription'
+import { isFullMockExam } from '@/lib/mock-exams'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { formatDate, getScoreGrade } from '@/lib/utils'
 import Link from 'next/link'
-import { freshExamHref } from '@/lib/exam-links'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
-import { Trophy, BookOpen, Target, TrendingUp, ArrowRight, Lock, CheckCircle2 } from 'lucide-react'
-
-/**
- * How many questions one attempt serves, shown against the pool it is drawn
- * from when those differ. Null, zero or a count that covers the whole pool all
- * mean the attempt receives everything.
- */
-function examQuestionSummary(questionCount: number, questionsPerAttempt: number | null) {
-  const samples =
-    questionsPerAttempt !== null && questionsPerAttempt > 0 && questionsPerAttempt < questionCount
-  const served = samples ? questionsPerAttempt : questionCount
-  return `${served} question${served === 1 ? '' : 's'}${samples ? ` of ${questionCount}` : ''}`
-}
+import { Trophy, BookOpen, Target, TrendingUp, CheckCircle2 } from 'lucide-react'
 
 export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [stats, subscription, accessible, examCount, recentAttempts, exams, quizzes] = await Promise.all([
+  const [stats, subscription, recentAttempts, quizzes, publishedExamShapes] = await Promise.all([
     getUserStats(userId),
     getUserActiveSubscriptions(userId),
-    getAccessibleCertificationIds(userId),
-    prisma.mockExam.count({ where: { status: 'PUBLISHED' } }),
     prisma.examAttempt.findMany({
       where: { userId, status: 'COMPLETED' },
       include: { exam: { select: { title: true } } },
       orderBy: { submittedAt: 'desc' },
       take: 5,
     }),
+    listQuizzes(userId),
     prisma.mockExam.findMany({
       where: { status: 'PUBLISHED' },
-      orderBy: { sortOrder: 'asc' },
-      take: 6,
+      select: { questionCount: true, questionsPerAttempt: true, timeLimitMinutes: true },
     }),
-    listQuizzes(userId),
   ])
 
   const isSubscribed = subscription.length > 0
   const freeQuizAvailable = !isSubscribed && hasRemainingFreeQuizSession(quizzes)
-  const canAccess = (certificationId: string) =>
-    accessible === 'ALL' || accessible.includes(certificationId)
+  const examCount = publishedExamShapes.filter(isFullMockExam).length
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
@@ -109,52 +92,6 @@ export default async function DashboardPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {/* Mock Exams */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-lg">Mock Exams</h2>
-          <Link href="/exams" className="text-sm text-primary hover:underline">View all →</Link>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {exams.map((exam) => {
-            const locked = exam.requireSubscription && !canAccess(exam.certificationId)
-            return (
-              <Card key={exam.id} className={locked ? 'opacity-70' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-medium text-sm leading-tight">{exam.title}</h3>
-                    {locked ? (
-                      <Lock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    ) : !exam.requireSubscription ? (
-                      <Badge variant="success" className="text-xs">Free</Badge>
-                    ) : null}
-                  </div>
-                  <div className="text-xs text-muted-foreground mb-3 space-y-1">
-                    <p>
-                      {/* A domain mock serves part of its pool, so say how many an
-                          attempt gives rather than how many exist. Zero minutes
-                          means untimed, so the time is left off entirely. */}
-                      {examQuestionSummary(exam.questionCount, exam.questionsPerAttempt)}
-                      {exam.timeLimitMinutes > 0 && ` • ${exam.timeLimitMinutes} mins`}
-                    </p>
-                    <p>Passing score: {exam.passingScore}%</p>
-                  </div>
-                  {locked ? (
-                    <Button size="sm" className="w-full" asChild variant="outline">
-                      <Link href="/subscription">Upgrade for Mock Exams</Link>
-                    </Button>
-                  ) : (
-                    <Button size="sm" className="w-full" asChild>
-                      <Link href={freshExamHref(exam.id)} prefetch={false}>Start Exam <ArrowRight className="h-3 w-3" /></Link>
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
       </div>
 
       {/* Recent Attempts */}

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import type { PracticeConfig } from '@/types'
 import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
 import { answerForFinalScoring, latestCheckedVerdicts, questionHistoryState } from '@/lib/exam-progress'
+import { isFullMockExam } from '@/lib/mock-exams'
 
 export class ExamSubmissionError extends Error {
   constructor(public code: 'ALREADY_SUBMITTED' | 'TIME_EXPIRED', message: string) {
@@ -328,7 +329,19 @@ export async function getUserStats(userId: string) {
   const [attempts, checkedAnswers] = await Promise.all([
     prisma.examAttempt.findMany({
       where: { userId, status: 'COMPLETED', mode: 'EXAM' },
-      select: { score: true, correctCount: true, totalQuestions: true, examId: true },
+      select: {
+        score: true,
+        correctCount: true,
+        totalQuestions: true,
+        examId: true,
+        exam: {
+          select: {
+            questionCount: true,
+            questionsPerAttempt: true,
+            timeLimitMinutes: true,
+          },
+        },
+      },
     }),
     prisma.examAnswer.findMany({
       where: {
@@ -340,17 +353,20 @@ export async function getUserStats(userId: string) {
     }),
   ])
 
-  const totalExams = attempts.length
+  const fullMockAttempts = attempts.filter(
+    (attempt) => attempt.exam && isFullMockExam(attempt.exam)
+  )
+  const totalExams = fullMockAttempts.length
   // Progress is based on checked/scored answers, not merely selected drafts.
   // The latest verdict wins, matching the quiz progress model.
   const latest = latestCheckedVerdicts(checkedAnswers)
   const totalQuestions = latest.size
   const masteredQuestions = Array.from(latest.values()).filter(Boolean).length
   const avgScore = totalExams > 0
-    ? attempts.reduce((s, a) => s + (a.score ?? 0), 0) / totalExams
+    ? fullMockAttempts.reduce((s, a) => s + (a.score ?? 0), 0) / totalExams
     : 0
   const bestScore = totalExams > 0
-    ? Math.max(...attempts.map((a) => a.score ?? 0))
+    ? Math.max(...fullMockAttempts.map((a) => a.score ?? 0))
     : 0
 
   return {

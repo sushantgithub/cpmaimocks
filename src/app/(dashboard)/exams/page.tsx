@@ -6,16 +6,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { freshExamHref } from '@/lib/exam-links'
+import { isFullMockExam } from '@/lib/mock-exams'
 import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
 
 export default async function ExamsPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [accessible, exams, attempts] = await Promise.all([
+  const [accessible, publishedExams, attempts] = await Promise.all([
     getAccessibleCertificationIds(userId),
     prisma.mockExam.findMany({
-      where: { status: 'PUBLISHED' },
+      where: { status: 'PUBLISHED', timeLimitMinutes: { gt: 0 } },
       orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
       include: { certification: { select: { id: true, name: true } } },
       // questionsPerAttempt comes through the model, and the card needs both it
@@ -28,6 +29,7 @@ export default async function ExamsPage() {
     }),
   ])
 
+  const exams = publishedExams.filter(isFullMockExam)
   const canAccess = (certificationId: string) =>
     accessible === 'ALL' || accessible.includes(certificationId)
   const isSubscribed = accessible === 'ALL' || accessible.length > 0
@@ -45,7 +47,7 @@ export default async function ExamsPage() {
       <div>
         <h1 className="text-2xl font-bold">Mock Exams</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Timed and untimed exams drawn from each certification&rsquo;s question pool
+          Timed full-length mock exams for each certification
           {certificationNames.length > 0 && ` for ${certificationNames.join(', ')}`}.
         </p>
       </div>
@@ -54,7 +56,7 @@ export default async function ExamsPage() {
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
           <p className="font-medium text-yellow-800 text-sm">
             <Lock className="h-4 w-4 inline mr-1" />
-            Free plan active — quizzes include one free 10-question session each. {freeCount === 0 ? 'Mock exams require a paid plan.' : `${freeCount} free ${freeCount === 1 ? 'mock exam is' : 'mock exams are'} also open to everyone.`}
+            Free plan active — Quiz 1 is free in each domain. {freeCount === 0 ? 'Full mock exams require a paid plan.' : `${freeCount} full ${freeCount === 1 ? 'mock exam is' : 'mock exams are'} also open to everyone.`}
           </p>
           <Button size="sm" className="mt-2" asChild>
             <Link href="/subscription">View Paid Plans</Link>
@@ -62,16 +64,19 @@ export default async function ExamsPage() {
         </div>
       )}
 
+      {exams.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center text-muted-foreground">
+            No full mock exams are published yet.
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {exams.map((exam) => {
           const locked = exam.requireSubscription && !canAccess(exam.certification.id)
           const prev = attemptMap.get(exam.id)
           const passed = prev && prev.score >= exam.passingScore
-          // A domain mock serves part of its pool, so the card has to say how
-          // many an attempt gives rather than how many exist.
-          const perAttempt = exam.questionsPerAttempt
-          const samplesPool = perAttempt !== null && perAttempt > 0 && perAttempt < exam.questionCount
-          const served = samplesPool ? perAttempt : exam.questionCount
 
           return (
             <Card key={exam.id} className={locked ? 'opacity-60' : ''}>
@@ -90,8 +95,7 @@ export default async function ExamsPage() {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                   <span className="flex items-center gap-1">
                     <HelpCircle className="h-3.5 w-3.5" />
-                    {served} question{served === 1 ? '' : 's'}
-                    {samplesPool && <span className="text-gray-400"> of {exam.questionCount}</span>}
+                    {exam.questionCount} question{exam.questionCount === 1 ? '' : 's'}
                   </span>
                   {exam.timeLimitMinutes > 0 && (
                     <span className="flex items-center gap-1">
@@ -104,7 +108,6 @@ export default async function ExamsPage() {
                 {prev && (
                   <p className="text-xs text-muted-foreground mb-3">
                     Last attempt: {Math.round(prev.score)}% — {prev.date.toLocaleDateString()}
-                    {samplesPool && <span> · next set prioritizes missed and new questions</span>}
                   </p>
                 )}
                 {locked ? (
@@ -113,7 +116,7 @@ export default async function ExamsPage() {
                   </Button>
                 ) : (
                   <Button className="w-full" asChild>
-                    <Link href={freshExamHref(exam.id)} prefetch={false}>{prev ? (samplesPool ? 'Continue Practice' : 'Retake Exam') : 'Start Exam'}</Link>
+                    <Link href={freshExamHref(exam.id)} prefetch={false}>{prev ? 'Retake Exam' : 'Start Exam'}</Link>
                   </Button>
                 )}
               </CardContent>
