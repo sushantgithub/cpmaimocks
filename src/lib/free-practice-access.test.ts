@@ -36,7 +36,7 @@ describe('free practice access', () => {
     expect(practiceAccessTier(attempts[1].practiceConfig)).toBe('PREMIUM')
   })
 
-  it('ignores malformed configs and treats legacy matching attempts as free usage', () => {
+  it('ignores malformed and legacy configs that predate the free allowance policy', () => {
     const attempts = [
       { totalQuestions: 10, practiceConfig: null },
       { totalQuestions: 10, practiceConfig: [] },
@@ -44,7 +44,7 @@ describe('free practice access', () => {
       { totalQuestions: 5, practiceConfig: { certificationId: 'cpmai' } },
     ]
 
-    expect(countFreePracticeUsage(attempts, 'cpmai')).toBe(5)
+    expect(countFreePracticeUsage(attempts, 'cpmai')).toBe(0)
     expect(practiceCertificationId({ certificationId: 'cpmai' })).toBe('cpmai')
     expect(practiceCertificationId({})).toBeNull()
     expect(practiceAccessTier({})).toBeNull()
