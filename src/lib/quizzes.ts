@@ -7,6 +7,8 @@ import {
   quizCountForQuestions,
   readQuizAttemptConfig,
   previousQuizAllowsNext,
+  isFullyAnsweredQuizAttempt,
+  latestQuizVerdicts,
   type QuizAccessTier,
   type QuizAttemptConfig,
   type QuizSessionKind,
@@ -68,6 +70,8 @@ interface QuizAttemptRow {
   score: number | null
   correctCount: number | null
   incorrectCount: number | null
+  unansweredCount: number | null
+  totalQuestions: number
   practiceConfig: unknown
   answers: {
     questionId: string
@@ -160,6 +164,8 @@ async function loadUserQuizAttempts(userId: string): Promise<QuizAttemptRow[]> {
       score: true,
       correctCount: true,
       incorrectCount: true,
+      unansweredCount: true,
+      totalQuestions: true,
       practiceConfig: true,
       answers: {
         select: { questionId: true, isCorrect: true },
@@ -218,10 +224,19 @@ function canonicalQuestionIds(attempts: NormalizedAttempt[], quizNumber: number)
   return first ? attemptQuestionIds(first) : []
 }
 
+function latestStandard(attempts: NormalizedAttempt[], quizNumber: number) {
+  return [...standardForSlot(attempts, quizNumber)].reverse()[0] ?? null
+}
+
 function latestCompletedStandard(attempts: NormalizedAttempt[], quizNumber: number) {
   return [...standardForSlot(attempts, quizNumber)]
     .reverse()
     .find((attempt) => attempt.status === 'COMPLETED') ?? null
+}
+
+function fullyCompletedStandard(attempts: NormalizedAttempt[], quizNumber: number) {
+  const latest = latestStandard(attempts, quizNumber)
+  return latest && isFullyAnsweredQuizAttempt(latest) ? latest : null
 }
 
 function activeStandard(attempts: NormalizedAttempt[], quizNumber: number) {
@@ -242,13 +257,9 @@ function activeIncorrectRetry(attempts: NormalizedAttempt[], quizNumber: number)
 }
 
 function latestLearningVerdicts(attempts: NormalizedAttempt[]) {
-  const latest = new Map<string, boolean>()
-  for (const attempt of attempts) {
-    for (const answer of attempt.answers) {
-      if (answer.isCorrect !== null) latest.set(answer.questionId, answer.isCorrect === true)
-    }
-  }
-  return latest
+  return latestQuizVerdicts(
+    attempts.filter((attempt) => attempt.sessionKind === 'STANDARD')
+  )
 }
 
 function historyForSlot(attempts: NormalizedAttempt[], quizNumber: number): QuizAttemptHistory[] {
@@ -338,7 +349,7 @@ export async function quizSummary(
     const history = historyForSlot(attempts, number)
     const latest = history[0] ?? null
     const previousCompleted =
-      number === 1 || latestCompletedStandard(attempts, number - 1) !== null
+      number === 1 || fullyCompletedStandard(attempts, number - 1) !== null
     const previousActiveRetake =
       number > 1 && activeStandard(attempts, number - 1) !== null
     const previousReady =
@@ -352,18 +363,27 @@ export async function quizSummary(
 
     const canonical = canonicalQuestionIds(attempts, number)
     const expected = questionCountForQuiz(ids.length, number, QUIZ_QUESTIONS_PER_SITTING)
+    const latestStandardAttempt = latestStandard(attempts, number)
+    const completed =
+      latestStandardAttempt !== null &&
+      isFullyAnsweredQuizAttempt(latestStandardAttempt)
+    const slotVerdicts = latestQuizVerdicts(slotAttempts)
+    const currentIncorrect = Array.from(slotVerdicts.entries()).filter(
+      ([questionId, correct]) =>
+        (canonical.length === 0 || canonical.includes(questionId)) && !correct
+    ).length
 
     return {
       number,
       questionCount: canonical.length > 0 ? canonical.length : expected,
-      completed: history.length > 0,
+      completed,
       activeAttemptId: active?.id ?? null,
       activeRetryAttemptId: activeRetry?.id ?? null,
       latestAttemptId: latest?.id ?? null,
       latestScore: latest?.score ?? null,
       bestScore:
         history.length > 0 ? Math.max(...history.map((attempt) => attempt.score)) : null,
-      latestIncorrect: latest?.incorrectCount ?? 0,
+      latestIncorrect: currentIncorrect,
       attemptCount: history.length,
       history,
       lockReason,
@@ -484,7 +504,7 @@ export async function prepareQuizSitting(
     const firstIncomplete = Array.from({ length: quizCount }, (_, index) => index + 1)
       .find(
         (number) =>
-          latestCompletedStandard(attempts, number) === null ||
+          fullyCompletedStandard(attempts, number) === null ||
           activeStandard(attempts, number) !== null
       )
     if (firstIncomplete) {
@@ -524,7 +544,7 @@ export async function prepareQuizSitting(
   if (
     quizNumber > 1 &&
     !previousQuizAllowsNext(
-      latestCompletedStandard(attempts, quizNumber - 1) !== null,
+      fullyCompletedStandard(attempts, quizNumber - 1) !== null,
       activeStandard(attempts, quizNumber - 1) !== null,
     )
   ) {
@@ -540,12 +560,10 @@ export async function prepareQuizSitting(
     const retryActive = activeIncorrectRetry(attempts, quizNumber)
     if (retryActive) return { kind: 'resume', attemptId: retryActive.id }
 
-    const latest = latestCompletedStandard(attempts, quizNumber)
-    if (!latest) return { kind: 'no_incorrect' }
-
-    const incorrectIds = latest.answers
-      .filter((answer) => answer.isCorrect === false)
-      .map((answer) => answer.questionId)
+    const standardAttempts = standardForSlot(attempts, quizNumber)
+    const canonical = canonicalQuestionIds(attempts, quizNumber)
+    const verdicts = latestQuizVerdicts(standardAttempts)
+    const incorrectIds = canonical.filter((questionId) => verdicts.get(questionId) === false)
     if (incorrectIds.length === 0) return { kind: 'no_incorrect' }
 
     return {
@@ -559,7 +577,7 @@ export async function prepareQuizSitting(
     }
   }
 
-  const completed = latestCompletedStandard(attempts, quizNumber)
+  const completed = fullyCompletedStandard(attempts, quizNumber)
 
   if (action === 'start' && completed) {
     return { kind: 'completed', attemptId: completed.id }

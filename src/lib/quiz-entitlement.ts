@@ -116,3 +116,33 @@ export function previousQuizAllowsNext(
 ): boolean {
   return hasCompletedAttempt && !hasActiveRetake
 }
+
+
+export interface QuizProgressAttempt {
+  status: string
+  totalQuestions: number
+  unansweredCount: number | null
+  answers: { questionId: string; isCorrect: boolean | null }[]
+}
+
+export function isFullyAnsweredQuizAttempt(attempt: QuizProgressAttempt): boolean {
+  if (attempt.status !== 'COMPLETED') return false
+  if (attempt.unansweredCount !== null) return attempt.unansweredCount === 0
+
+  const checked = attempt.answers.filter((answer) => answer.isCorrect !== null).length
+  return attempt.totalQuestions > 0 && checked >= attempt.totalQuestions
+}
+
+export function latestQuizVerdicts(
+  attempts: { answers: { questionId: string; isCorrect: boolean | null }[] }[],
+) {
+  const latest = new Map<string, boolean>()
+  for (const attempt of attempts) {
+    for (const answer of attempt.answers) {
+      if (answer.isCorrect !== null) {
+        latest.set(answer.questionId, answer.isCorrect === true)
+      }
+    }
+  }
+  return latest
+}

@@ -110,7 +110,7 @@ export function QuizzesClient({
       )
     }
 
-    if (slot.completed && slot.latestAttemptId) {
+    if (slot.latestAttemptId) {
       return (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
@@ -136,7 +136,7 @@ export function QuizzesClient({
             )}
           </div>
 
-          {quiz.premiumAccess && slot.latestIncorrect > 0 && (
+          {quiz.premiumAccess && slot.completed && slot.latestIncorrect > 0 && (
             <div className="rounded-lg bg-blue-50/60 p-2">
               <Button
                 variant="secondary"
@@ -326,6 +326,8 @@ export function QuizzesClient({
                               <Badge variant="secondary" className="text-xs">Mistake practice</Badge>
                             ) : slot.completed ? (
                               <Badge variant="success" className="text-xs">Completed</Badge>
+                            ) : slot.attemptCount > 0 ? (
+                              <Badge variant="secondary" className="text-xs">Incomplete</Badge>
                             ) : slot.number === 1 && !quiz.premiumAccess ? (
                               <Badge variant="secondary" className="text-xs">Free</Badge>
                             ) : slot.lockReason ? (
@@ -333,7 +335,7 @@ export function QuizzesClient({
                             ) : null}
                           </div>
 
-                          {slot.completed && (
+                          {slot.attemptCount > 0 && (
                             <div className="grid grid-cols-3 gap-2 mb-3 text-center">
                               <div className="rounded bg-gray-50 p-2">
                                 <div className="text-xs text-muted-foreground">Latest full</div>

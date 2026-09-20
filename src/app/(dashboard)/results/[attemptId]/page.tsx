@@ -46,8 +46,48 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
     : result.answers
   const isMistakePractice = isQuiz && quizConfig?.sessionKind === 'INCORRECT_RETRY'
   const isMixedReview = isQuiz && quizConfig?.sessionKind === 'MIXED_REVIEW'
-  const sessionTitle = result.exam?.title
+  const isStandardQuiz =
+    isQuiz &&
+    !isMistakePractice &&
+    !isMixedReview &&
+    quizConfig?.quizKey &&
+    quizConfig.quizNumber
+
+  let quizAttemptNumber: number | null = null
+  if (isStandardQuiz) {
+    const quizAttempts = await prisma.examAttempt.findMany({
+      where: {
+        userId: session!.user.id,
+        mode: 'QUIZ',
+        status: 'COMPLETED',
+      },
+      select: {
+        id: true,
+        practiceConfig: true,
+        createdAt: true,
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+
+    const sameQuizAttempts = quizAttempts.filter((attempt) => {
+      const config = readQuizAttemptConfig(attempt.practiceConfig)
+      const sessionKind = config?.sessionKind ?? 'STANDARD'
+      return (
+        config?.quizKey === quizConfig.quizKey &&
+        config.quizNumber === quizConfig.quizNumber &&
+        sessionKind === 'STANDARD'
+      )
+    })
+    const index = sameQuizAttempts.findIndex((attempt) => attempt.id === result.id)
+    if (index >= 0) quizAttemptNumber = index + 1
+  }
+
+  const baseSessionTitle = result.exam?.title
     ?? (isQuiz ? (quizConfig?.quizTitle ?? 'Quiz Session') : 'Practice Session')
+  const sessionTitle =
+    isStandardQuiz && quizAttemptNumber
+      ? baseSessionTitle + ' · Attempt ' + quizAttemptNumber
+      : baseSessionTitle
   const backHref = isExam ? '/exams' : isQuiz ? '/quizzes' : '/practice'
   const backLabel = isExam ? 'All Exams' : isQuiz ? 'All Quizzes' : 'Practice'
   const reviewFilter = ['correct', 'incorrect', 'unanswered'].includes(searchParams?.review ?? '') ? searchParams!.review! : 'all'

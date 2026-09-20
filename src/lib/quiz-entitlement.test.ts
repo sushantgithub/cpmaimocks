@@ -6,6 +6,8 @@ import {
   quizCountForQuestions,
   readQuizAttemptConfig,
   previousQuizAllowsNext,
+  isFullyAnsweredQuizAttempt,
+  latestQuizVerdicts,
 } from './quiz-entitlement'
 
 describe('quiz entitlement helpers', () => {
@@ -63,6 +65,53 @@ describe('quiz entitlement helpers', () => {
     expect(previousQuizAllowsNext(true, false)).toBe(true)
     expect(previousQuizAllowsNext(true, true)).toBe(false)
     expect(previousQuizAllowsNext(false, false)).toBe(false)
+  })
+
+  it('treats a submitted quiz with unanswered questions as incomplete', () => {
+    expect(isFullyAnsweredQuizAttempt({
+      status: 'COMPLETED',
+      totalQuestions: 10,
+      unansweredCount: 2,
+      answers: Array.from({ length: 8 }, (_, index) => ({
+        questionId: 'q' + (index + 1),
+        isCorrect: index < 3,
+      })),
+    })).toBe(false)
+
+    expect(isFullyAnsweredQuizAttempt({
+      status: 'COMPLETED',
+      totalQuestions: 10,
+      unansweredCount: 0,
+      answers: Array.from({ length: 10 }, (_, index) => ({
+        questionId: 'q' + (index + 1),
+        isCorrect: index < 5,
+      })),
+    })).toBe(true)
+  })
+
+  it('uses the latest checked verdict per question across full quiz attempts', () => {
+    const latest = latestQuizVerdicts([
+      {
+        answers: [
+          { questionId: 'q1', isCorrect: false },
+          { questionId: 'q2', isCorrect: true },
+          { questionId: 'q3', isCorrect: false },
+        ],
+      },
+      {
+        answers: [
+          { questionId: 'q1', isCorrect: true },
+          { questionId: 'q2', isCorrect: false },
+          { questionId: 'q3', isCorrect: null },
+        ],
+      },
+    ])
+
+    expect(Array.from(latest.entries())).toEqual([
+      ['q1', true],
+      ['q2', false],
+      ['q3', false],
+    ])
   })
 
   it('reuses an assigned quiz set and fills only from unassigned questions', () => {
