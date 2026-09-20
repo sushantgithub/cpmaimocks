@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
-import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2 } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2, KeyRound, X } from 'lucide-react'
 import { formatDate, formatCurrency, isLifetime } from '@/lib/utils'
 
 interface User {
@@ -18,9 +18,26 @@ interface User {
   emailVerified: string | null
   signInMethods: string[]
   createdAt: string
-  subscriptions: { plan: { name: string; durationDays: number }; endDate: string | null }[]
+  subscriptions: {
+    id: string
+    cancellationReason: string | null
+    plan: {
+      id: string
+      name: string
+      slug: string
+      durationDays: number
+      certification: { name: string } | null
+    }
+    endDate: string | null
+  }[]
   _count: { examAttempts: number }
   payments: { amount: number; currency: string }[]
+}
+
+interface AccessPlan {
+  id: string
+  name: string
+  certificationName: string
 }
 
 export default function AdminUsersPage() {
@@ -30,6 +47,11 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [plans, setPlans] = useState<AccessPlan[]>([])
+  const [accessUser, setAccessUser] = useState<User | null>(null)
+  const [planId, setPlanId] = useState('')
+  const [accessDays, setAccessDays] = useState('30')
+  const [savingAccess, setSavingAccess] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -39,6 +61,7 @@ export default function AdminUsersPage() {
       setUsers(data.users)
       setTotal(data.total)
       setPages(data.pages)
+      setPlans(data.plans ?? [])
     } finally { setLoading(false) }
   }, [search, page])
 
@@ -73,6 +96,58 @@ export default function AdminUsersPage() {
       toast({ title: newActive ? 'User activated' : 'User deactivated', variant: 'success' })
     } catch {
       toast({ title: 'Failed to update', variant: 'destructive' })
+    }
+  }
+
+  function openAccess(user: User) {
+    setAccessUser(user)
+    setPlanId(plans[0]?.id ?? '')
+    setAccessDays('30')
+  }
+
+  async function grantAccess() {
+    if (!accessUser || !planId) return
+    const days = Number(accessDays)
+    if (!Number.isInteger(days) || days < 1 || days > 3650) {
+      toast({ title: 'Access duration must be between 1 and 3650 days', variant: 'destructive' })
+      return
+    }
+
+    setSavingAccess(true)
+    try {
+      const res = await fetch(`/api/admin/users/${accessUser.id}/access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId, days }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Failed to grant access')
+      toast({
+        title: 'Test access granted',
+        description: `${accessUser.email} has premium access for ${days} day${days === 1 ? '' : 's'} without a payment.`,
+        variant: 'success',
+      })
+      setAccessUser(null)
+      await load()
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : 'Failed to grant access', variant: 'destructive' })
+    } finally {
+      setSavingAccess(false)
+    }
+  }
+
+  async function revokeTestAccess(user: User, subscriptionId: string) {
+    if (!confirm(`Revoke test access for ${user.email}? Paid subscriptions will not be affected.`)) return
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/access?subscriptionId=${encodeURIComponent(subscriptionId)}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? 'Failed to revoke access')
+      toast({ title: 'Test access revoked', variant: 'success' })
+      await load()
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : 'Failed to revoke access', variant: 'destructive' })
     }
   }
 
@@ -133,6 +208,64 @@ export default function AdminUsersPage() {
         />
       </div>
 
+      {accessUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-5 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Grant test access</h2>
+                <p className="text-sm text-gray-500 mt-1">{accessUser.email}</p>
+              </div>
+              <button
+                type="button"
+                className="text-gray-400 hover:text-gray-700"
+                onClick={() => setAccessUser(null)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Premium plan / certification</label>
+              <select
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={planId}
+                onChange={e => setPlanId(e.target.value)}
+              >
+                {plans.map(plan => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.certificationName} · {plan.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">This grants the same entitlement as the selected premium plan, but creates no payment.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Access duration</label>
+              <select
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+                value={accessDays}
+                onChange={e => setAccessDays(e.target.value)}
+              >
+                <option value="7">7 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+                <option value="365">1 year</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setAccessUser(null)} disabled={savingAccess}>Cancel</Button>
+              <Button onClick={grantAccess} disabled={savingAccess || !planId}>
+                {savingAccess ? 'Granting…' : 'Grant Access'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -157,6 +290,7 @@ export default function AdminUsersPage() {
                   ))
                 ) : users.map(user => {
                   const sub = user.subscriptions[0]
+                  const testAccesses = user.subscriptions.filter(s => s.cancellationReason === 'ADMIN_TEST_ACCESS')
                   return (
                     <tr key={user.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3">
@@ -187,7 +321,9 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3">
                         {sub ? (
                           <div>
-                            <Badge variant="success" className="text-xs">{sub.plan.name}</Badge>
+                            <Badge variant="success" className="text-xs">
+                              {sub.cancellationReason === 'ADMIN_TEST_ACCESS' ? 'Test access · ' : ''}{sub.plan.name}
+                            </Badge>
                             <p className="text-xs text-gray-500 mt-0.5">
                               {isLifetime(sub.plan.durationDays)
                                 ? 'Lifetime'
@@ -213,7 +349,21 @@ export default function AdminUsersPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex gap-2 justify-end">
+                        <div className="flex gap-2 justify-end flex-wrap">
+                          <Button variant="outline" size="sm" onClick={() => openAccess(user)} disabled={plans.length === 0}>
+                            <KeyRound className="h-3.5 w-3.5 mr-1" />Grant Access
+                          </Button>
+                          {testAccesses.map(access => (
+                            <Button
+                              key={access.id}
+                              variant="outline"
+                              size="sm"
+                              className="text-amber-700 border-amber-200 hover:bg-amber-50"
+                              onClick={() => revokeTestAccess(user, access.id)}
+                            >
+                              Revoke Test
+                            </Button>
+                          ))}
                           <Button variant="outline" size="sm" onClick={() => toggleRole(user)}>
                             {user.role === 'ADMIN' ? 'Remove Admin' : 'Make Admin'}
                           </Button>

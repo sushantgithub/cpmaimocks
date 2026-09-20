@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { isPremiumPlan } from '@/lib/subscription-plans'
 
 export async function GET(req: Request) {
   const session = await auth()
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
     ? { OR: [{ email: { contains: search, mode: 'insensitive' as const } }, { name: { contains: search, mode: 'insensitive' as const } }] }
     : {}
 
-  const [users, total] = await Promise.all([
+  const [users, total, planRows] = await Promise.all([
     prisma.user.findMany({
       where,
       select: {
@@ -30,9 +31,22 @@ export async function GET(req: Request) {
         accounts: { select: { provider: true } },
         createdAt: true,
         subscriptions: {
-          where: { status: 'ACTIVE' },
-          select: { plan: { select: { name: true, durationDays: true } }, endDate: true },
-          take: 1,
+          where: { status: 'ACTIVE', endDate: { gt: new Date() } },
+          select: {
+            id: true,
+            cancellationReason: true,
+            plan: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                durationDays: true,
+                certification: { select: { name: true } },
+              },
+            },
+            endDate: true,
+          },
+          orderBy: { endDate: 'desc' },
         },
         _count: { select: { examAttempts: true } },
         payments: {
@@ -45,6 +59,16 @@ export async function GET(req: Request) {
       take: limit,
     }),
     prisma.user.count({ where }),
+    prisma.subscriptionPlan.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        certification: { select: { name: true } },
+      },
+      orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
+    }),
   ])
 
   const rows = users.map(({ passwordHash, accounts, ...user }) => ({
@@ -55,5 +79,13 @@ export async function GET(req: Request) {
     ],
   }))
 
-  return NextResponse.json({ users: rows, total, pages: Math.ceil(total / limit) })
+  const plans = planRows
+    .filter(isPremiumPlan)
+    .map(({ id, name, certification }) => ({
+      id,
+      name,
+      certificationName: certification?.name ?? 'All certifications',
+    }))
+
+  return NextResponse.json({ users: rows, total, pages: Math.ceil(total / limit), plans })
 }
