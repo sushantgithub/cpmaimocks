@@ -179,15 +179,10 @@ export function isEffectivelyCompleteRetry(attempt: QuizLearningAttempt): boolea
 }
 
 function isMasteryCheckpoint(attempt: QuizLearningAttempt): boolean {
-  if (attempt.sessionKind === 'STANDARD') {
-    return isFullyAnsweredQuizAttempt(attempt)
-  }
-
-  if (attempt.sessionKind === 'INCORRECT_RETRY') {
-    return isFullyAnsweredQuizAttempt(attempt) || isEffectivelyCompleteRetry(attempt)
-  }
-
-  return false
+  // Completion is intentionally earned only by a 100% full quiz attempt.
+  // Focused practice can help the learner prepare, but it must never create
+  // the permanent completion milestone or unlock the next quiz by itself.
+  return attempt.sessionKind === 'STANDARD' && isFullyAnsweredQuizAttempt(attempt)
 }
 
 export function quizMasteryProgress(

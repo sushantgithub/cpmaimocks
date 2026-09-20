@@ -96,7 +96,7 @@ describe('quiz entitlement helpers', () => {
     )).toBe(true)
   })
 
-  it('lets focused practice complete the last weak question and create a permanent milestone', () => {
+  it('does not let focused practice create the completion milestone', () => {
     const ids = ['q1', 'q2', 'q3']
     const progress = quizMasteryProgress(ids, [
       {
@@ -119,8 +119,46 @@ describe('quiz entitlement helpers', () => {
       },
     ])
 
-    expect(progress.masteredEver).toBe(true)
+    expect(progress.masteredEver).toBe(false)
     expect(Array.from(progress.verdicts.values())).toEqual([true, true, true])
+  })
+
+  it('requires a 100% full quiz attempt even after focused practice fixes earlier mistakes', () => {
+    const ids = ['q1', 'q2', 'q3']
+    const progress = quizMasteryProgress(ids, [
+      {
+        status: 'COMPLETED',
+        sessionKind: 'STANDARD',
+        totalQuestions: 3,
+        unansweredCount: 0,
+        answers: [
+          { questionId: 'q1', isCorrect: true },
+          { questionId: 'q2', isCorrect: true },
+          { questionId: 'q3', isCorrect: false },
+        ],
+      },
+      {
+        status: 'COMPLETED',
+        sessionKind: 'INCORRECT_RETRY',
+        totalQuestions: 1,
+        unansweredCount: 0,
+        answers: [{ questionId: 'q3', isCorrect: true }],
+      },
+      {
+        status: 'COMPLETED',
+        sessionKind: 'STANDARD',
+        totalQuestions: 3,
+        unansweredCount: 0,
+        answers: [
+          { questionId: 'q1', isCorrect: true },
+          { questionId: 'q2', isCorrect: false },
+          { questionId: 'q3', isCorrect: true },
+        ],
+      },
+    ])
+
+    expect(progress.masteredEver).toBe(false)
+    expect(previousQuizAllowsNext(progress.masteredEver)).toBe(false)
   })
 
   it('never revokes a completed quiz after a later low-scoring retake', () => {
