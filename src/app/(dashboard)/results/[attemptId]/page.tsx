@@ -34,12 +34,22 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
   const isExam = result.mode === 'EXAM'
   const isQuiz = result.mode === 'QUIZ'
   const quizConfig = readQuizAttemptConfig(result.practiceConfig)
+  const questionOrder = quizConfig?.questionIds?.length
+    ? new Map(quizConfig.questionIds.map((id, index) => [id, index]))
+    : null
+  const orderedAnswers = questionOrder
+    ? [...result.answers].sort(
+        (a, b) =>
+          (questionOrder.get(a.questionId) ?? Number.MAX_SAFE_INTEGER) -
+          (questionOrder.get(b.questionId) ?? Number.MAX_SAFE_INTEGER)
+      )
+    : result.answers
   const sessionTitle = result.exam?.title
     ?? (isQuiz ? (quizConfig?.quizTitle ?? 'Quiz Session') : 'Practice Session')
   const backHref = isExam ? '/exams' : isQuiz ? '/quizzes' : '/practice'
   const backLabel = isExam ? 'All Exams' : isQuiz ? 'All Quizzes' : 'Practice'
   const reviewFilter = ['correct', 'incorrect', 'unanswered'].includes(searchParams?.review ?? '') ? searchParams!.review! : 'all'
-  const reviewAnswers = result.answers.filter((answer) =>
+  const reviewAnswers = orderedAnswers.filter((answer) =>
     reviewFilter === 'all' ? true :
     reviewFilter === 'correct' ? answer.isCorrect === true :
     reviewFilter === 'incorrect' ? answer.isCorrect === false :
@@ -48,7 +58,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
 
   // Domain breakdown
   const domainMap = new Map<string, { correct: number; total: number }>()
-  result.answers.forEach((a) => {
+  orderedAnswers.forEach((a) => {
     const cat = a.question.category?.name ?? 'General'
     const entry = domainMap.get(cat) ?? { correct: 0, total: 0 }
     entry.total++
@@ -145,7 +155,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
         </div>
         <div className="space-y-4">
           {reviewAnswers.map((answer) => {
-            const i = result.answers.findIndex((item) => item.id === answer.id)
+            const i = orderedAnswers.findIndex((item) => item.id === answer.id)
             const q = answer.question
             const isCorrect = answer.isCorrect
             const isUnanswered = !answer.selectedAnswer

@@ -68,8 +68,8 @@ export default async function DashboardPage() {
           <p className="font-semibold">{freeQuizAvailable ? 'Free plan active' : 'Free quiz allowance used'}</p>
           <p className="text-sm text-blue-100 mt-0.5">
             {freeQuizAvailable
-              ? `You have a free 10-question session available in at least one quiz. Upgrade only if you want ${examCount === 1 ? 'the mock exam' : `all ${examCount} mock exams`} and unlimited practice.`
-              : 'You have completed the free 10-question session in every quiz currently available to you. Upgrade to continue answering more questions.'}
+              ? `Quiz 1 (10 questions) is free in each domain. Upgrade only if you want ${examCount === 1 ? 'the mock exam' : `all ${examCount} mock exams`} and unlimited practice.`
+              : 'You have used the free Quiz 1 in every domain currently available to you. Upgrade for Quiz 2–6, retakes, and more practice.'}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
             {freeQuizAvailable && (

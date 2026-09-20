@@ -9,7 +9,7 @@ const PLANS = [
     price: 0,
     currency: 'INR',
     durationDays: 36500,
-    features: ['1 free 10-question session in each quiz', 'Basic performance stats'],
+    features: ['Quiz 1 (10 questions) free in each domain', 'Basic performance stats'],
     isActive: true,
     isFeatured: false,
     sortOrder: 0,

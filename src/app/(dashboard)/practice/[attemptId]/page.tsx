@@ -69,7 +69,18 @@ export default async function PracticeAttemptPage({ params }: { params: { attemp
     redirect('/subscription')
   }
 
-  const questions = attempt.answers.map((answer) => ({
+  const questionOrder = quizConfig?.questionIds?.length
+    ? new Map(quizConfig.questionIds.map((id, index) => [id, index]))
+    : null
+  const orderedAnswers = questionOrder
+    ? [...attempt.answers].sort(
+        (a, b) =>
+          (questionOrder.get(a.questionId) ?? Number.MAX_SAFE_INTEGER) -
+          (questionOrder.get(b.questionId) ?? Number.MAX_SAFE_INTEGER)
+      )
+    : attempt.answers
+
+  const questions = orderedAnswers.map((answer) => ({
     ...answer.question,
     category: answer.question.category?.name,
     topic: answer.question.topic?.name,

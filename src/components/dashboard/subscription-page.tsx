@@ -271,8 +271,8 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                       {hasPremiumSubscription
                         ? 'Free access is included with every account.'
                         : freeQuizAvailable
-                          ? 'No activation or payment is required. You still have a free quiz session available.'
-                          : 'Your free 10-question session has been used in every quiz currently available.'}
+                          ? 'No activation or payment is required. You still have a free Quiz 1 available in at least one domain.'
+                          : 'Your free Quiz 1 has been used in every domain currently available.'}
                     </p>
                     <Button
                       type="button"
@@ -288,7 +288,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                         ? 'Go to Quizzes'
                         : freeQuizAvailable
                           ? <>Continue with Free <ArrowRight className="h-4 w-4 ml-2" /></>
-                          : 'Free quiz allowance used'}
+                          : 'Free Quiz 1 allowance used'}
                     </Button>
                   </div>
                 ) : (

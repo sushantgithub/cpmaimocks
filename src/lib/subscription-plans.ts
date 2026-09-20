@@ -1,7 +1,7 @@
 export const BASELINE_FREE_PLAN_SLUG = 'free'
 
 export const BASELINE_FREE_PLAN_FEATURES = [
-  '1 free 10-question session in each quiz',
+  'Quiz 1 (10 questions) free in each domain',
   'Basic performance stats',
 ]
 

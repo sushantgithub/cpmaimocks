@@ -1,11 +1,43 @@
 import { prisma } from '@/lib/db'
 import { getAccessibleCertificationIds, hasAccessToCertification } from '@/lib/subscription'
-import { freeQuizAttemptState, readQuizAttemptConfig } from '@/lib/quiz-entitlement'
+import {
+  fixedQuizQuestionSet,
+  freeQuizAttemptState,
+  questionCountForQuiz,
+  quizCountForQuestions,
+  readQuizAttemptConfig,
+  type QuizAccessTier,
+  type QuizAttemptConfig,
+  type QuizSessionKind,
+} from '@/lib/quiz-entitlement'
 
 export const QUIZ_QUESTIONS_PER_SITTING = 10
 export const QUIZ_FREE_QUESTION_LIMIT = 10
 
-export type QuizKey = `domain:${string}` | `tag:${string}`
+export type QuizKey = string
+export type QuizStartAction = 'start' | 'retake' | 'retryIncorrect' | 'mixedReview'
+export type QuizLockReason = 'SUBSCRIPTION' | 'PREVIOUS' | 'FREE_USED' | null
+
+export interface QuizAttemptHistory {
+  id: string
+  score: number
+  submittedAt: string
+  incorrectCount: number
+}
+
+export interface QuizSlotSummary {
+  number: number
+  questionCount: number
+  completed: boolean
+  activeAttemptId: string | null
+  latestAttemptId: string | null
+  latestScore: number | null
+  bestScore: number | null
+  latestIncorrect: number
+  attemptCount: number
+  history: QuizAttemptHistory[]
+  lockReason: QuizLockReason
+}
 
 export interface QuizSummary {
   key: QuizKey
@@ -19,21 +51,49 @@ export interface QuizSummary {
   mastered: boolean
   locked: boolean
   activeAttemptId: string | null
+  premiumAccess: boolean
+  quizCount: number
+  completedQuizzes: number
+  mixedReviewAvailable: boolean
+  slots: QuizSlotSummary[]
 }
 
 interface QuizAttemptRow {
   id: string
   status: string
   createdAt: Date
+  submittedAt: Date | null
+  score: number | null
+  correctCount: number | null
+  incorrectCount: number | null
   practiceConfig: unknown
+  answers: {
+    questionId: string
+    isCorrect: boolean | null
+  }[]
+}
+
+interface NormalizedAttempt extends QuizAttemptRow {
+  config: QuizAttemptConfig
+  quizNumber: number | null
+  sessionKind: QuizSessionKind
 }
 
 function domainKey(categoryId: string): QuizKey {
-  return `domain:${categoryId}`
+  return 'domain:' + categoryId
 }
 
 function tagKey(quizId: string): QuizKey {
-  return `tag:${quizId}`
+  return 'tag:' + quizId
+}
+
+function shuffled<T>(items: T[]): T[] {
+  const out = [...items]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
 }
 
 async function poolFilter(key: QuizKey) {
@@ -90,70 +150,116 @@ async function poolFilter(key: QuizKey) {
 async function loadUserQuizAttempts(userId: string): Promise<QuizAttemptRow[]> {
   return prisma.examAttempt.findMany({
     where: { userId, mode: 'QUIZ' },
-    select: { id: true, status: true, createdAt: true, practiceConfig: true },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      submittedAt: true,
+      score: true,
+      correctCount: true,
+      incorrectCount: true,
+      practiceConfig: true,
+      answers: {
+        select: { questionId: true, isCorrect: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      },
+    },
     orderBy: { createdAt: 'asc' },
   })
 }
 
-function attemptsForKey(attempts: QuizAttemptRow[], key: QuizKey) {
-  return attempts.filter((attempt) => readQuizAttemptConfig(attempt.practiceConfig)?.quizKey === key)
+function normalizeAttemptsForKey(
+  attempts: QuizAttemptRow[],
+  key: QuizKey,
+  quizCount: number,
+): NormalizedAttempt[] {
+  const keyed = attempts
+    .map((attempt) => ({ attempt, config: readQuizAttemptConfig(attempt.practiceConfig) }))
+    .filter(
+      (item): item is { attempt: QuizAttemptRow; config: QuizAttemptConfig } =>
+        item.config?.quizKey === key
+    )
+
+  let legacyPaidSlot = 0
+
+  return keyed.map(({ attempt, config }) => {
+    const sessionKind = config.sessionKind ?? 'STANDARD'
+    let quizNumber = config.quizNumber ?? null
+
+    if (sessionKind === 'STANDARD' && quizNumber === null) {
+      if (config.accessTier === 'FREE') {
+        quizNumber = 1
+      } else {
+        legacyPaidSlot = Math.min(Math.max(quizCount, 1), legacyPaidSlot + 1)
+        quizNumber = legacyPaidSlot
+      }
+    }
+
+    return { ...attempt, config, quizNumber, sessionKind }
+  })
 }
 
-async function quizHistory(
-  userId: string,
-  key: QuizKey,
-  questionIds: string[],
-  attempts: QuizAttemptRow[],
-  respectReset: boolean,
-) {
-  let cycleAttempts = attemptsForKey(attempts, key)
+function standardForSlot(attempts: NormalizedAttempt[], quizNumber: number) {
+  return attempts.filter(
+    (attempt) => attempt.sessionKind === 'STANDARD' && attempt.quizNumber === quizNumber
+  )
+}
 
-  if (respectReset) {
-    const reset = await prisma.quizReset.findUnique({
-      where: { userId_quizKey: { userId, quizKey: key } },
-      select: { resetAt: true },
-    })
-    if (reset) {
-      cycleAttempts = cycleAttempts.filter((attempt) => attempt.createdAt >= reset.resetAt)
+function attemptQuestionIds(attempt: NormalizedAttempt) {
+  return attempt.config.questionIds?.length
+    ? attempt.config.questionIds
+    : attempt.answers.map((answer) => answer.questionId)
+}
+
+function canonicalQuestionIds(attempts: NormalizedAttempt[], quizNumber: number) {
+  const first = standardForSlot(attempts, quizNumber)[0]
+  return first ? attemptQuestionIds(first) : []
+}
+
+function latestCompletedStandard(attempts: NormalizedAttempt[], quizNumber: number) {
+  return [...standardForSlot(attempts, quizNumber)]
+    .reverse()
+    .find((attempt) => attempt.status === 'COMPLETED') ?? null
+}
+
+function activeStandard(attempts: NormalizedAttempt[], quizNumber: number) {
+  return [...standardForSlot(attempts, quizNumber)]
+    .reverse()
+    .find((attempt) => attempt.status === 'IN_PROGRESS') ?? null
+}
+
+function latestLearningVerdicts(attempts: NormalizedAttempt[]) {
+  const latest = new Map<string, boolean>()
+  for (const attempt of attempts) {
+    for (const answer of attempt.answers) {
+      if (answer.isCorrect !== null) latest.set(answer.questionId, answer.isCorrect === true)
     }
   }
-
-  const attemptIds = cycleAttempts.map((attempt) => attempt.id)
-  if (attemptIds.length === 0 || questionIds.length === 0) {
-    return { attempts: cycleAttempts, rows: [] as { questionId: string; isCorrect: boolean | null; updatedAt: Date }[] }
-  }
-
-  const rows = await prisma.examAnswer.findMany({
-    where: {
-      attemptId: { in: attemptIds },
-      questionId: { in: questionIds },
-      isCorrect: { not: null },
-    },
-    select: { questionId: true, isCorrect: true, updatedAt: true },
-    orderBy: { updatedAt: 'asc' },
-  })
-
-  return { attempts: cycleAttempts, rows }
-}
-
-export function verdicts(rows: { questionId: string; isCorrect: boolean | null }[]) {
-  const latest = new Map<string, boolean>()
-  for (const row of rows) latest.set(row.questionId, row.isCorrect === true)
   return latest
 }
 
-export function pickForSitting(unseen: string[], wrong: string[], budget: number) {
-  if (budget <= 0) return []
-  return [...unseen, ...wrong].slice(0, budget)
+function historyForSlot(attempts: NormalizedAttempt[], quizNumber: number): QuizAttemptHistory[] {
+  return standardForSlot(attempts, quizNumber)
+    .filter((attempt) => attempt.status === 'COMPLETED')
+    .slice()
+    .reverse()
+    .map((attempt) => ({
+      id: attempt.id,
+      score: Math.round((attempt.score ?? 0) * 10) / 10,
+      submittedAt: (attempt.submittedAt ?? attempt.createdAt).toISOString(),
+      incorrectCount:
+        attempt.incorrectCount ??
+        attempt.answers.filter((answer) => answer.isCorrect === false).length,
+    }))
 }
 
-function shuffled<T>(items: T[]): T[] {
-  const out = [...items]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[out[i], out[j]] = [out[j], out[i]]
-  }
-  return out
+function freeSlotState(attempts: NormalizedAttempt[]) {
+  return freeQuizAttemptState(
+    standardForSlot(attempts, 1).map((attempt) => ({
+      id: attempt.id,
+      status: attempt.status,
+    }))
+  )
 }
 
 export async function listQuizzes(userId: string): Promise<QuizSummary[]> {
@@ -194,26 +300,63 @@ export async function quizSummary(
 
   const questions = await prisma.question.findMany({ where: pool.where, select: { id: true } })
   const ids = questions.map((question) => question.id)
+  const quizCount = quizCountForQuestions(ids.length, QUIZ_QUESTIONS_PER_SITTING)
+  if (quizCount === 0) return null
+
   const allAttempts = preloadedAttempts ?? await loadUserQuizAttempts(userId)
-  const keyAttempts = attemptsForKey(allAttempts, key)
+  const attempts = normalizeAttemptsForKey(allAttempts, key, quizCount)
 
-  const hasAccess = accessible !== undefined
-    ? accessible === 'ALL' || accessible.includes(pool.certificationId)
-    : await hasAccessToCertification(userId, pool.certificationId)
+  const hasAccess =
+    accessible !== undefined
+      ? accessible === 'ALL' || accessible.includes(pool.certificationId)
+      : await hasAccessToCertification(userId, pool.certificationId)
 
-  // Free entitlement is lifetime-per-quiz and deliberately ignores QuizReset.
-  // Paid users may reset a mastered quiz, so their progress respects resetAt.
-  const history = await quizHistory(userId, key, ids, allAttempts, hasAccess)
-  const latest = verdicts(history.rows)
-  const answered = latest.size
-  const wrong = Array.from(latest.values()).filter((ok) => !ok).length
+  const freeState = freeSlotState(attempts)
+  const verdicts = latestLearningVerdicts(attempts)
+  const answered = Array.from(verdicts.keys()).filter((id) => ids.includes(id)).length
+  const wrong = Array.from(verdicts.entries()).filter(
+    ([id, correct]) => ids.includes(id) && !correct
+  ).length
 
-  const freeState = freeQuizAttemptState(keyAttempts)
-  const paidActive = hasAccess
-    ? [...history.attempts].reverse().find((attempt) => attempt.status === 'IN_PROGRESS')?.id ?? null
-    : null
-  const activeAttemptId = hasAccess ? paidActive : freeState.activeAttemptId
-  const locked = !hasAccess && freeState.locked
+  const slots: QuizSlotSummary[] = Array.from({ length: quizCount }, (_, index) => {
+    const number = index + 1
+    const slotAttempts = standardForSlot(attempts, number)
+    const active = [...slotAttempts].reverse().find((attempt) => attempt.status === 'IN_PROGRESS') ?? null
+    const history = historyForSlot(attempts, number)
+    const latest = history[0] ?? null
+    const previousCompleted =
+      number === 1 || latestCompletedStandard(attempts, number - 1) !== null
+
+    let lockReason: QuizLockReason = null
+    if (!hasAccess && number > 1) lockReason = 'SUBSCRIPTION'
+    else if (!previousCompleted) lockReason = 'PREVIOUS'
+    else if (!hasAccess && number === 1 && freeState.locked && !active) lockReason = 'FREE_USED'
+
+    const canonical = canonicalQuestionIds(attempts, number)
+    const expected = questionCountForQuiz(ids.length, number, QUIZ_QUESTIONS_PER_SITTING)
+
+    return {
+      number,
+      questionCount: canonical.length > 0 ? canonical.length : expected,
+      completed: history.length > 0,
+      activeAttemptId: active?.id ?? null,
+      latestAttemptId: latest?.id ?? null,
+      latestScore: latest?.score ?? null,
+      bestScore:
+        history.length > 0 ? Math.max(...history.map((attempt) => attempt.score)) : null,
+      latestIncorrect: latest?.incorrectCount ?? 0,
+      attemptCount: history.length,
+      history,
+      lockReason,
+    }
+  })
+
+  const completedQuizzes = slots.filter((slot) => slot.completed).length
+  const activeAttemptId = slots.find((slot) => slot.activeAttemptId)?.activeAttemptId ?? null
+  const mastered =
+    completedQuizzes === quizCount &&
+    activeAttemptId === null &&
+    wrong === 0
 
   return {
     key,
@@ -224,98 +367,205 @@ export async function quizSummary(
     total: ids.length,
     answered,
     wrong,
-    mastered: !activeAttemptId && ids.length > 0 && answered >= ids.length && wrong === 0,
-    locked,
+    mastered,
+    locked: !hasAccess && freeState.locked,
     activeAttemptId,
+    premiumAccess: hasAccess,
+    quizCount,
+    completedQuizzes,
+    mixedReviewAvailable: hasAccess && completedQuizzes === quizCount && wrong > 0,
+    slots,
   }
 }
 
 export type NextSitting =
   | { kind: 'resume'; attemptId: string }
-  | { kind: 'questions'; questionIds: string[]; title: string; certificationId: string; premiumAccess: boolean }
+  | {
+      kind: 'questions'
+      questionIds: string[]
+      title: string
+      certificationId: string
+      accessTier: QuizAccessTier
+      quizNumber?: number
+      sessionKind: QuizSessionKind
+    }
+  | { kind: 'completed'; attemptId: string }
+  | { kind: 'locked'; reason: 'subscription' | 'free_used' }
+  | { kind: 'sequence_locked'; previousQuizNumber: number }
+  | { kind: 'no_incorrect' }
   | { kind: 'mastered' }
-  | { kind: 'locked'; answered: number }
   | { kind: 'empty' }
 
-export async function nextSitting(userId: string, key: QuizKey): Promise<NextSitting | null> {
+function usedByOtherSlots(attempts: NormalizedAttempt[], quizNumber: number) {
+  const used = new Set<string>()
+  const quizNumbers = new Set(
+    attempts
+      .filter((attempt) => attempt.sessionKind === 'STANDARD' && attempt.quizNumber !== null)
+      .map((attempt) => attempt.quizNumber as number)
+  )
+
+  for (const number of quizNumbers) {
+    if (number === quizNumber) continue
+    for (const id of canonicalQuestionIds(attempts, number)) used.add(id)
+  }
+  return Array.from(used)
+}
+
+function fixedQuestionsForSlot(
+  attempts: NormalizedAttempt[],
+  quizNumber: number,
+  poolIds: string[],
+  budget: number,
+) {
+  const existing = canonicalQuestionIds(attempts, quizNumber)
+  const orderedPool = existing.length > 0 ? poolIds : shuffled(poolIds)
+  return fixedQuizQuestionSet(
+    existing,
+    orderedPool,
+    usedByOtherSlots(attempts, quizNumber),
+    budget,
+  )
+}
+
+export async function prepareQuizSitting(
+  userId: string,
+  key: QuizKey,
+  quizNumber: number | null,
+  action: QuizStartAction,
+): Promise<NextSitting | null> {
   const pool = await poolFilter(key)
   if (!pool) return null
 
   const questions = await prisma.question.findMany({ where: pool.where, select: { id: true } })
-  const ids = questions.map((question) => question.id)
-  if (ids.length === 0) return { kind: 'empty' }
+  const poolIds = questions.map((question) => question.id)
+  const quizCount = quizCountForQuestions(poolIds.length, QUIZ_QUESTIONS_PER_SITTING)
+  if (quizCount === 0) return { kind: 'empty' }
 
   const [hasAccess, allAttempts] = await Promise.all([
     hasAccessToCertification(userId, pool.certificationId),
     loadUserQuizAttempts(userId),
   ])
-  const keyAttempts = attemptsForKey(allAttempts, key)
+  const attempts = normalizeAttemptsForKey(allAttempts, key, quizCount)
+
+  if (action === 'mixedReview') {
+    if (!hasAccess) return { kind: 'locked', reason: 'subscription' }
+
+    const active = [...attempts]
+      .reverse()
+      .find(
+        (attempt) =>
+          attempt.sessionKind === 'MIXED_REVIEW' && attempt.status === 'IN_PROGRESS'
+      )
+    if (active) return { kind: 'resume', attemptId: active.id }
+
+    const firstIncomplete = Array.from({ length: quizCount }, (_, index) => index + 1)
+      .find((number) => latestCompletedStandard(attempts, number) === null)
+    if (firstIncomplete) {
+      return {
+        kind: 'sequence_locked',
+        previousQuizNumber: Math.max(1, firstIncomplete - 1),
+      }
+    }
+
+    const verdicts = latestLearningVerdicts(attempts)
+    const wrong = poolIds.filter((id) => verdicts.get(id) === false)
+    if (wrong.length === 0) return { kind: 'mastered' }
+
+    return {
+      kind: 'questions',
+      questionIds: shuffled(wrong).slice(0, QUIZ_QUESTIONS_PER_SITTING),
+      title: pool.title + ' · Mixed Review',
+      certificationId: pool.certificationId,
+      accessTier: 'PAID',
+      sessionKind: 'MIXED_REVIEW',
+    }
+  }
+
+  if (
+    quizNumber === null ||
+    !Number.isInteger(quizNumber) ||
+    quizNumber < 1 ||
+    quizNumber > quizCount
+  ) {
+    return null
+  }
+
+  if (!hasAccess && quizNumber > 1) {
+    return { kind: 'locked', reason: 'subscription' }
+  }
+
+  if (quizNumber > 1 && latestCompletedStandard(attempts, quizNumber - 1) === null) {
+    return { kind: 'sequence_locked', previousQuizNumber: quizNumber - 1 }
+  }
+
+  const standardActive = activeStandard(attempts, quizNumber)
+  if (standardActive) return { kind: 'resume', attemptId: standardActive.id }
+
+  if (action === 'retryIncorrect') {
+    if (!hasAccess) return { kind: 'locked', reason: 'subscription' }
+
+    const retryActive = [...attempts]
+      .reverse()
+      .find(
+        (attempt) =>
+          attempt.sessionKind === 'INCORRECT_RETRY' &&
+          attempt.quizNumber === quizNumber &&
+          attempt.status === 'IN_PROGRESS'
+      )
+    if (retryActive) return { kind: 'resume', attemptId: retryActive.id }
+
+    const latest = latestCompletedStandard(attempts, quizNumber)
+    if (!latest) return { kind: 'no_incorrect' }
+
+    const incorrectIds = latest.answers
+      .filter((answer) => answer.isCorrect === false)
+      .map((answer) => answer.questionId)
+    if (incorrectIds.length === 0) return { kind: 'no_incorrect' }
+
+    return {
+      kind: 'questions',
+      questionIds: incorrectIds,
+      title: pool.title + ' · Quiz ' + quizNumber + ' · Retry Incorrect',
+      certificationId: pool.certificationId,
+      accessTier: 'PAID',
+      quizNumber,
+      sessionKind: 'INCORRECT_RETRY',
+    }
+  }
+
+  const completed = latestCompletedStandard(attempts, quizNumber)
+
+  if (action === 'start' && completed) {
+    return { kind: 'completed', attemptId: completed.id }
+  }
+
+  if (action === 'retake' && !hasAccess) {
+    return { kind: 'locked', reason: 'subscription' }
+  }
 
   if (!hasAccess) {
-    const state = freeQuizAttemptState(keyAttempts)
-    if (state.locked) {
-      const history = await quizHistory(userId, key, ids, allAttempts, false)
-      return { kind: 'locked', answered: verdicts(history.rows).size }
+    const freeState = freeSlotState(attempts)
+    if (freeState.locked) return { kind: 'locked', reason: 'free_used' }
+    if (freeState.activeAttemptId) {
+      return { kind: 'resume', attemptId: freeState.activeAttemptId }
     }
-    if (state.activeAttemptId) return { kind: 'resume', attemptId: state.activeAttemptId }
   }
 
-  const history = await quizHistory(userId, key, ids, allAttempts, hasAccess)
-
-  if (hasAccess) {
-    const active = [...history.attempts].reverse().find((attempt) => attempt.status === 'IN_PROGRESS')
-    if (active) return { kind: 'resume', attemptId: active.id }
-  }
-
-  const latest = verdicts(history.rows)
-  const unseen = ids.filter((id) => !latest.has(id))
-  const wrongOldestFirst = history.rows
-    .filter((row) => latest.get(row.questionId) === false)
-    .map((row) => row.questionId)
-  const wrong = Array.from(new Set(wrongOldestFirst))
-
-  if (unseen.length === 0 && wrong.length === 0) return { kind: 'mastered' }
-
-  const budget = hasAccess ? QUIZ_QUESTIONS_PER_SITTING : QUIZ_FREE_QUESTION_LIMIT
-  const picked = pickForSitting(shuffled(unseen), wrong, budget)
+  const budget = questionCountForQuiz(
+    poolIds.length,
+    quizNumber,
+    QUIZ_QUESTIONS_PER_SITTING,
+  )
+  const picked = fixedQuestionsForSlot(attempts, quizNumber, poolIds, budget)
+  if (picked.length === 0) return { kind: 'empty' }
 
   return {
     kind: 'questions',
     questionIds: picked,
-    title: pool.title,
+    title: pool.title + ' · Quiz ' + quizNumber,
     certificationId: pool.certificationId,
-    premiumAccess: hasAccess,
+    accessTier: hasAccess ? 'PAID' : 'FREE',
+    quizNumber,
+    sessionKind: 'STANDARD',
   }
-}
-
-export type RestartQuizOutcome = 'ok' | 'not_found' | 'subscription_required'
-
-export async function restartQuiz(userId: string, key: QuizKey): Promise<RestartQuizOutcome> {
-  const pool = await poolFilter(key)
-  if (!pool) return 'not_found'
-
-  const hasAccess = await hasAccessToCertification(userId, pool.certificationId)
-  if (!hasAccess) return 'subscription_required'
-
-  const attempts = attemptsForKey(await loadUserQuizAttempts(userId), key)
-  const activeIds = attempts
-    .filter((attempt) => attempt.status === 'IN_PROGRESS')
-    .map((attempt) => attempt.id)
-
-  await prisma.$transaction(async (tx) => {
-    if (activeIds.length > 0) {
-      await tx.examAttempt.updateMany({
-        where: { id: { in: activeIds }, userId, status: 'IN_PROGRESS' },
-        data: { status: 'ABANDONED' },
-      })
-    }
-
-    await tx.quizReset.upsert({
-      where: { userId_quizKey: { userId, quizKey: key } },
-      create: { userId, quizKey: key },
-      update: { resetAt: new Date() },
-    })
-  })
-
-  return 'ok'
 }

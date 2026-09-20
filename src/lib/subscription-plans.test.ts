@@ -8,7 +8,7 @@ describe('baseline free plan', () => {
   })
 
   it('describes only baseline free access, not premium mock access', () => {
-    expect(BASELINE_FREE_PLAN_FEATURES).toContain('1 free 10-question session in each quiz')
+    expect(BASELINE_FREE_PLAN_FEATURES).toContain('Quiz 1 (10 questions) free in each domain')
     expect(BASELINE_FREE_PLAN_FEATURES).not.toContain('1 mini mock exam')
   })
 
