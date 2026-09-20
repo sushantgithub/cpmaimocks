@@ -16,6 +16,10 @@ export async function POST(req: Request) {
 
     const sitting = await nextSitting(session.user.id, key as QuizKey)
     if (!sitting) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 })
+
+    if (sitting.kind === 'resume') {
+      return NextResponse.json({ attemptId: sitting.attemptId, resumed: true })
+    }
     if (sitting.kind === 'empty') {
       return NextResponse.json({ error: 'This quiz has no published questions yet.' }, { status: 404 })
     }
@@ -24,7 +28,7 @@ export async function POST(req: Request) {
     }
     if (sitting.kind === 'locked') {
       return NextResponse.json({
-        error: `Free accounts get ${QUIZ_FREE_QUESTION_LIMIT} questions per quiz. View a paid plan to continue.`,
+        error: `Your free ${QUIZ_FREE_QUESTION_LIMIT}-question session for this quiz is complete. View a paid plan to continue.`,
         locked: true,
       }, { status: 402 })
     }
@@ -34,12 +38,16 @@ export async function POST(req: Request) {
         userId: session.user.id,
         mode: 'QUIZ',
         totalQuestions: sitting.questionIds.length,
-        practiceConfig: { quizKey: key, quizTitle: sitting.title },
+        practiceConfig: {
+          quizKey: key,
+          quizTitle: sitting.title,
+          accessTier: sitting.premiumAccess ? 'PAID' : 'FREE',
+        },
         answers: { create: sitting.questionIds.map((questionId) => ({ questionId })) },
       },
     })
 
-    return NextResponse.json({ attemptId: attempt.id, questionCount: sitting.questionIds.length })
+    return NextResponse.json({ attemptId: attempt.id, questionCount: sitting.questionIds.length, resumed: false })
   } catch (err) {
     console.error('[QuizStart]', err)
     return NextResponse.json({ error: 'Could not start the quiz' }, { status: 500 })

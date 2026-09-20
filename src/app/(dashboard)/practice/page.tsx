@@ -19,7 +19,7 @@ export default function PracticePage() {
   const [categories, setCategories] = useState<Category[]>([])
   const [certifications, setCertifications] = useState<Certification[]>([])
   const [config, setConfig] = useState({
-    questionCount: 20,
+    questionCount: 10,
     certificationId: '',
     difficulty: [] as string[],
     categoryIds: [] as string[],

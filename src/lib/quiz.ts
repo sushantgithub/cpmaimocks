@@ -173,8 +173,7 @@ export async function getPracticeQuestions(userId: string, config: PracticeConfi
     take: config.questionCount * 3, // fetch more for randomization
   })
 
-  const shuffled = questions.sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, config.questionCount)
+  return shuffle(questions).slice(0, config.questionCount)
 }
 
 export async function submitExam(
@@ -328,7 +327,7 @@ export async function getAttemptResults(attemptId: string, userId: string) {
 export async function getUserStats(userId: string) {
   const [attempts, checkedAnswers] = await Promise.all([
     prisma.examAttempt.findMany({
-      where: { userId, status: 'COMPLETED' },
+      where: { userId, status: 'COMPLETED', mode: 'EXAM' },
       select: { score: true, correctCount: true, totalQuestions: true, examId: true },
     }),
     prisma.examAnswer.findMany({

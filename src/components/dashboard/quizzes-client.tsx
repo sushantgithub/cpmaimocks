@@ -24,14 +24,14 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
       })
       const data = await res.json()
       if (res.status === 402) {
-        toast({ title: 'Free limit reached', description: data.error, variant: 'destructive' })
+        toast({ title: 'Free session complete', description: data.error, variant: 'destructive' })
         router.push('/subscription')
         return
       }
       if (!res.ok) throw new Error(data.error ?? 'Could not start')
       router.push(`/practice/${data.attemptId}`)
-    } catch (e) {
-      toast({ title: e instanceof Error ? e.message : 'Could not start', variant: 'destructive' })
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : 'Could not start', variant: 'destructive' })
     } finally {
       setBusy(null)
     }
@@ -39,6 +39,7 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
 
   async function restart(quiz: QuizSummary) {
     if (!confirm(`Start ${quiz.title} again from the beginning? Your progress on it resets.`)) return
+
     setBusy(quiz.key)
     try {
       const res = await fetch('/api/quizzes/restart', {
@@ -46,11 +47,18 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: quiz.key }),
       })
-      if (!res.ok) throw new Error('Could not restart')
+      const data = await res.json().catch(() => ({}))
+      if (res.status === 402) {
+        toast({ title: 'Paid plan required', description: data.error, variant: 'destructive' })
+        router.push('/subscription')
+        return
+      }
+      if (!res.ok) throw new Error(data.error ?? 'Could not restart')
+
       router.refresh()
       toast({ title: `${quiz.title} reset`, variant: 'success' })
-    } catch {
-      toast({ title: 'Could not restart', variant: 'destructive' })
+    } catch (error) {
+      toast({ title: error instanceof Error ? error.message : 'Could not restart', variant: 'destructive' })
     } finally {
       setBusy(null)
     }
@@ -77,6 +85,7 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
         {quizzes.map((quiz) => {
           const pct = quiz.total > 0 ? Math.round((quiz.answered / quiz.total) * 100) : 0
           const remaining = Math.max(0, quiz.total - quiz.answered)
+
           return (
             <Card key={quiz.key} className={quiz.mastered ? 'border-green-300' : ''}>
               <CardContent className="p-5">
@@ -128,11 +137,17 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
                     </div>
                   ) : (
                     <Button className="w-full" onClick={() => start(quiz)} loading={busy === quiz.key}>
-                      {quiz.answered > 0 ? 'Continue' : 'Start'}
-                      <span className="text-xs opacity-80 ml-1.5">
-                        · {Math.min(10, remaining + quiz.wrong)} questions
-                      </span>
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      {quiz.activeAttemptId ? (
+                        <>Resume session <ArrowRight className="h-4 w-4 ml-2" /></>
+                      ) : (
+                        <>
+                          {quiz.answered > 0 ? 'Continue' : 'Start'}
+                          <span className="text-xs opacity-80 ml-1.5">
+                            · {Math.min(10, remaining + quiz.wrong)} questions
+                          </span>
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </>
+                      )}
                     </Button>
                   )}
                 </div>

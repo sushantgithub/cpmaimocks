@@ -2,6 +2,8 @@ import { auth } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { PracticeInterface } from '@/components/exam/practice-interface'
+import { hasAccessToCertification } from '@/lib/subscription'
+import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
 
 export default async function PracticeAttemptPage({ params }: { params: { attemptId: string } }) {
   const session = await auth()
@@ -32,6 +34,7 @@ export default async function PracticeAttemptPage({ params }: { params: { attemp
               explanationE: true,
               explanationF: true,
               difficulty: true,
+              certificationId: true,
               category: { select: { name: true } },
               topic: { select: { name: true } },
             },
@@ -44,17 +47,48 @@ export default async function PracticeAttemptPage({ params }: { params: { attemp
   if (!attempt || attempt.userId !== session.user.id) notFound()
   if (attempt.mode !== 'PRACTICE' && attempt.mode !== 'QUIZ') redirect('/practice')
 
-  // If already completed, redirect to results
   if (attempt.status === 'COMPLETED') {
     redirect(`/results/${attempt.id}`)
   }
 
-  const questions = attempt.answers.map((a) => ({
-    ...a.question,
-    category: a.question.category?.name,
-    topic: a.question.topic?.name,
-    selectedAnswer: a.selectedAnswer,
+  const certificationId = attempt.answers[0]?.question.certificationId
+  const hasPremiumAccess = certificationId
+    ? await hasAccessToCertification(session.user.id, certificationId)
+    : false
+  const quizConfig = attempt.mode === 'QUIZ'
+    ? readQuizAttemptConfig(attempt.practiceConfig)
+    : null
+
+  // A paid quiz sitting cannot be continued after its entitlement expires.
+  // A sitting explicitly created under the Free tier remains resumable.
+  if (
+    attempt.mode === 'QUIZ' &&
+    quizConfig?.accessTier === 'PAID' &&
+    !hasPremiumAccess
+  ) {
+    redirect('/subscription')
+  }
+
+  const questions = attempt.answers.map((answer) => ({
+    ...answer.question,
+    category: answer.question.category?.name,
+    topic: answer.question.topic?.name,
+    // Only checked answers are restored as completed. Old draft rows must not
+    // reveal feedback after a reload.
+    selectedAnswer: answer.isCorrect !== null ? answer.selectedAnswer : null,
   }))
 
-  return <PracticeInterface attemptId={attempt.id} questions={questions} />
+  return (
+    <PracticeInterface
+      attemptId={attempt.id}
+      questions={questions}
+      mode={attempt.mode === 'QUIZ' ? 'QUIZ' : 'PRACTICE'}
+      sessionTitle={quizConfig?.quizTitle}
+      bookmarksEnabled={hasPremiumAccess}
+      freeQuizSession={
+        attempt.mode === 'QUIZ' &&
+        (quizConfig?.accessTier === 'FREE' || (!quizConfig?.accessTier && !hasPremiumAccess))
+      }
+    />
+  )
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { getUserStats } from '@/lib/quiz'
 import { listQuizzes } from '@/lib/quizzes'
 import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
+import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
 import { getUserActiveSubscriptions, getAccessibleCertificationIds } from '@/lib/subscription'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -163,10 +164,13 @@ export default async function DashboardPage() {
           <div className="space-y-2">
             {recentAttempts.map((attempt) => {
               const grade = getScoreGrade(attempt.score ?? 0)
+              const quizConfig = readQuizAttemptConfig(attempt.practiceConfig)
+              const attemptTitle = attempt.exam?.title
+                ?? (attempt.mode === 'QUIZ' ? (quizConfig?.quizTitle ?? 'Quiz Session') : 'Practice Session')
               return (
                 <div key={attempt.id} className="flex items-center justify-between bg-white rounded-lg border p-3">
                   <div>
-                    <p className="font-medium text-sm">{attempt.exam?.title ?? 'Practice Session'}</p>
+                    <p className="font-medium text-sm">{attemptTitle}</p>
                     <p className="text-xs text-muted-foreground">{formatDate(attempt.submittedAt!)}</p>
                   </div>
                   <div className="flex items-center gap-3">

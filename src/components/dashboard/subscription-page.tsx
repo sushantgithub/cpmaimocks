@@ -200,7 +200,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
             {certifications.map((cert) => (
               <button
                 key={cert.id}
-                onClick={() => { setSelectedCert(cert.id); setSelectedPlan(null) }}
+                onClick={() => { setSelectedCert(cert.id); setSelectedPlan(null); setDiscount(null) }}
                 className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
                   selectedCert === cert.id
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -231,7 +231,10 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
               key={plan.id}
               className={`transition-all ${isOwned || freeIsCurrent ? 'border-green-300 bg-green-50/40' : isFree ? '' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''} ${plan.isFeatured ? 'relative' : ''}`}
               onClick={() => {
-                if (!isFree && !isOwned) setSelectedPlan(isSelected ? null : plan)
+                if (!isFree && !isOwned) {
+                  setSelectedPlan(isSelected ? null : plan)
+                  setDiscount(null)
+                }
               }}
             >
               {plan.isFeatured && (
@@ -299,6 +302,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                         event.stopPropagation()
                         if (isOwned) return
                         setSelectedPlan(isSelected ? null : plan)
+                        setDiscount(null)
                       }}
                     >
                       {isOwned

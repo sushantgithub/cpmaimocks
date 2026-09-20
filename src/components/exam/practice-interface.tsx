@@ -10,7 +10,7 @@ import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
-  Bookmark, BookmarkCheck, CheckCircle2, XCircle
+  Bookmark, BookmarkCheck, CheckCircle2, XCircle, Lock
 } from 'lucide-react'
 
 interface PracticeQuestion {
@@ -40,9 +40,20 @@ interface PracticeQuestion {
 interface Props {
   attemptId: string
   questions: PracticeQuestion[]
+  mode?: 'PRACTICE' | 'QUIZ'
+  sessionTitle?: string
+  bookmarksEnabled?: boolean
+  freeQuizSession?: boolean
 }
 
-export function PracticeInterface({ attemptId, questions }: Props) {
+export function PracticeInterface({
+  attemptId,
+  questions,
+  mode = 'PRACTICE',
+  sessionTitle,
+  bookmarksEnabled = true,
+  freeQuizSession = false,
+}: Props) {
   const router = useRouter()
   const [current, setCurrent] = useState(0)
   // answers: questionId -> selected option key
@@ -56,6 +67,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const [showConfirm, setShowConfirm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null)
+  const [answerSaving, setAnswerSaving] = useState<string | null>(null)
   const submitted = useRef(false)
 
   const q = questions[current]
@@ -71,36 +83,60 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   const hasPendingSelection = !revealed && pending.length > 0
   const pendingReady = multi ? pending.length === selectCount : pending.length === 1
 
-  function commitAnswer(selection: string[]) {
-    if (answers[q.id]) return
+  async function commitAnswer(selection: string[]) {
+    if (answers[q.id] || answerSaving === q.id) return
     if ((!multi && selection.length !== 1) || (multi && selection.length !== selectCount)) return
 
     const committed = normalizeAnswer(selection.join(','))
-    setAnswers((prev) => ({ ...prev, [q.id]: committed }))
-    setPending([])
-
-    // Feedback should be the immediate result of answering in Practice/Quiz.
-    // Wait for React to insert it, then bring it into view on mobile.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const feedback = document.getElementById(`feedback-${q.id}`)
-        feedback?.focus({ preventScroll: true })
-        feedback?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    setAnswerSaving(q.id)
+    try {
+      // A checked answer is persisted before feedback is revealed. Reloading,
+      // closing the browser, or returning later therefore resumes the same
+      // quiz/practice state instead of losing progress.
+      const res = await fetch(`/api/attempts/${attemptId}/answer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionId: q.id, selectedAnswer: committed }),
       })
-    })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        if (res.status === 409) {
+          router.push(`/results/${attemptId}`)
+          return
+        }
+        throw new Error(data.error ?? 'Could not save answer')
+      }
+
+      const savedAnswer = normalizeAnswer(data.selectedAnswer ?? committed)
+      setAnswers((prev) => ({ ...prev, [q.id]: savedAnswer }))
+      setPending([])
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const feedback = document.getElementById(`feedback-${q.id}`)
+          feedback?.focus({ preventScroll: true })
+          feedback?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        })
+      })
+    } catch (error) {
+      toast({
+        title: 'Answer not saved',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setAnswerSaving(null)
+    }
   }
 
   function selectAnswer(opt: string) {
-    if (answers[q.id]) return // lock once submitted
+    if (answers[q.id] || answerSaving === q.id) return
 
-    // Single-choice practice questions reveal feedback immediately on tap.
     if (!multi) {
-      commitAnswer([opt])
+      void commitAnswer([opt])
       return
     }
 
-    // Multi-select questions need an explicit Check Answer because the learner
-    // must be able to choose/change the requested number of options first.
     const next = pending.includes(opt)
       ? pending.filter((k) => k !== opt)
       : pending.length >= selectCount ? pending : [...pending, opt]
@@ -108,10 +144,11 @@ export function PracticeInterface({ attemptId, questions }: Props) {
   }
 
   function submitAnswer() {
-    commitAnswer(pending)
+    void commitAnswer(pending)
   }
 
   async function toggleBookmark(questionId: string) {
+    if (!bookmarksEnabled) return
     setBookmarkLoading(questionId)
     const isBookmarked = bookmarks.has(questionId)
     try {
@@ -178,18 +215,14 @@ export function PracticeInterface({ attemptId, questions }: Props) {
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0">
-            <p className="font-semibold text-sm">Practice Mode</p>
+            <p className="font-semibold text-sm">
+              {mode === 'QUIZ' ? (sessionTitle ?? 'Quiz') : 'Practice Mode'}
+            </p>
             <p className="text-xs text-muted-foreground">Q {current + 1} of {questions.length}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-green-600 font-semibold hidden sm:inline">
-            {Object.values(answers).filter((ans, i) => {
-              const q = questions.find((q) => answers[q.id] === ans && q.correctAnswer === ans)
-              return q
-            }).length}
-          </span>
           <Badge variant="outline" className="hidden sm:flex gap-1 items-center">
             <span className="text-green-600 font-bold">
               {questions.filter((q) => isAnswerCorrect(answers[q.id], q.correctAnswer)).length}
@@ -203,7 +236,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
         <Button
           size="sm"
           onClick={() => hasPendingSelection ? submitAnswer() : setShowConfirm(true)}
-          disabled={submitting || (hasPendingSelection && !pendingReady)}
+          disabled={submitting || answerSaving === q.id || (hasPendingSelection && !pendingReady)}
         >
           <Send className="h-3.5 w-3.5 mr-1.5" />
           {hasPendingSelection ? 'Check Answer' : 'Finish'}
@@ -263,7 +296,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                   <button
                     key={opt.key}
                     onClick={() => selectAnswer(opt.key)}
-                    disabled={revealed}
+                    disabled={revealed || answerSaving === q.id}
                     className={cn(
                       'w-full flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all',
                       optClass
@@ -292,7 +325,8 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 <Button
                   className="w-full"
                   onClick={submitAnswer}
-                  disabled={!pendingReady}
+                  disabled={!pendingReady || answerSaving === q.id}
+                  loading={answerSaving === q.id}
                 >
                   Check Answer
                 </Button>
@@ -324,39 +358,45 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 variant="ghost"
                 size="sm"
                 onClick={() => { setPending([]); setCurrent((c) => Math.max(0, c - 1)) }}
-                disabled={current === 0}
+                disabled={current === 0 || answerSaving === q.id}
               >
                 <ChevronLeft className="h-4 w-4 mr-1" />Previous
               </Button>
 
               <button
                 onClick={() => toggleBookmark(q.id)}
-                disabled={bookmarkLoading === q.id}
+                disabled={!bookmarksEnabled || bookmarkLoading === q.id}
+                title={bookmarksEnabled ? undefined : 'Bookmarks are included with paid plans'}
                 className={cn(
                   'flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-all',
-                  bookmarks.has(q.id)
-                    ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
-                    : 'border-gray-200 text-gray-500 hover:border-yellow-300 hover:text-yellow-600'
+                  !bookmarksEnabled
+                    ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                    : bookmarks.has(q.id)
+                      ? 'border-yellow-400 bg-yellow-50 text-yellow-700'
+                      : 'border-gray-200 text-gray-500 hover:border-yellow-300 hover:text-yellow-600'
                 )}
               >
-                {bookmarks.has(q.id)
-                  ? <><BookmarkCheck className="h-4 w-4" />Saved</>
-                  : <><Bookmark className="h-4 w-4" />Save</>
+                {!bookmarksEnabled
+                  ? <><Lock className="h-4 w-4" />Save (Paid)</>
+                  : bookmarks.has(q.id)
+                    ? <><BookmarkCheck className="h-4 w-4" />Saved</>
+                    : <><Bookmark className="h-4 w-4" />Save</>
                 }
               </button>
 
               {hasPendingSelection ? (
-                <Button size="sm" onClick={submitAnswer} disabled={!pendingReady}>
+                <Button size="sm" onClick={submitAnswer} disabled={!pendingReady || answerSaving === q.id} loading={answerSaving === q.id}>
                   Check Answer<ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               ) : current === questions.length - 1 ? (
-                <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting}>
+                <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting || answerSaving === q.id}>
                   <Send className="h-4 w-4 mr-1" />Finish
                 </Button>
               ) : (
                 <Button
                   size="sm"
                   onClick={() => { setPending([]); setCurrent((c) => Math.min(questions.length - 1, c + 1)) }}
+                  disabled={answerSaving === q.id}
                 >
                   Next<ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -376,6 +416,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                 <button
                   key={i}
                   onClick={() => { setPending([]); setCurrent(i) }}
+                  disabled={answerSaving === q.id}
                   className={cn(
                     'h-7 w-7 rounded text-xs font-medium border transition-colors',
                     isCurrent ? 'bg-primary text-white border-primary' :
@@ -418,6 +459,7 @@ export function PracticeInterface({ attemptId, questions }: Props) {
                   <button
                     key={i}
                     onClick={() => { setPending([]); setCurrent(i); setShowPanel(false) }}
+                    disabled={answerSaving === q.id}
                     className={cn(
                       'h-9 w-9 rounded-lg text-sm font-medium border',
                       isCurrent ? 'bg-primary text-white border-primary' :
@@ -446,9 +488,14 @@ export function PracticeInterface({ attemptId, questions }: Props) {
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle className="h-6 w-6 text-blue-500" />
-              <h3 className="font-bold text-lg">Finish Practice?</h3>
+              <h3 className="font-bold text-lg">{mode === 'QUIZ' ? 'Finish Quiz?' : 'Finish Practice?'}</h3>
             </div>
             <div className="space-y-2 mb-6 text-sm">
+              {freeQuizSession && (
+                <p className="rounded-lg bg-amber-50 border border-amber-200 p-2 text-amber-800">
+                  Finishing ends this quiz's one free session. If you leave without finishing, you can resume this same session later.
+                </p>
+              )}
               <p className="text-green-700">
                 <strong>{questions.filter((q) => isAnswerCorrect(answers[q.id], q.correctAnswer)).length}</strong> correct
               </p>

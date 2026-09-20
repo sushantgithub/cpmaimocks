@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { answerLetters } from '@/lib/answers'
 import { AnswerExplanation } from '@/components/exam/answer-explanation'
 import { prisma } from '@/lib/db'
+import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
 
 export default async function ResultsPage({ params, searchParams }: { params: { attemptId: string }; searchParams?: { review?: string } }) {
   const session = await auth()
@@ -30,6 +31,13 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
   const score = Math.round(result.score ?? 0)
   const grade = getScoreGrade(score)
   const timeTaken = result.timeTakenSeconds ?? 0
+  const isExam = result.mode === 'EXAM'
+  const isQuiz = result.mode === 'QUIZ'
+  const quizConfig = readQuizAttemptConfig(result.practiceConfig)
+  const sessionTitle = result.exam?.title
+    ?? (isQuiz ? (quizConfig?.quizTitle ?? 'Quiz Session') : 'Practice Session')
+  const backHref = isExam ? '/exams' : isQuiz ? '/quizzes' : '/practice'
+  const backLabel = isExam ? 'All Exams' : isQuiz ? 'All Quizzes' : 'Practice'
   const reviewFilter = ['correct', 'incorrect', 'unanswered'].includes(searchParams?.review ?? '') ? searchParams!.review! : 'all'
   const reviewAnswers = result.answers.filter((answer) =>
     reviewFilter === 'all' ? true :
@@ -51,15 +59,21 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
   return (
     <div className="max-w-3xl mx-auto pb-20 md:pb-6 space-y-6">
       {/* Score card */}
-      <Card className={cn('border-2', result.passed ? 'border-green-400' : 'border-red-300')}>
+      <Card className={cn('border-2', isExam ? (result.passed ? 'border-green-400' : 'border-red-300') : 'border-blue-300')}>
         <CardContent className="p-6 text-center">
-          <Trophy className={cn('h-12 w-12 mx-auto mb-3', result.passed ? 'text-yellow-500' : 'text-gray-400')} />
+          <Trophy className={cn('h-12 w-12 mx-auto mb-3', isExam && result.passed ? 'text-yellow-500' : isExam ? 'text-gray-400' : 'text-blue-500')} />
           <h1 className="text-4xl font-bold mb-1">{score}%</h1>
           <p className={cn('text-lg font-semibold mb-4', grade.color)}>{grade.label}</p>
-          <Badge className={result.passed ? 'bg-green-100 text-green-800 border-green-200 text-sm px-4 py-1' : 'bg-red-100 text-red-800 border-red-200 text-sm px-4 py-1'}>
-            {result.passed ? `✓ Passed (${result.passingScore}% required)` : `✗ Did not pass (${result.passingScore}% required)`}
-          </Badge>
-          <p className="text-sm text-muted-foreground mt-3">{result.exam?.title}</p>
+          {isExam ? (
+            <Badge className={result.passed ? 'bg-green-100 text-green-800 border-green-200 text-sm px-4 py-1' : 'bg-red-100 text-red-800 border-red-200 text-sm px-4 py-1'}>
+              {result.passed ? `✓ Passed (${result.passingScore}% required)` : `✗ Did not pass (${result.passingScore}% required)`}
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-sm px-4 py-1">
+              {isQuiz ? 'Quiz session' : 'Practice session'}
+            </Badge>
+          )}
+          <p className="text-sm text-muted-foreground mt-3">{sessionTitle}</p>
         </CardContent>
       </Card>
 
@@ -197,7 +211,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
       {/* Actions */}
       <div className="flex gap-3">
         <Button variant="outline" className="flex-1" asChild>
-          <Link href="/exams">All Exams</Link>
+          <Link href={backHref}>{backLabel}</Link>
         </Button>
         <Button className="flex-1" asChild>
           <Link href="/dashboard">Dashboard</Link>
