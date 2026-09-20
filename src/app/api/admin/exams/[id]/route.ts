@@ -4,13 +4,28 @@ import { prisma } from '@/lib/db'
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const exam = await prisma.mockExam.findUnique({
     where: { id: params.id },
     include: {
+      certification: { select: { id: true, name: true } },
       questions: {
-        include: { question: { select: { id: true, questionId: true, text: true, difficulty: true, category: { select: { name: true } } } } },
+        include: {
+          question: {
+            select: {
+              id: true,
+              questionId: true,
+              text: true,
+              difficulty: true,
+              status: true,
+              contentType: true,
+              category: { select: { name: true } },
+            },
+          },
+        },
         orderBy: { sortOrder: 'asc' },
       },
     },
@@ -22,22 +37,114 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await auth()
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const body = await req.json().catch(() => ({}))
   const { questionIds } = body
+
+  if (questionIds !== undefined && !Array.isArray(questionIds)) {
+    return NextResponse.json({ error: 'questionIds must be a list' }, { status: 400 })
+  }
+
+  const current = await prisma.mockExam.findUnique({
+    where: { id: params.id },
+    select: {
+      id: true,
+      certificationId: true,
+      questionCount: true,
+      timeLimitMinutes: true,
+      status: true,
+      _count: { select: { questions: true } },
+    },
+  })
+  if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  let targetQuestionCount = current.questionCount
+  if (body.questionCount !== undefined) {
+    const value = Number(body.questionCount)
+    if (!Number.isInteger(value) || value < 1) {
+      return NextResponse.json(
+        { error: 'questionCount must be a positive whole number' },
+        { status: 400 }
+      )
+    }
+
+    // Product rule: remove questions from the mock first, save that change,
+    // then reduce the configured target. This avoids silently deleting or
+    // hiding questions just because the target was lowered.
+    if (value < current._count.questions) {
+      return NextResponse.json(
+        {
+          error: `Remove ${current._count.questions - value} question${current._count.questions - value === 1 ? '' : 's'} from this mock first, save, and then reduce the target count to ${value}.`,
+          code: 'REMOVE_QUESTIONS_FIRST',
+        },
+        { status: 409 }
+      )
+    }
+    targetQuestionCount = value
+  }
+
+  const uniqueQuestionIds = Array.isArray(questionIds)
+    ? Array.from(new Set(questionIds.filter((id): id is string => typeof id === 'string' && id.length > 0)))
+    : null
+
+  if (Array.isArray(questionIds) && uniqueQuestionIds!.length !== questionIds.length) {
+    return NextResponse.json({ error: 'questionIds must contain unique valid question IDs' }, { status: 400 })
+  }
+
+  const assignedCountAfterSave = uniqueQuestionIds?.length ?? current._count.questions
+  if (assignedCountAfterSave > targetQuestionCount) {
+    return NextResponse.json(
+      {
+        error: `This mock is configured for ${targetQuestionCount} questions but ${assignedCountAfterSave} would be assigned.`,
+        code: 'TOO_MANY_ASSIGNED',
+      },
+      { status: 409 }
+    )
+  }
+
+  const certificationId =
+    typeof body.certificationId === 'string' && body.certificationId
+      ? body.certificationId
+      : current.certificationId
+
+  if (uniqueQuestionIds && uniqueQuestionIds.length > 0) {
+    const eligibleCount = await prisma.question.count({
+      where: {
+        id: { in: uniqueQuestionIds },
+        certificationId,
+        contentType: 'MOCK_EXAM',
+      },
+    })
+    if (eligibleCount !== uniqueQuestionIds.length) {
+      return NextResponse.json(
+        { error: 'Every assigned question must belong to this certification and be Mock Exam content.' },
+        { status: 400 }
+      )
+    }
+  }
+
   const data: Record<string, unknown> = {}
   if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim()
-  if (body.description === null || typeof body.description === 'string') data.description = body.description?.trim() || null
-  // Zero is meaningful for a time limit: a domain mock is untimed. It is not
-  // meaningful for a pass mark, where it would pass every attempt.
-  const MINIMUM: Record<string, number> = { timeLimitMinutes: 0, passingScore: 1, sortOrder: 0 }
+  if (body.description === null || typeof body.description === 'string') {
+    data.description = body.description?.trim() || null
+  }
+
+  const minimum: Record<string, number> = {
+    timeLimitMinutes: 1,
+    passingScore: 1,
+    sortOrder: 0,
+  }
   for (const key of ['timeLimitMinutes', 'passingScore', 'sortOrder'] as const) {
     if (body[key] !== undefined) {
       const value = Number(body[key])
-      if (!Number.isInteger(value) || value < MINIMUM[key]) {
+      if (!Number.isInteger(value) || value < minimum[key]) {
         return NextResponse.json(
-          { error: `${key} must be a whole number of at least ${MINIMUM[key]}` }, { status: 400 })
+          { error: `${key} must be a whole number of at least ${minimum[key]}` },
+          { status: 400 }
+        )
       }
       data[key] = value
     }
@@ -45,56 +152,104 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (data.passingScore !== undefined && (data.passingScore as number) > 100) {
     return NextResponse.json({ error: 'passingScore cannot exceed 100' }, { status: 400 })
   }
-  // Null serves the whole pool. A number must be at least 1, and is capped
-  // below against the pool size once that is known.
-  if (body.questionsPerAttempt !== undefined) {
-    if (body.questionsPerAttempt === null || body.questionsPerAttempt === '') {
-      data.questionsPerAttempt = null
-    } else {
-      const value = Number(body.questionsPerAttempt)
-      if (!Number.isInteger(value) || value < 1) {
-        return NextResponse.json(
-          { error: 'questionsPerAttempt must be a whole number of at least 1, or empty to serve the whole pool' },
-          { status: 400 })
-      }
-      data.questionsPerAttempt = value
-    }
+
+  data.questionCount = targetQuestionCount
+  data.questionsPerAttempt = null
+  // Locked Mock Exam behavior: every attempt serves the full fixed set, with
+  // a newly randomized question order and no immediate answer explanations.
+  data.randomizeQuestions = true
+  data.showExplanations = false
+
+  if (typeof body.requireSubscription === 'boolean') {
+    data.requireSubscription = body.requireSubscription
   }
-  for (const key of ['requireSubscription', 'randomizeQuestions', 'showExplanations'] as const) {
-    if (typeof body[key] === 'boolean') data[key] = body[key]
-  }
+
   if (body.status !== undefined) {
-    if (!['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(body.status)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    if (!['DRAFT', 'PUBLISHED', 'ARCHIVED'].includes(body.status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+
+    if (body.status === 'PUBLISHED') {
+      if (assignedCountAfterSave !== targetQuestionCount) {
+        return NextResponse.json(
+          {
+            error: `Cannot publish yet. This mock needs ${targetQuestionCount} questions and currently has ${assignedCountAfterSave}.`,
+            code: 'QUESTION_COUNT_MISMATCH',
+          },
+          { status: 409 }
+        )
+      }
+
+      const publishedCount = uniqueQuestionIds
+        ? await prisma.question.count({
+            where: { id: { in: uniqueQuestionIds }, status: 'PUBLISHED' },
+          })
+        : await prisma.mockExamQuestion.count({
+            where: { examId: params.id, question: { status: 'PUBLISHED' } },
+          })
+
+      if (publishedCount !== targetQuestionCount) {
+        return NextResponse.json(
+          { error: 'All questions assigned to a published mock must themselves be published.' },
+          { status: 409 }
+        )
+      }
+    }
+
     data.status = body.status
   }
-  if (typeof body.certificationId === 'string' && body.certificationId) data.certificationId = body.certificationId
-  if (questionIds !== undefined && !Array.isArray(questionIds)) {
-    return NextResponse.json({ error: 'questionIds must be a list' }, { status: 400 })
+
+  if (typeof body.certificationId === 'string' && body.certificationId) {
+    data.certificationId = body.certificationId
   }
 
-  const exam = await prisma.mockExam.update({ where: { id: params.id }, data })
-
-  if (Array.isArray(questionIds)) {
-    await prisma.mockExamQuestion.deleteMany({ where: { examId: params.id } })
-    if (questionIds.length > 0) {
-      await prisma.mockExamQuestion.createMany({
-        data: questionIds.map((qId: string, i: number) => ({ examId: params.id, questionId: qId, sortOrder: i })),
-      })
+  const updated = await prisma.$transaction(async (tx) => {
+    if (uniqueQuestionIds) {
+      await tx.mockExamQuestion.deleteMany({ where: { examId: params.id } })
+      if (uniqueQuestionIds.length > 0) {
+        await tx.mockExamQuestion.createMany({
+          data: uniqueQuestionIds.map((questionId, index) => ({
+            examId: params.id,
+            questionId,
+            sortOrder: index,
+          })),
+        })
+      }
     }
-    // Always resync, so clearing an exam doesn't leave a stale count advertised.
-    const updated = await prisma.mockExam.update({
-      where: { id: params.id },
-      data: { questionCount: questionIds.length },
-    })
-    return NextResponse.json(updated)
-  }
 
-  return NextResponse.json(exam)
+    return tx.mockExam.update({
+      where: { id: params.id },
+      data,
+      include: {
+        certification: { select: { id: true, name: true } },
+        questions: {
+          include: {
+            question: {
+              select: {
+                id: true,
+                questionId: true,
+                text: true,
+                difficulty: true,
+                status: true,
+                contentType: true,
+                category: { select: { name: true } },
+              },
+            },
+          },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    })
+  })
+
+  return NextResponse.json(updated)
 }
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   await prisma.mockExam.delete({ where: { id: params.id } })
   return NextResponse.json({ success: true })
