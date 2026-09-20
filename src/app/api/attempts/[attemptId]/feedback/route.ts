@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
+import { isFullMockExam } from '@/lib/mock-exams'
 
 export async function POST(req: Request, { params }: { params: { attemptId: string } }) {
   const session = await auth()
@@ -16,11 +17,30 @@ export async function POST(req: Request, { params }: { params: { attemptId: stri
     where: { id: params.attemptId, userId: session.user.id, status: 'IN_PROGRESS', mode: 'EXAM' },
     select: {
       startedAt: true,
-      exam: { select: { timeLimitMinutes: true, showExplanations: true } },
+      exam: {
+        select: {
+          timeLimitMinutes: true,
+          showExplanations: true,
+          questionCount: true,
+          questionsPerAttempt: true,
+        },
+      },
     },
   })
   if (!attempt) return NextResponse.json({ error: 'Attempt is not active' }, { status: 409 })
-  if (!attempt.exam?.showExplanations) return NextResponse.json({ error: 'Feedback is disabled for this exam' }, { status: 403 })
+  if (
+    !attempt.exam?.showExplanations ||
+    isFullMockExam({
+      questionCount: attempt.exam.questionCount,
+      questionsPerAttempt: attempt.exam.questionsPerAttempt,
+      timeLimitMinutes: attempt.exam.timeLimitMinutes,
+    })
+  ) {
+    return NextResponse.json(
+      { error: 'Feedback is available only after this Mock Exam is submitted' },
+      { status: 403 }
+    )
+  }
 
   const limitSeconds = attempt.exam.timeLimitMinutes * 60
   if (limitSeconds > 0 && Date.now() - attempt.startedAt.getTime() >= limitSeconds * 1000) {
