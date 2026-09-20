@@ -30,6 +30,7 @@ interface Exam {
   description: string | null
   timeLimitMinutes: number
   passingScore: number
+  questionCount: number
   questionsPerAttempt: number | null
   status: string
   requireSubscription: boolean
@@ -46,11 +47,14 @@ export default function EditExamPage() {
   const [searchResults, setSearchResults] = useState<Question[]>([])
   const [searching, setSearching] = useState(false)
   const [assignedIds, setAssignedIds] = useState<string[]>([])
-  const [autoFillCount, setAutoFillCount] = useState('120')
-  const [autoFilling, setAutoFilling] = useState(false)
   const [form, setForm] = useState({
-    title: '', description: '', timeLimitMinutes: '120', passingScore: '70', questionsPerAttempt: '',
-    requireSubscription: true, randomizeQuestions: true, status: 'DRAFT',
+    title: '',
+    description: '',
+    questionCount: '120',
+    timeLimitMinutes: '120',
+    passingScore: '70',
+    requireSubscription: true,
+    status: 'DRAFT',
   })
 
   useEffect(() => {
@@ -61,11 +65,10 @@ export default function EditExamPage() {
         setForm({
           title: data.title,
           description: data.description ?? '',
+          questionCount: String(data.questionCount),
           timeLimitMinutes: String(data.timeLimitMinutes),
           passingScore: String(data.passingScore),
-          questionsPerAttempt: data.questionsPerAttempt === null ? '' : String(data.questionsPerAttempt),
           requireSubscription: data.requireSubscription,
-          randomizeQuestions: data.randomizeQuestions,
           status: data.status,
         })
         setAssignedIds(data.questions.map(q => q.question.id))
@@ -77,7 +80,7 @@ export default function EditExamPage() {
     setSearching(true)
     try {
       const res = await fetch(
-        `/api/admin/questions?search=${encodeURIComponent(searchQuery)}&status=PUBLISHED&limit=20&certificationId=${exam?.certificationId ?? ''}`
+        `/api/admin/questions?search=${encodeURIComponent(searchQuery)}&status=PUBLISHED&contentType=MOCK_EXAM&limit=20&certificationId=${exam?.certificationId ?? ''}`
       )
       const data = await res.json()
       setSearchResults(data.questions ?? [])
@@ -103,49 +106,6 @@ export default function EditExamPage() {
     setExam(prev => prev ? { ...prev, questions: prev.questions.filter(q => q.question.id !== qId) } : prev)
   }
 
-  async function autoFill() {
-    const count = parseInt(autoFillCount)
-    if (!count || count < 1) {
-      toast({ title: 'Enter how many questions to add', variant: 'destructive' })
-      return
-    }
-    setAutoFilling(true)
-    try {
-      const res = await fetch(
-        `/api/admin/questions?status=PUBLISHED&limit=${count}&certificationId=${exam?.certificationId ?? ''}`
-      )
-      const data = await res.json()
-      const found: Question[] = data.questions ?? []
-      if (found.length === 0) {
-        toast({
-          title: 'No published questions found',
-          description: 'Import questions and publish them first.',
-          variant: 'destructive',
-        })
-        return
-      }
-      setAssignedIds(found.map(q => q.id))
-      setExam(prev => prev ? {
-        ...prev,
-        questions: found.map((q, i) => ({ id: q.id, sortOrder: i, question: q })),
-      } : prev)
-      toast({
-        title: `Added ${found.length} questions`,
-        description: found.length < count ? `Only ${found.length} published questions exist so far.` : 'Tap Save Changes to apply.',
-        variant: 'success',
-      })
-    } catch {
-      toast({ title: 'Auto-fill failed', variant: 'destructive' })
-    } finally {
-      setAutoFilling(false)
-    }
-  }
-
-  function clearAll() {
-    setAssignedIds([])
-    setExam(prev => prev ? { ...prev, questions: [] } : prev)
-  }
-
   async function save() {
     setSaving(true)
     try {
@@ -155,19 +115,25 @@ export default function EditExamPage() {
         body: JSON.stringify({
           title: form.title,
           description: form.description || null,
+          questionCount: parseInt(form.questionCount),
           timeLimitMinutes: parseInt(form.timeLimitMinutes),
           passingScore: parseInt(form.passingScore),
-          questionsPerAttempt: form.questionsPerAttempt.trim() === '' ? null : parseInt(form.questionsPerAttempt),
           requireSubscription: form.requireSubscription,
-          randomizeQuestions: form.randomizeQuestions,
           status: form.status,
           questionIds: assignedIds,
         }),
       })
-      if (!res.ok) throw new Error('Save failed')
-      toast({ title: 'Exam saved', variant: 'success' })
-    } catch {
-      toast({ title: 'Save failed', variant: 'destructive' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Save failed')
+      setExam(data)
+      setAssignedIds(data.questions.map((row: AssignedQuestion) => row.question.id))
+      setForm((prev) => ({ ...prev, questionCount: String(data.questionCount) }))
+      toast({ title: 'Mock Exam saved', variant: 'success' })
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Save failed',
+        variant: 'destructive',
+      })
     } finally { setSaving(false) }
   }
 
@@ -207,21 +173,26 @@ export default function EditExamPage() {
             />
           </div>
           <div>
+            <label className="text-sm font-medium text-gray-700">Target Question Count</label>
+            <input
+              type="number"
+              min={1}
+              className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={form.questionCount}
+              onChange={e => setForm(p => ({ ...p, questionCount: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Assigned: {assignedIds.length}. To reduce the target below the assigned count, remove questions and save first.
+            </p>
+          </div>
+          <div>
             <label className="text-sm font-medium text-gray-700">Time Limit (minutes)</label>
-            <input type="number" min={0} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.timeLimitMinutes} onChange={e => setForm(p => ({ ...p, timeLimitMinutes: e.target.value }))} />
-            <p className="text-xs text-muted-foreground mt-1">Zero means untimed.</p>
+            <input type="number" min={1} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.timeLimitMinutes} onChange={e => setForm(p => ({ ...p, timeLimitMinutes: e.target.value }))} />
+            <p className="text-xs text-muted-foreground mt-1">Mock Exams are always timed.</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Passing Score (%)</label>
             <input type="number" min={1} max={100} className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.passingScore} onChange={e => setForm(p => ({ ...p, passingScore: e.target.value }))} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Questions per attempt</label>
-            <input type="number" min={1} placeholder="All of them" className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={form.questionsPerAttempt} onChange={e => setForm(p => ({ ...p, questionsPerAttempt: e.target.value }))} />
-            <p className="text-xs text-muted-foreground mt-1">
-              How many of the {assignedIds.length} assigned questions one attempt serves.
-              Leave empty to serve the whole pool.
-            </p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Status</label>
@@ -236,10 +207,9 @@ export default function EditExamPage() {
               <input type="checkbox" checked={form.requireSubscription} onChange={e => setForm(p => ({ ...p, requireSubscription: e.target.checked }))} className="rounded" />
               Requires paid subscription
             </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={form.randomizeQuestions} onChange={e => setForm(p => ({ ...p, randomizeQuestions: e.target.checked }))} className="rounded" />
-              Randomize question order
-            </label>
+            <p className="text-xs text-muted-foreground">
+              Every attempt serves the full assigned set in a new random question order. Answer option order stays fixed. Score and explanations appear only after submission.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -253,23 +223,10 @@ export default function EditExamPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="rounded-lg border bg-blue-50 border-blue-200 p-3">
-              <p className="text-sm font-medium text-blue-900">Fill this exam automatically</p>
-              <p className="text-xs text-blue-700 mt-0.5 mb-2">
-                Replaces the assigned list with the newest published questions.
+              <p className="text-sm font-medium text-blue-900">Bulk question changes</p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                Use Import CSV to create a new mock or fill the exact missing count. Search below is for small manual corrections only.
               </p>
-              <div className="flex gap-2">
-                <input
-                  type="number"
-                  min={1}
-                  className="w-24 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={autoFillCount}
-                  onChange={e => setAutoFillCount(e.target.value)}
-                />
-                <Button size="sm" onClick={autoFill} loading={autoFilling}>Auto-fill</Button>
-                {assignedIds.length > 0 && (
-                  <Button size="sm" variant="outline" onClick={clearAll}>Clear all</Button>
-                )}
-              </div>
             </div>
 
             <div className="relative">
@@ -316,10 +273,13 @@ export default function EditExamPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center justify-between">
               <span>Assigned Questions</span>
-              <Badge variant="secondary">{assignedIds.length}</Badge>
+              <Badge variant="secondary">{assignedIds.length}/{form.questionCount || exam.questionCount}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Removing a question here only removes it from this Mock Exam. The question remains in the Question Bank and Practice pool.
+            </p>
             {assignedIds.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-8">No questions assigned yet.<br/>Search and add questions from the left.</p>
             ) : (
@@ -339,6 +299,8 @@ export default function EditExamPage() {
                       </div>
                       <button
                         onClick={() => removeQuestion(aq.question.id)}
+                        title="Remove from Mock — keeps the question in Practice"
+                        aria-label="Remove question from Mock"
                         className="flex-shrink-0 p-1.5 rounded text-red-400 hover:bg-red-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
