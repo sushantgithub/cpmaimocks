@@ -2,6 +2,7 @@ export const BASELINE_FREE_PLAN_SLUG = 'free'
 
 export const BASELINE_FREE_PLAN_FEATURES = [
   'Quiz 1 (10 questions) free in each domain',
+  '25 practice questions free per certification',
   'Basic performance stats',
 ]
 
