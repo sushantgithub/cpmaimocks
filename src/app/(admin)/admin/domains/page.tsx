@@ -7,13 +7,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
 import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 
-interface Certification { id: string; name: string }
+interface Certification { id: string; name: string; usesDomains: boolean }
 interface Category { id: string; name: string; sortOrder: number; _count: { questions: number } }
 
 export default function AdminDomainsPage() {
   const [certifications, setCertifications] = useState<Certification[]>([])
   const [certificationId, setCertificationId] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
+  const selectedCertification = certifications.find((cert) => cert.id === certificationId) ?? null
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -140,21 +141,30 @@ export default function AdminDomainsPage() {
         </p>
       </div>
 
-      {certifications.length > 1 && (
-        <div className="flex gap-2 flex-wrap">
-          {certifications.map((cert) => (
-            <button
-              key={cert.id}
-              onClick={() => setCertificationId(cert.id)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                certificationId === cert.id
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {cert.name}
-            </button>
-          ))}
+      <Card>
+        <CardContent className="p-4">
+          <label className="text-sm font-medium text-gray-700">Certification Name</label>
+          <select
+            className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={certificationId}
+            onChange={(e) => setCertificationId(e.target.value)}
+          >
+            {certifications.length === 0 && <option value="">No active certifications</option>}
+            {certifications.map((cert) => (
+              <option key={cert.id} value={cert.id}>
+                {cert.name}{cert.usesDomains ? '' : ' — Domains disabled'}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Domains are owned by the selected certification.
+          </p>
+        </CardContent>
+      </Card>
+
+      {selectedCertification && !selectedCertification.usesDomains && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Domains are disabled for {selectedCertification.name}. Enable domain support on the Certification page before adding domains.
         </div>
       )}
 
@@ -167,7 +177,7 @@ export default function AdminDomainsPage() {
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && createDomain()}
             />
-            <Button onClick={createDomain} loading={creating} disabled={!certificationId}>
+            <Button onClick={createDomain} loading={creating} disabled={!certificationId || selectedCertification?.usesDomains === false}>
               <Plus className="h-4 w-4 mr-1" />Add
             </Button>
           </div>
