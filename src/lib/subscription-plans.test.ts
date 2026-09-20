@@ -7,8 +7,9 @@ describe('baseline free plan', () => {
     expect(isBaselineFreePlan({ slug: 'monthly' })).toBe(false)
   })
 
-  it('describes only baseline free access, not premium mock access', () => {
+  it('describes the free quiz and lifetime practice allowance', () => {
     expect(BASELINE_FREE_PLAN_FEATURES).toContain('Quiz 1 (10 questions) free in each domain')
+    expect(BASELINE_FREE_PLAN_FEATURES).toContain('25 practice questions free per certification')
     expect(BASELINE_FREE_PLAN_FEATURES).not.toContain('1 mini mock exam')
   })
 
