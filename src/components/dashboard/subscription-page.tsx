@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
 import { formatCurrency, approxUsd, planPeriodLabel, isLifetime, accessUntilLabel } from '@/lib/utils'
-import { CheckCircle2, CreditCard } from 'lucide-react'
+import { BASELINE_FREE_PLAN_FEATURES, isBaselineFreePlan } from '@/lib/subscription-plans'
+import { CheckCircle2, CreditCard, ArrowRight } from 'lucide-react'
 
 interface Plan {
   id: string; name: string; slug: string; description: string
@@ -19,7 +21,7 @@ interface Plan {
 interface Certification { id: string; name: string; fullName: string | null }
 
 interface Props {
-  subscriptions: { planId: string; planName: string; status: string; endDate: string; durationDays: number }[]
+  subscriptions: { planId: string; planName: string; planSlug: string; status: string; endDate: string; durationDays: number }[]
   plans: Plan[]
   certifications: Certification[]
 }
@@ -31,6 +33,7 @@ declare global {
 }
 
 export function SubscriptionPage({ subscriptions, plans, certifications }: Props) {
+  const router = useRouter()
   const [selectedCert, setSelectedCert] = useState<string>(certifications[0]?.id ?? '')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [coupon, setCoupon] = useState('')
@@ -42,6 +45,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
   const visiblePlans = plans.filter(
     (plan) => plan.certificationId === null || plan.certificationId === selectedCert
   )
+  const hasPremiumSubscription = subscriptions.some((subscription) => subscription.planSlug !== 'free')
 
   async function checkCoupon() {
     if (!selectedPlan || !coupon.trim()) return
@@ -216,13 +220,18 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
       {/* Plans — this certification's, plus anything covering everything */}
       <div className="grid md:grid-cols-3 gap-4">
         {visiblePlans.map((plan) => {
+          const isFree = isBaselineFreePlan(plan)
           const isOwned = subscriptions.some((subscription) => subscription.planId === plan.id)
           const isSelected = selectedPlan?.id === plan.id
+          const displayFeatures = isFree ? BASELINE_FREE_PLAN_FEATURES : plan.features
+          const freeIsCurrent = isFree && !hasPremiumSubscription
           return (
             <Card
               key={plan.id}
-              className={`transition-all ${isOwned ? 'border-green-300 bg-green-50/40' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''} ${plan.isFeatured ? 'relative' : ''}`}
-              onClick={() => { if (!isOwned) setSelectedPlan(isSelected ? null : plan) }}
+              className={`transition-all ${isOwned || freeIsCurrent ? 'border-green-300 bg-green-50/40' : isFree ? '' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''} ${plan.isFeatured ? 'relative' : ''}`}
+              onClick={() => {
+                if (!isFree && !isOwned) setSelectedPlan(isSelected ? null : plan)
+              }}
             >
               {plan.isFeatured && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -232,7 +241,9 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
               <CardContent className="p-5">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-bold text-lg">{plan.name}</h3>
-                  {isOwned && <Badge variant="success" className="text-xs">Owned</Badge>}
+                  {(isOwned || freeIsCurrent) && (
+                    <Badge variant="success" className="text-xs">{freeIsCurrent ? 'Current plan' : 'Owned'}</Badge>
+                  )}
                 </div>
                 <div className="my-2">
                   <span className="text-3xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
@@ -243,16 +254,35 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
                 </Badge>
                 {plan.description && <p className="text-sm text-muted-foreground mb-3">{plan.description}</p>}
                 <ul className="space-y-1.5">
-                  {(plan.features as string[]).map((f) => (
+                  {displayFeatures.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm">
                       <CheckCircle2 className="h-3.5 w-3.5 text-green-500 flex-shrink-0 mt-0.5" />
                       {f}
                     </li>
                   ))}
                 </ul>
-                <div className={`mt-4 h-5 rounded-full border-2 ${isOwned ? 'border-green-500 bg-green-500' : isSelected ? 'border-primary bg-primary' : 'border-gray-300'} flex items-center justify-center`}>
-                  {(isOwned || isSelected) && <div className="h-2 w-2 rounded-full bg-white" />}
-                </div>
+                {isFree ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      No activation or payment is required. Free access is included with your account.
+                    </p>
+                    <Button
+                      type="button"
+                      variant={freeIsCurrent ? 'default' : 'outline'}
+                      className="w-full"
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        router.push('/quizzes')
+                      }}
+                    >
+                      Continue with Free <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className={`mt-4 h-5 rounded-full border-2 ${isOwned ? 'border-green-500 bg-green-500' : isSelected ? 'border-primary bg-primary' : 'border-gray-300'} flex items-center justify-center`}>
+                    {(isOwned || isSelected) && <div className="h-2 w-2 rounded-full bg-white" />}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )

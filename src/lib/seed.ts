@@ -9,7 +9,7 @@ const PLANS = [
     price: 0,
     currency: 'INR',
     durationDays: 36500,
-    features: ['20 sample practice questions', '1 mini mock exam', 'Basic performance stats'],
+    features: ['1 free 10-question session in each quiz', '1 mini mock exam', 'Basic performance stats'],
     isActive: true,
     isFeatured: false,
     sortOrder: 0,

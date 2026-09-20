@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { applyCoupon } from '@/lib/subscription'
 import { sendPaymentConfirmationEmail } from '@/lib/email'
 import { formatDate, isLifetime } from '@/lib/utils'
+import { isBaselineFreePlan } from '@/lib/subscription-plans'
 
 function toMoney(value: number) {
   return Math.round(value * 100) / 100
@@ -27,6 +28,11 @@ export type OrderQuote =
 export async function quoteOrder(userId: string, planId: string, couponId?: string): Promise<OrderQuote> {
   const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId } })
   if (!plan || !plan.isActive) return { error: 'Plan not found' }
+  // The free tier is baseline product access, not a subscription entitlement.
+  // Activating it as an all-certification subscription would bypass the paywall.
+  if (isBaselineFreePlan(plan)) {
+    return { error: 'Free access is already included with your account.' }
+  }
 
   let coupon: Coupon | null = null
   let discount = 0
