@@ -33,16 +33,14 @@ export async function POST(req: Request) {
   if (!certification) {
     return NextResponse.json({ error: 'Certification not found' }, { status: 404 })
   }
-  // Zero minutes means untimed, which is how domain mocks run. Zero as a pass
-  // mark is not meaningful: every attempt would pass.
   const questionCount = Number(data.questionCount)
   const timeLimitMinutes = Number(data.timeLimitMinutes ?? 120)
   const passingScore = Number(data.passingScore ?? 70)
   if (!Number.isInteger(questionCount) || questionCount <= 0) {
     return NextResponse.json({ error: 'questionCount must be a positive whole number' }, { status: 400 })
   }
-  if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 0) {
-    return NextResponse.json({ error: 'timeLimitMinutes must be zero (untimed) or more' }, { status: 400 })
+  if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 1) {
+    return NextResponse.json({ error: 'timeLimitMinutes must be a positive whole number' }, { status: 400 })
   }
   if (!Number.isInteger(passingScore) || passingScore < 1 || passingScore > 100) {
     return NextResponse.json({ error: 'passingScore must be between 1 and 100' }, { status: 400 })
@@ -58,10 +56,10 @@ export async function POST(req: Request) {
       questionCount,
       timeLimitMinutes: timeLimitMinutes,
       passingScore: passingScore,
-      questionsPerAttempt: Number.isInteger(Number(data.questionsPerAttempt))
-        && Number(data.questionsPerAttempt) > 0 ? Number(data.questionsPerAttempt) : null,
+      questionsPerAttempt: null,
       requireSubscription: data.requireSubscription ?? true,
-      randomizeQuestions: data.randomizeQuestions ?? true,
+      randomizeQuestions: true,
+      showExplanations: false,
       status: 'DRAFT',
     },
   })
