@@ -170,8 +170,8 @@ export default function AdminCertificationsPage() {
           {certifications.map(cert => (
             <Card key={cert.id}>
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900">{cert.name}</h3>
                       <Badge variant={cert.isActive ? 'success' : 'secondary'} className="text-xs">
@@ -204,14 +204,14 @@ export default function AdminCertificationsPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
-                    <Button size="sm" variant="outline" onClick={() => toggleDomains(cert)}>
+                  <div className="flex gap-2 flex-wrap sm:flex-shrink-0 sm:justify-end">
+                    <Button className="flex-1 sm:flex-none" size="sm" variant="outline" onClick={() => toggleDomains(cert)}>
                       {cert.usesDomains ? 'Disable Domains' : 'Enable Domains'}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => toggleActive(cert)}>
+                    <Button className="flex-1 sm:flex-none" size="sm" variant="outline" onClick={() => toggleActive(cert)}>
                       {cert.isActive ? 'Hide' : 'Activate'}
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => remove(cert)}>
+                    <Button size="sm" variant="ghost" onClick={() => remove(cert)} aria-label={`Delete ${cert.name}`}>
                       <Trash2 className="h-4 w-4 text-red-500" />
                     </Button>
                   </div>
