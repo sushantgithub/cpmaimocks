@@ -28,6 +28,9 @@ interface MockExam {
   title: string
   certificationId: string
   questionCount: number
+  timeLimitMinutes: number
+  passingScore: number
+  requireSubscription: boolean
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
   _count: { questions: number }
 }
@@ -461,6 +464,42 @@ export function CsvImportClient() {
                     )
                   })}
                 </select>
+                {selectedExam && (
+                  <div className="mt-3 rounded-lg border bg-gray-50 p-3">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
+                      {selectedExam.title}
+                    </p>
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+                      <div>
+                        <span className="block text-gray-500">Assigned / Target</span>
+                        <strong>{selectedExam._count.questions} / {selectedExam.questionCount}</strong>
+                      </div>
+                      <div>
+                        <span className="block text-gray-500">Missing</span>
+                        <strong className={missingForSelectedExam && missingForSelectedExam > 0 ? 'text-amber-700' : 'text-green-700'}>
+                          {missingForSelectedExam ?? 0}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="block text-gray-500">Time</span>
+                        <strong>{selectedExam.timeLimitMinutes} min</strong>
+                      </div>
+                      <div>
+                        <span className="block text-gray-500">Pass</span>
+                        <strong>{selectedExam.passingScore}%</strong>
+                      </div>
+                      <div className="col-span-2 sm:col-span-1">
+                        <span className="block text-gray-500">Status / Access</span>
+                        <strong>
+                          {selectedExam.status} · {selectedExam.requireSubscription ? 'Paid' : 'Free'}
+                        </strong>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      The next Mock CSV must contain exactly {missingForSelectedExam ?? 0} valid question{missingForSelectedExam === 1 ? '' : 's'}.
+                    </p>
+                  </div>
+                )}
                 {matchingExams.length === 0 && (
                   <p className="text-xs text-amber-700 mt-1">No mocks exist yet for this certification. Choose Create New Mock.</p>
                 )}
