@@ -54,10 +54,10 @@ export default async function ExamsPage() {
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
           <p className="font-medium text-yellow-800 text-sm">
             <Lock className="h-4 w-4 inline mr-1" />
-            Subscribe to unlock all mock exams — {freeCount === 0 ? 'no free exams are available right now' : `${freeCount} free ${freeCount === 1 ? 'exam is' : 'exams are'} open to everyone`}.
+            Free plan active — quizzes include one free 10-question session each. {freeCount === 0 ? 'Mock exams require a paid plan.' : `${freeCount} free ${freeCount === 1 ? 'mock exam is' : 'mock exams are'} also open to everyone.`}
           </p>
           <Button size="sm" className="mt-2" asChild>
-            <Link href="/subscription">View Plans</Link>
+            <Link href="/subscription">View Paid Plans</Link>
           </Button>
         </div>
       )}
@@ -109,7 +109,7 @@ export default async function ExamsPage() {
                 )}
                 {locked ? (
                   <Button className="w-full" variant="outline" asChild>
-                    <Link href="/subscription"><Lock className="h-4 w-4 mr-2" />Unlock with Subscription</Link>
+                    <Link href="/subscription"><Lock className="h-4 w-4 mr-2" />Upgrade for Mock Exams</Link>
                   </Button>
                 ) : (
                   <Button className="w-full" asChild>

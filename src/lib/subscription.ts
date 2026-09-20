@@ -1,15 +1,9 @@
 import { prisma } from '@/lib/db'
+import { isPremiumPlan } from '@/lib/subscription-plans'
 
 export async function getUserActiveSubscription(userId: string) {
-  return prisma.subscription.findFirst({
-    where: {
-      userId,
-      status: 'ACTIVE',
-      endDate: { gt: new Date() },
-    },
-    include: { plan: true },
-    orderBy: { endDate: 'desc' },
-  })
+  const subscriptions = await getUserActiveSubscriptions(userId)
+  return subscriptions[0] ?? null
 }
 
 export async function hasActiveSubscription(userId: string): Promise<boolean> {
@@ -19,11 +13,15 @@ export async function hasActiveSubscription(userId: string): Promise<boolean> {
 
 /** Every live subscription, since someone may hold one per certification. */
 export async function getUserActiveSubscriptions(userId: string) {
-  return prisma.subscription.findMany({
+  const subscriptions = await prisma.subscription.findMany({
     where: { userId, status: 'ACTIVE', endDate: { gt: new Date() } },
     include: { plan: true },
     orderBy: { endDate: 'desc' },
   })
+
+  // Free access is baseline account access, not a paid entitlement. Ignore any
+  // legacy ₹0 subscription rows so they can never unlock premium content.
+  return subscriptions.filter((subscription) => isPremiumPlan(subscription.plan))
 }
 
 /**

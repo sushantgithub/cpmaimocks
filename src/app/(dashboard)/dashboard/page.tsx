@@ -59,14 +59,19 @@ export default async function DashboardPage() {
 
       {/* Subscription banner */}
       {!isSubscribed && (
-        <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold">Upgrade to unlock all mock exams</p>
-            <p className="text-sm text-blue-100 mt-0.5">Get full access to {examCount === 1 ? '1 mock exam' : `all ${examCount} mock exams`} + unlimited practice</p>
+        <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+          <p className="font-semibold">Free plan active</p>
+          <p className="text-sm text-blue-100 mt-0.5">
+            You already have one free 10-question session in each quiz. Upgrade only if you want {examCount === 1 ? 'the mock exam' : `all ${examCount} mock exams`} and unlimited practice.
+          </p>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/quizzes">Continue Free Quizzes</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild className="border-blue-200 bg-transparent text-white hover:bg-blue-500 hover:text-white">
+              <Link href="/subscription">View Paid Plans</Link>
+            </Button>
           </div>
-          <Button variant="secondary" size="sm" asChild className="flex-shrink-0">
-            <Link href="/subscription">Upgrade</Link>
-          </Button>
         </div>
       )}
 
@@ -124,7 +129,7 @@ export default async function DashboardPage() {
                   </div>
                   {locked ? (
                     <Button size="sm" className="w-full" asChild variant="outline">
-                      <Link href="/subscription">Unlock</Link>
+                      <Link href="/subscription">Upgrade for Mock Exams</Link>
                     </Button>
                   ) : (
                     <Button size="sm" className="w-full" asChild>

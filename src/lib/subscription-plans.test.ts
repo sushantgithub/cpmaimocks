@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BASELINE_FREE_PLAN_FEATURES, isBaselineFreePlan } from './subscription-plans'
+import { BASELINE_FREE_PLAN_FEATURES, isBaselineFreePlan, isPremiumPlan } from './subscription-plans'
 
 describe('baseline free plan', () => {
   it('identifies only the free tier as baseline access', () => {
@@ -7,7 +7,13 @@ describe('baseline free plan', () => {
     expect(isBaselineFreePlan({ slug: 'monthly' })).toBe(false)
   })
 
-  it('describes the quiz allowance explicitly', () => {
+  it('describes only baseline free access, not premium mock access', () => {
     expect(BASELINE_FREE_PLAN_FEATURES).toContain('1 free 10-question session in each quiz')
+    expect(BASELINE_FREE_PLAN_FEATURES).not.toContain('1 mini mock exam')
+  })
+
+  it('never treats the baseline free tier as a premium entitlement', () => {
+    expect(isPremiumPlan({ slug: 'free' })).toBe(false)
+    expect(isPremiumPlan({ slug: 'monthly' })).toBe(true)
   })
 })
