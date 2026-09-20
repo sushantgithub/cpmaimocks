@@ -193,54 +193,87 @@ export default function AdminDomainsPage() {
               <p className="text-sm text-gray-500 text-center py-8">No domains yet for this certification.</p>
             )}
             {categories.map((cat) => (
-              <div key={cat.id} className="flex items-center gap-3 px-4 py-3">
+              <div key={cat.id} className="px-4 py-4">
                 {editingId === cat.id ? (
-                  <>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <Input
-                      className="flex-1"
+                      className="w-full sm:flex-1"
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && saveEdit(cat.id)}
                       autoFocus
                     />
-                    <Button size="icon" variant="ghost" onClick={() => saveEdit(cat.id)} disabled={savingId === cat.id}>
-                      <Check className="h-4 w-4 text-green-600" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
-                      <X className="h-4 w-4 text-gray-400" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm font-medium text-gray-900">{cat.name}</span>
-                    <span className="text-xs text-gray-500">{cat._count.questions} question(s)</span>
-                    {categories.length > 1 && (
-                      <select
-                        className="border rounded-md px-1.5 py-1 text-xs text-gray-600 max-w-[9rem]"
-                        value={mergeTarget[cat.id] ?? ''}
-                        onChange={(e) => setMergeTarget((prev) => ({ ...prev, [cat.id]: e.target.value }))}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => saveEdit(cat.id)}
+                        disabled={savingId === cat.id}
                       >
-                        <option value="">Merge into…</option>
-                        {categories.filter((c) => c.id !== cat.id).map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                        <Check className="h-4 w-4 text-green-600 mr-1" />
+                        Save
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                        <X className="h-4 w-4 text-gray-400 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 leading-snug break-words">
+                          {cat.name}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {cat._count.questions} question{cat._count.questions === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => startEdit(cat)}
+                          aria-label={`Rename ${cat.name}`}
+                        >
+                          <Pencil className="h-4 w-4 text-gray-500" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => remove(cat)}
+                          aria-label={`Delete ${cat.name}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {categories.length > 1 && (
+                      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <select
+                          className="w-full min-w-0 border rounded-md px-3 py-2 text-sm text-gray-700"
+                          value={mergeTarget[cat.id] ?? ''}
+                          onChange={(e) => setMergeTarget((prev) => ({ ...prev, [cat.id]: e.target.value }))}
+                        >
+                          <option value="">Merge into another domain…</option>
+                          {categories.filter((c) => c.id !== cat.id).map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                          disabled={!mergeTarget[cat.id] || mergingId === cat.id}
+                          onClick={() => merge(cat)}
+                        >
+                          Merge
+                        </Button>
+                      </div>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!mergeTarget[cat.id] || mergingId === cat.id}
-                      onClick={() => merge(cat)}
-                    >
-                      Merge
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => startEdit(cat)}>
-                      <Pencil className="h-4 w-4 text-gray-500" />
-                    </Button>
-                    <Button size="icon" variant="ghost" onClick={() => remove(cat)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </>
+                  </div>
                 )}
               </div>
             ))}
