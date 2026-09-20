@@ -44,6 +44,8 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
           (questionOrder.get(b.questionId) ?? Number.MAX_SAFE_INTEGER)
       )
     : result.answers
+  const isMistakePractice = isQuiz && quizConfig?.sessionKind === 'INCORRECT_RETRY'
+  const isMixedReview = isQuiz && quizConfig?.sessionKind === 'MIXED_REVIEW'
   const sessionTitle = result.exam?.title
     ?? (isQuiz ? (quizConfig?.quizTitle ?? 'Quiz Session') : 'Practice Session')
   const backHref = isExam ? '/exams' : isQuiz ? '/quizzes' : '/practice'
@@ -80,7 +82,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
             </Badge>
           ) : (
             <Badge variant="secondary" className="text-sm px-4 py-1">
-              {isQuiz ? 'Quiz session' : 'Practice session'}
+              {isMistakePractice ? 'Mistake practice' : isMixedReview ? 'Mixed review' : isQuiz ? 'Full quiz attempt' : 'Practice session'}
             </Badge>
           )}
           <p className="text-sm text-muted-foreground mt-3">{sessionTitle}</p>
@@ -146,7 +148,10 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
               ['unanswered', `Unanswered (${result.unansweredCount ?? 0})`],
             ].map(([value, label]) => (
               <Button key={value} size="sm" variant={reviewFilter === value ? 'default' : 'outline'} asChild>
-                <Link href={value === 'all' ? `/results/${params.attemptId}#question-review` : `/results/${params.attemptId}?review=${value}#question-review`}>
+                <Link
+                  scroll={false}
+                  href={value === 'all' ? `/results/${params.attemptId}#question-review` : `/results/${params.attemptId}?review=${value}#question-review`}
+                >
                   {label}
                 </Link>
               </Button>
@@ -154,6 +159,19 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
           </div>
         </div>
         <div className="space-y-4">
+          {reviewAnswers.length === 0 && (
+            <Card>
+              <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                {reviewFilter === 'unanswered'
+                  ? 'No unanswered questions in this attempt.'
+                  : reviewFilter === 'correct'
+                    ? 'No correct answers in this attempt.'
+                    : reviewFilter === 'incorrect'
+                      ? 'No incorrect answers in this attempt.'
+                      : 'No questions are available to review.'}
+              </CardContent>
+            </Card>
+          )}
           {reviewAnswers.map((answer) => {
             const i = orderedAnswers.findIndex((item) => item.id === answer.id)
             const q = answer.question

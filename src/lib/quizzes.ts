@@ -6,6 +6,7 @@ import {
   questionCountForQuiz,
   quizCountForQuestions,
   readQuizAttemptConfig,
+  previousQuizAllowsNext,
   type QuizAccessTier,
   type QuizAttemptConfig,
   type QuizSessionKind,
@@ -30,6 +31,7 @@ export interface QuizSlotSummary {
   questionCount: number
   completed: boolean
   activeAttemptId: string | null
+  activeRetryAttemptId: string | null
   latestAttemptId: string | null
   latestScore: number | null
   bestScore: number | null
@@ -228,6 +230,17 @@ function activeStandard(attempts: NormalizedAttempt[], quizNumber: number) {
     .find((attempt) => attempt.status === 'IN_PROGRESS') ?? null
 }
 
+function activeIncorrectRetry(attempts: NormalizedAttempt[], quizNumber: number) {
+  return [...attempts]
+    .reverse()
+    .find(
+      (attempt) =>
+        attempt.sessionKind === 'INCORRECT_RETRY' &&
+        attempt.quizNumber === quizNumber &&
+        attempt.status === 'IN_PROGRESS'
+    ) ?? null
+}
+
 function latestLearningVerdicts(attempts: NormalizedAttempt[]) {
   const latest = new Map<string, boolean>()
   for (const attempt of attempts) {
@@ -326,10 +339,15 @@ export async function quizSummary(
     const latest = history[0] ?? null
     const previousCompleted =
       number === 1 || latestCompletedStandard(attempts, number - 1) !== null
+    const previousActiveRetake =
+      number > 1 && activeStandard(attempts, number - 1) !== null
+    const previousReady =
+      number === 1 || previousQuizAllowsNext(previousCompleted, previousActiveRetake)
+    const activeRetry = activeIncorrectRetry(attempts, number)
 
     let lockReason: QuizLockReason = null
     if (!hasAccess && number > 1) lockReason = 'SUBSCRIPTION'
-    else if (!previousCompleted) lockReason = 'PREVIOUS'
+    else if (!previousReady) lockReason = 'PREVIOUS'
     else if (!hasAccess && number === 1 && freeState.locked && !active) lockReason = 'FREE_USED'
 
     const canonical = canonicalQuestionIds(attempts, number)
@@ -340,6 +358,7 @@ export async function quizSummary(
       questionCount: canonical.length > 0 ? canonical.length : expected,
       completed: history.length > 0,
       activeAttemptId: active?.id ?? null,
+      activeRetryAttemptId: activeRetry?.id ?? null,
       latestAttemptId: latest?.id ?? null,
       latestScore: latest?.score ?? null,
       bestScore:
@@ -373,7 +392,11 @@ export async function quizSummary(
     premiumAccess: hasAccess,
     quizCount,
     completedQuizzes,
-    mixedReviewAvailable: hasAccess && completedQuizzes === quizCount && wrong > 0,
+    mixedReviewAvailable:
+      hasAccess &&
+      completedQuizzes === quizCount &&
+      !slots.some((slot) => slot.activeAttemptId) &&
+      wrong > 0,
     slots,
   }
 }
@@ -459,7 +482,11 @@ export async function prepareQuizSitting(
     if (active) return { kind: 'resume', attemptId: active.id }
 
     const firstIncomplete = Array.from({ length: quizCount }, (_, index) => index + 1)
-      .find((number) => latestCompletedStandard(attempts, number) === null)
+      .find(
+        (number) =>
+          latestCompletedStandard(attempts, number) === null ||
+          activeStandard(attempts, number) !== null
+      )
     if (firstIncomplete) {
       return {
         kind: 'sequence_locked',
@@ -494,7 +521,13 @@ export async function prepareQuizSitting(
     return { kind: 'locked', reason: 'subscription' }
   }
 
-  if (quizNumber > 1 && latestCompletedStandard(attempts, quizNumber - 1) === null) {
+  if (
+    quizNumber > 1 &&
+    !previousQuizAllowsNext(
+      latestCompletedStandard(attempts, quizNumber - 1) !== null,
+      activeStandard(attempts, quizNumber - 1) !== null,
+    )
+  ) {
     return { kind: 'sequence_locked', previousQuizNumber: quizNumber - 1 }
   }
 
@@ -504,14 +537,7 @@ export async function prepareQuizSitting(
   if (action === 'retryIncorrect') {
     if (!hasAccess) return { kind: 'locked', reason: 'subscription' }
 
-    const retryActive = [...attempts]
-      .reverse()
-      .find(
-        (attempt) =>
-          attempt.sessionKind === 'INCORRECT_RETRY' &&
-          attempt.quizNumber === quizNumber &&
-          attempt.status === 'IN_PROGRESS'
-      )
+    const retryActive = activeIncorrectRetry(attempts, quizNumber)
     if (retryActive) return { kind: 'resume', attemptId: retryActive.id }
 
     const latest = latestCompletedStandard(attempts, quizNumber)

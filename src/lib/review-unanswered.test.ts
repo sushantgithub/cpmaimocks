@@ -16,6 +16,25 @@ describe('unanswered review queue', () => {
     expect(reviewQueueTarget(queue, 2, -1)).toEqual({ cursor: 1, questionIndex: 3 })
   })
 
+  it('keeps the captured review queue stable even after some queued questions are answered', () => {
+    const originalAnswers = { q1: 'A' }
+    const queue = buildUnansweredQueue(['q1', 'q2', 'q3', 'q4'], originalAnswers)
+    expect(queue).toEqual([1, 2, 3])
+
+    // Review is intentionally a snapshot. Answering q2 does not rebuild the
+    // queue and accidentally skip/fall through to non-review questions.
+    const laterAnswers = { ...originalAnswers, q2: 'B' }
+    expect(buildUnansweredQueue(['q1', 'q2', 'q3', 'q4'], laterAnswers)).toEqual([2, 3])
+    expect(queue).toEqual([1, 2, 3])
+  })
+
+  it('returns an empty queue when every question is already answered', () => {
+    expect(buildUnansweredQueue(
+      ['q1', 'q2'],
+      { q1: 'A', q2: 'B' },
+    )).toEqual([])
+  })
+
   it('does not wrap after the final unanswered question', () => {
     const queue = [1, 3, 5]
     expect(reviewQueueTarget(queue, 2, 1)).toBeNull()

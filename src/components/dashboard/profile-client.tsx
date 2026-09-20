@@ -8,15 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
-import { User, Lock, Trash2, Trophy, BookOpen, Target, TrendingUp } from 'lucide-react'
+import { User, Lock, Trash2 } from 'lucide-react'
 
 interface Props {
   user: { name: string; email: string; memberSince: string }
-  stats: { totalExams: number; totalQuestions: number; avgScore: number; bestScore: number }
   subscriptions: { planName: string; status: string; access: string }[]
 }
 
-export function ProfileClient({ user, stats, subscriptions }: Props) {
+export function ProfileClient({ user, subscriptions }: Props) {
   const router = useRouter()
   const [name, setName] = useState(user.name)
   const [savingName, setSavingName] = useState(false)
@@ -54,18 +53,6 @@ export function ProfileClient({ user, stats, subscriptions }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20 md:pb-6">
       <h1 className="text-2xl font-bold">Profile</h1>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { icon: Trophy, label: 'Exams', value: stats.totalExams },
-          { icon: BookOpen, label: 'Questions', value: stats.totalQuestions },
-          { icon: Target, label: 'Avg Score', value: `${stats.avgScore}%` },
-          { icon: TrendingUp, label: 'Best Score', value: `${stats.bestScore}%` },
-        ].map((s) => (
-          <Card key={s.label}><CardContent className="p-3 text-center"><s.icon className="h-4 w-4 mx-auto mb-1 text-primary" /><div className="font-bold">{s.value}</div><div className="text-xs text-muted-foreground">{s.label}</div></CardContent></Card>
-        ))}
-      </div>
 
       {/* Subscriptions */}
       <Card>

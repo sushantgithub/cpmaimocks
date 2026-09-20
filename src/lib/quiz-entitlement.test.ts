@@ -5,6 +5,7 @@ import {
   questionCountForQuiz,
   quizCountForQuestions,
   readQuizAttemptConfig,
+  previousQuizAllowsNext,
 } from './quiz-entitlement'
 
 describe('quiz entitlement helpers', () => {
@@ -56,6 +57,12 @@ describe('quiz entitlement helpers', () => {
     expect(questionCountForQuiz(60, 6)).toBe(10)
     expect(quizCountForQuestions(64)).toBe(7)
     expect(questionCountForQuiz(64, 7)).toBe(4)
+  })
+
+  it('keeps the next quiz locked while the previous full retake is active', () => {
+    expect(previousQuizAllowsNext(true, false)).toBe(true)
+    expect(previousQuizAllowsNext(true, true)).toBe(false)
+    expect(previousQuizAllowsNext(false, false)).toBe(false)
   })
 
   it('reuses an assigned quiz set and fills only from unassigned questions', () => {

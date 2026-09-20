@@ -109,3 +109,10 @@ export function fixedQuizQuestionSet(
 
   return selected.slice(0, budget)
 }
+
+export function previousQuizAllowsNext(
+  hasCompletedAttempt: boolean,
+  hasActiveRetake: boolean,
+): boolean {
+  return hasCompletedAttempt && !hasActiveRetake
+}

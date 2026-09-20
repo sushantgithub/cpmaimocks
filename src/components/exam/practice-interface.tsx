@@ -396,17 +396,20 @@ export function PracticeInterface({
               <Button
                 variant="ghost"
                 size="sm"
+                className="min-w-0 flex-shrink"
                 onClick={() => reviewMode
                   ? moveReviewQueue(-1)
                   : (setPending([]), setCurrent((c) => Math.max(0, c - 1)))
                 }
                 disabled={(reviewMode ? reviewCursor === 0 : current === 0) || answerSaving === q.id}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                {reviewMode ? 'Previous Unanswered' : 'Previous'}
+                <ChevronLeft className="h-4 w-4 mr-1 flex-shrink-0" />
+                {reviewMode
+                  ? <><span className="sm:hidden">Previous</span><span className="hidden sm:inline">Previous Unanswered</span></>
+                  : 'Previous'}
               </Button>
 
-              <button
+              {!reviewMode && <button
                 onClick={() => toggleBookmark(q.id)}
                 disabled={!bookmarksEnabled || bookmarkLoading === q.id}
                 title={bookmarksEnabled ? undefined : 'Bookmarks are included with paid plans'}
@@ -425,7 +428,7 @@ export function PracticeInterface({
                     ? <><BookmarkCheck className="h-4 w-4" />Saved</>
                     : <><Bookmark className="h-4 w-4" />Save</>
                 }
-              </button>
+              </button>}
 
               {hasPendingSelection ? (
                 <Button size="sm" onClick={submitAnswer} disabled={!pendingReady || answerSaving === q.id} loading={answerSaving === q.id}>
@@ -437,8 +440,10 @@ export function PracticeInterface({
                     <Send className="h-4 w-4 mr-1" />Finish Review
                   </Button>
                 ) : (
-                  <Button size="sm" onClick={() => moveReviewQueue(1)} disabled={answerSaving === q.id}>
-                    Next Unanswered<ChevronRight className="h-4 w-4 ml-1" />
+                  <Button size="sm" className="min-w-0 flex-shrink" onClick={() => moveReviewQueue(1)} disabled={answerSaving === q.id}>
+                    <span className="sm:hidden">Next</span>
+                    <span className="hidden sm:inline">Next Unanswered</span>
+                    <ChevronRight className="h-4 w-4 ml-1 flex-shrink-0" />
                   </Button>
                 )
               ) : current === questions.length - 1 ? (
@@ -587,14 +592,16 @@ export function PracticeInterface({
                 </Button>
               )}
               <div className="flex gap-3">
-                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>Continue</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>
+                  Back to Quiz
+                </Button>
                 <Button
                   variant={unansweredCount > 0 ? 'outline' : 'default'}
                   className="flex-1"
                   onClick={() => { setShowConfirm(false); submitPractice() }}
                   loading={submitting}
                 >
-                  See Results
+                  {unansweredCount > 0 ? 'Finish Anyway' : 'See Results'}
                 </Button>
               </div>
             </div>

@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast'
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   History,
   Lock,
   RotateCcw,
@@ -34,6 +36,24 @@ export function QuizzesClient({
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(
+      quizzes
+        .filter((quiz) =>
+          quiz.slots.some((slot) => slot.activeAttemptId || slot.activeRetryAttemptId)
+        )
+        .map((quiz) => quiz.key)
+    )
+  )
+
+  function toggleDomain(key: string) {
+    setExpanded((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   async function launch(
     quiz: QuizSummary,
@@ -104,7 +124,7 @@ export function QuizzesClient({
                 loading={retakeBusy}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Retake
+                Retake full quiz
               </Button>
             ) : (
               <Button variant="outline" asChild>
@@ -117,22 +137,29 @@ export function QuizzesClient({
           </div>
 
           {quiz.premiumAccess && slot.latestIncorrect > 0 && (
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => launch(quiz, slot.number, 'retryIncorrect')}
-              loading={retryBusy}
-            >
-              <Target className="h-4 w-4 mr-2" />
-              Retry {slot.latestIncorrect} incorrect
-            </Button>
+            <div className="rounded-lg bg-blue-50/60 p-2">
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => launch(quiz, slot.number, 'retryIncorrect')}
+                loading={retryBusy}
+              >
+                <Target className="h-4 w-4 mr-2" />
+                {slot.activeRetryAttemptId
+                  ? 'Resume mistake practice'
+                  : `Practice ${slot.latestIncorrect} incorrect`}
+              </Button>
+              <p className="text-[11px] text-muted-foreground mt-1.5 px-1">
+                Mistake practice is separate and does not count as a Quiz {slot.number} attempt.
+              </p>
+            </div>
           )}
 
-          {slot.history.length > 1 && (
+          {slot.history.length > 0 && (
             <details className="rounded-lg border bg-gray-50 px-3 py-2">
               <summary className="cursor-pointer text-sm font-medium flex items-center gap-2">
                 <History className="h-4 w-4" />
-                Attempt history ({slot.history.length})
+                Full quiz attempt history ({slot.history.length})
               </summary>
               <div className="mt-2 space-y-1">
                 {slot.history.map((attempt, index) => (
@@ -214,115 +241,145 @@ export function QuizzesClient({
         </Card>
       )}
 
-      <div className="space-y-5">
+      <div className="space-y-4">
         {quizzes.map((quiz) => {
           const pct =
             quiz.quizCount > 0
               ? Math.round((quiz.completedQuizzes / quiz.quizCount) * 100)
               : 0
           const mixedBusy = busy === quiz.key + ':mixed:mixedReview'
+          const isExpanded = expanded.has(quiz.key)
+          const activeSlot = quiz.slots.find(
+            (slot) => slot.activeAttemptId || slot.activeRetryAttemptId
+          )
 
           return (
             <Card key={quiz.key} className={quiz.mastered ? 'border-green-300' : ''}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold leading-tight">{quiz.title}</h3>
-                    {showCertification && (
-                      <Badge variant="secondary" className="text-xs mt-2">
-                        {quiz.certificationName}
-                      </Badge>
-                    )}
-                  </div>
-                  {quiz.mastered && (
-                    <Badge variant="success" className="text-xs flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Mastered
-                    </Badge>
-                  )}
-                </div>
-
-                {quiz.description && (
-                  <p className="text-sm text-muted-foreground mt-2">{quiz.description}</p>
-                )}
-
-                <div className="mt-4 mb-1 flex justify-between text-xs text-muted-foreground">
-                  <span>
-                    {quiz.completedQuizzes} of {quiz.quizCount} quizzes completed
-                  </span>
-                  <span>{quiz.total} questions</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={quiz.mastered ? 'h-full rounded-full bg-green-500' : 'h-full rounded-full bg-primary'}
-                    style={{ width: pct + '%' }}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
-                  {quiz.slots.map((slot) => (
-                    <div key={slot.number} className="rounded-xl border p-3">
-                      <div className="flex items-start justify-between gap-2 mb-2">
+              <CardContent className="p-0">
+                <button
+                  type="button"
+                  onClick={() => toggleDomain(quiz.key)}
+                  className="w-full text-left p-5"
+                  aria-expanded={isExpanded}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-start gap-2">
+                        {isExpanded
+                          ? <ChevronDown className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                          : <ChevronRight className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground" />}
                         <div>
-                          <p className="font-semibold">Quiz {slot.number}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {slot.questionCount} questions · Untimed
-                          </p>
+                          <h3 className="font-semibold leading-tight">{quiz.title}</h3>
+                          {showCertification && (
+                            <Badge variant="secondary" className="text-xs mt-2">
+                              {quiz.certificationName}
+                            </Badge>
+                          )}
                         </div>
-                        {slot.activeAttemptId ? (
-                          <Badge variant="secondary" className="text-xs">In progress</Badge>
-                        ) : slot.completed ? (
-                          <Badge variant="success" className="text-xs">Completed</Badge>
-                        ) : slot.number === 1 && !quiz.premiumAccess ? (
-                          <Badge variant="secondary" className="text-xs">Free</Badge>
-                        ) : slot.lockReason ? (
-                          <Lock className="h-4 w-4 text-muted-foreground" />
-                        ) : null}
                       </div>
-
-                      {slot.completed && (
-                        <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                          <div className="rounded bg-gray-50 p-2">
-                            <div className="text-xs text-muted-foreground">Latest</div>
-                            <div className="font-semibold">{scoreLabel(slot.latestScore)}</div>
-                          </div>
-                          <div className="rounded bg-gray-50 p-2">
-                            <div className="text-xs text-muted-foreground">Best</div>
-                            <div className="font-semibold">{scoreLabel(slot.bestScore)}</div>
-                          </div>
-                          <div className="rounded bg-gray-50 p-2">
-                            <div className="text-xs text-muted-foreground">Attempts</div>
-                            <div className="font-semibold">{slot.attemptCount}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {slotActions(quiz, slot)}
                     </div>
-                  ))}
-                </div>
+                    {quiz.mastered ? (
+                      <Badge variant="success" className="text-xs flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Mastered
+                      </Badge>
+                    ) : activeSlot ? (
+                      <Badge variant="secondary" className="text-xs">
+                        {activeSlot.activeAttemptId
+                          ? `Quiz ${activeSlot.number} in progress`
+                          : 'Mistake practice in progress'}
+                      </Badge>
+                    ) : null}
+                  </div>
 
-                {quiz.premiumAccess && quiz.completedQuizzes === quiz.quizCount && (
-                  <div className="mt-4 rounded-xl border bg-blue-50/50 p-3">
-                    {quiz.mixedReviewAvailable ? (
-                      <>
-                        <p className="text-sm font-medium">Weak-question review</p>
-                        <p className="text-xs text-muted-foreground mt-1 mb-2">
-                          Practise questions you currently have wrong across this domain.
-                        </p>
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => launch(quiz, null, 'mixedReview')}
-                          loading={mixedBusy}
-                        >
-                          Start Mixed Review
-                        </Button>
-                      </>
-                    ) : (
-                      <p className="text-sm text-green-700">
-                        No weak questions remain across this domain.
-                      </p>
+                  {quiz.description && (
+                    <p className="text-sm text-muted-foreground mt-2 ml-7">{quiz.description}</p>
+                  )}
+
+                  <div className="mt-4 mb-1 flex justify-between text-xs text-muted-foreground">
+                    <span>{quiz.completedQuizzes} of {quiz.quizCount} quizzes completed</span>
+                    <span>{quiz.total} questions</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={quiz.mastered ? 'h-full rounded-full bg-green-500' : 'h-full rounded-full bg-primary'}
+                      style={{ width: pct + '%' }}
+                    />
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="px-5 pb-5 border-t">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
+                      {quiz.slots.map((slot) => (
+                        <div key={slot.number} className="rounded-xl border p-3">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <p className="font-semibold">Quiz {slot.number}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {slot.questionCount} questions · Untimed
+                              </p>
+                            </div>
+                            {slot.activeAttemptId ? (
+                              <Badge variant="secondary" className="text-xs">Full quiz in progress</Badge>
+                            ) : slot.activeRetryAttemptId ? (
+                              <Badge variant="secondary" className="text-xs">Mistake practice</Badge>
+                            ) : slot.completed ? (
+                              <Badge variant="success" className="text-xs">Completed</Badge>
+                            ) : slot.number === 1 && !quiz.premiumAccess ? (
+                              <Badge variant="secondary" className="text-xs">Free</Badge>
+                            ) : slot.lockReason ? (
+                              <Lock className="h-4 w-4 text-muted-foreground" />
+                            ) : null}
+                          </div>
+
+                          {slot.completed && (
+                            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                              <div className="rounded bg-gray-50 p-2">
+                                <div className="text-xs text-muted-foreground">Latest full</div>
+                                <div className="font-semibold">{scoreLabel(slot.latestScore)}</div>
+                              </div>
+                              <div className="rounded bg-gray-50 p-2">
+                                <div className="text-xs text-muted-foreground">Best full</div>
+                                <div className="font-semibold">{scoreLabel(slot.bestScore)}</div>
+                              </div>
+                              <div className="rounded bg-gray-50 p-2">
+                                <div className="text-xs text-muted-foreground">Full attempts</div>
+                                <div className="font-semibold">{slot.attemptCount}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {slotActions(quiz, slot)}
+                        </div>
+                      ))}
+                    </div>
+
+                    {quiz.premiumAccess &&
+                      quiz.completedQuizzes === quiz.quizCount &&
+                      !quiz.slots.some((slot) => slot.activeAttemptId) && (
+                      <div className="mt-4 rounded-xl border bg-blue-50/50 p-3">
+                        {quiz.mixedReviewAvailable ? (
+                          <>
+                            <p className="text-sm font-medium">Weak-question review</p>
+                            <p className="text-xs text-muted-foreground mt-1 mb-2">
+                              Practise questions you currently have wrong across this domain.
+                            </p>
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => launch(quiz, null, 'mixedReview')}
+                              loading={mixedBusy}
+                            >
+                              Start Mixed Review
+                            </Button>
+                          </>
+                        ) : (
+                          <p className="text-sm text-green-700">
+                            No weak questions remain across this domain.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
