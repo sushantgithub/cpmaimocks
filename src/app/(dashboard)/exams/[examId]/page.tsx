@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { ExamInterface } from '@/components/exam/exam-interface'
 import type { ExamQuestion } from '@/types'
 import { expectedCount } from '@/lib/answers'
+import { isFullMockExam } from '@/lib/mock-exams'
 
 const questionSelect = {
   id: true, questionId: true, text: true,
@@ -42,28 +43,56 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
 
   const limitSeconds = exam.timeLimitMinutes * 60
 
-  // Entering from the Mock Exams card means the learner explicitly chose to
-  // start/continue with a new set. Discard stale unfinished test/work from an
-  // earlier visit, then remove ?fresh so ordinary refreshes of the new attempt
-  // resume it instead of wiping progress.
+  // Remove the start/retake query flag without discarding a live attempt.
+  // If an attempt is already running, the plain route below resumes it with
+  // the original server deadline. A new attempt is created only when none is active.
   if (searchParams?.fresh === '1') {
-    await prisma.examAttempt.updateMany({
-      where: { userId, examId: exam.id, status: 'IN_PROGRESS' },
-      data: { status: 'ABANDONED' },
-    })
     redirect(`/exams/${exam.id}`)
   }
+
+  // Full timed mocks never reveal grading/explanations during the attempt.
+  // Keep the legacy flag available for non-full learning sessions only.
+  const showImmediateFeedback = exam.showExplanations && !isFullMockExam(exam)
 
   // A reload must not hand out a fresh timer or a duplicate attempt: pick up
   // the running attempt with whatever time it has left.
   const running = await prisma.examAttempt.findFirst({
     where: { userId, examId: exam.id, status: 'IN_PROGRESS' },
     orderBy: { startedAt: 'desc' },
-    include: { answers: { select: { selectedAnswer: true, isCorrect: true, isMarked: true, question: { select: questionSelect } } } },
+    include: {
+      answers: {
+        select: {
+          id: true,
+          questionId: true,
+          selectedAnswer: true,
+          isCorrect: true,
+          isMarked: true,
+          question: { select: questionSelect },
+        },
+      },
+    },
   })
 
   if (running) {
     const elapsed = Math.floor((Date.now() - running.startedAt.getTime()) / 1000)
+    const rawConfig = running.practiceConfig
+    const questionOrder =
+      rawConfig &&
+      typeof rawConfig === 'object' &&
+      !Array.isArray(rawConfig) &&
+      Array.isArray((rawConfig as { questionIds?: unknown }).questionIds)
+        ? (rawConfig as { questionIds: unknown[] }).questionIds.filter(
+            (id): id is string => typeof id === 'string'
+          )
+        : []
+    const position = new Map(questionOrder.map((id, index) => [id, index]))
+    const runningAnswers = questionOrder.length > 0
+      ? [...running.answers].sort(
+          (a, b) =>
+            (position.get(a.questionId) ?? Number.MAX_SAFE_INTEGER) -
+            (position.get(b.questionId) ?? Number.MAX_SAFE_INTEGER)
+        )
+      : running.answers
     // An attempt receives a sample of the pool, so it can never equal a freshly
     // drawn one and cannot be validated by comparison. What has to hold is that
     // every question it was served is still published and still linked to this
@@ -74,7 +103,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
       select: { questionId: true },
     })
     const poolIds = new Set(pool.map((row) => row.questionId))
-    const attemptQuestionIds = running.answers.map((a) => a.question.id)
+    const attemptQuestionIds = runningAnswers.map((a) => a.question.id)
     const stillValid =
       attemptQuestionIds.length > 0 && attemptQuestionIds.every((id) => poolIds.has(id))
 
@@ -87,7 +116,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
           // feedback was actually revealed (isCorrect populated) counts as
           // completed. A merely autosaved/draft selection must not make an
           // untouched question look answered when the attempt is resumed.
-          .filter((a) => a.selectedAnswer && (!exam.showExplanations || a.isCorrect !== null))
+          .filter((a) => a.selectedAnswer && (!showImmediateFeedback || a.isCorrect !== null))
           .map((a) => [a.question.id, a.selectedAnswer as string])
       )
       const initialMarked = running.answers
@@ -97,7 +126,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
         .filter((a) => a.isCorrect !== null)
         .map((a) => a.question.id)
       const initialFeedback = Object.fromEntries(
-        running.answers
+        runningAnswers
           .filter((a) => a.isCorrect !== null && a.selectedAnswer)
           .map((a) => [a.question.id, {
             selectedAnswer: a.selectedAnswer as string,
@@ -117,9 +146,9 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
         <ExamInterface
           key={running.id}
           attemptId={running.id}
-          exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: exam.showExplanations }}
+          exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: showImmediateFeedback }}
           timeLeftSeconds={limitSeconds > 0 ? Math.max(0, limitSeconds - elapsed) : 0}
-          questions={running.answers.map((a) => toExamQuestion(a.question))}
+          questions={runningAnswers.map((a) => toExamQuestion(a.question))}
           initialAnswers={initialAnswers}
           initialMarked={initialMarked}
           initialChecked={initialChecked}
@@ -146,6 +175,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
       examId: exam.id,
       mode: 'EXAM',
       totalQuestions: questions.length,
+      practiceConfig: { questionIds: questions.map((question) => question.id) },
       answers: {
         create: questions.map((q) => ({ questionId: q.id })),
       },
@@ -156,7 +186,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
     <ExamInterface
       key={attempt.id}
       attemptId={attempt.id}
-      exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: exam.showExplanations }}
+      exam={{ id: exam.id, title: exam.title, timeLimitMinutes: exam.timeLimitMinutes, passingScore: exam.passingScore, showExplanations: showImmediateFeedback }}
       timeLeftSeconds={limitSeconds}
       questions={questions.map(toExamQuestion)}
     />
