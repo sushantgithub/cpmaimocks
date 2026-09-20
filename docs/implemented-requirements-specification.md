@@ -643,3 +643,8 @@ This document does not claim implementation of unrelated future enhancements suc
 ---
 
 **End of Document**
+
+
+## Deployment Note — 20 September 2026
+
+The required Supabase schema migration for `Certification.usesDomains` and `Question.contentType` was confirmed as applied before production deployment of this implementation.
