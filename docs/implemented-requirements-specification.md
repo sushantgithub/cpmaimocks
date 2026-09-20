@@ -650,3 +650,5 @@ This document does not claim implementation of unrelated future enhancements suc
 The required Supabase schema migration for `Certification.usesDomains` and `Question.contentType` was confirmed as applied before production deployment of this implementation.
 
 - Legacy untimed domain learning-mock records are retained for historical safety but hidden from the Mock Exams Admin list and Existing Mock import selector, because those domain pools are now represented by the Quiz experience.
+
+- Admin Quizzes now displays generated Domain Quiz sets directly (fixed groups of 10) so Quiz content is visible and manageable after legacy domain-learning Mock records are hidden from Mock Exams.
