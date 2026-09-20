@@ -25,6 +25,10 @@ export async function GET(req: Request) {
   if (isTest === 'only') where.isTest = true
   else if (isTest === 'exclude') where.isTest = false
   if (difficulty) where.difficulty = difficulty
+  const contentType = searchParams.get('contentType')
+  if (contentType && ['QUIZ', 'MOCK_EXAM', 'PRACTICE_ONLY'].includes(contentType)) {
+    where.contentType = contentType
+  }
   const certificationId = searchParams.get('certificationId')
   if (certificationId) where.certificationId = certificationId
 
@@ -38,6 +42,7 @@ export async function GET(req: Request) {
         difficulty: true,
         status: true,
         isTest: true,
+        contentType: true,
         category: { select: { name: true } },
         topic: { select: { name: true } },
       },
