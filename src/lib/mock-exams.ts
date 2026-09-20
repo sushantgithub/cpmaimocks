@@ -15,5 +15,5 @@ export function isFullMockExam(exam: MockExamShape): boolean {
     exam.questionsPerAttempt <= 0 ||
     exam.questionsPerAttempt >= exam.questionCount
 
-  return exam.timeLimitMinutes > 0 && servesFullPool
+  return exam.questionCount > 0 && exam.timeLimitMinutes > 0 && servesFullPool
 }
