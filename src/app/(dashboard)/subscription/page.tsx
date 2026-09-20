@@ -1,13 +1,15 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getUserActiveSubscriptions } from '@/lib/subscription'
+import { listQuizzes } from '@/lib/quizzes'
+import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
 import { SubscriptionPage } from '@/components/dashboard/subscription-page'
 
 export default async function SubscriptionRoute() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [subscription, plans, certifications] = await Promise.all([
+  const [subscription, plans, certifications, quizzes] = await Promise.all([
     getUserActiveSubscriptions(userId),
     prisma.subscriptionPlan.findMany({
       where: { isActive: true },
@@ -19,6 +21,7 @@ export default async function SubscriptionRoute() {
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, fullName: true },
     }),
+    listQuizzes(userId),
   ])
 
   return (
@@ -45,6 +48,7 @@ export default async function SubscriptionRoute() {
         certificationName: p.certification?.name ?? null,
       }))}
       certifications={certifications}
+      freeQuizAvailable={hasRemainingFreeQuizSession(quizzes)}
     />
   )
 }

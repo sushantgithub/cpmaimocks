@@ -1,6 +1,8 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getUserStats } from '@/lib/quiz'
+import { listQuizzes } from '@/lib/quizzes'
+import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
 import { getUserActiveSubscriptions, getAccessibleCertificationIds } from '@/lib/subscription'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +29,7 @@ export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user.id
 
-  const [stats, subscription, accessible, examCount, recentAttempts, exams] = await Promise.all([
+  const [stats, subscription, accessible, examCount, recentAttempts, exams, quizzes] = await Promise.all([
     getUserStats(userId),
     getUserActiveSubscriptions(userId),
     getAccessibleCertificationIds(userId),
@@ -43,9 +45,11 @@ export default async function DashboardPage() {
       orderBy: { sortOrder: 'asc' },
       take: 6,
     }),
+    listQuizzes(userId),
   ])
 
   const isSubscribed = subscription.length > 0
+  const freeQuizAvailable = !isSubscribed && hasRemainingFreeQuizSession(quizzes)
   const canAccess = (certificationId: string) =>
     accessible === 'ALL' || accessible.includes(certificationId)
 
@@ -60,14 +64,23 @@ export default async function DashboardPage() {
       {/* Subscription banner */}
       {!isSubscribed && (
         <div className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
-          <p className="font-semibold">Free plan active</p>
+          <p className="font-semibold">{freeQuizAvailable ? 'Free plan active' : 'Free quiz allowance used'}</p>
           <p className="text-sm text-blue-100 mt-0.5">
-            You already have one free 10-question session in each quiz. Upgrade only if you want {examCount === 1 ? 'the mock exam' : `all ${examCount} mock exams`} and unlimited practice.
+            {freeQuizAvailable
+              ? `You have a free 10-question session available in at least one quiz. Upgrade only if you want ${examCount === 1 ? 'the mock exam' : `all ${examCount} mock exams`} and unlimited practice.`
+              : 'You have completed the free 10-question session in every quiz currently available to you. Upgrade to continue answering more questions.'}
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
-            <Button variant="secondary" size="sm" asChild>
-              <Link href="/quizzes">Continue Free Quizzes</Link>
-            </Button>
+            {freeQuizAvailable && (
+              <Button variant="secondary" size="sm" asChild>
+                <Link href="/quizzes">Continue Free Quizzes</Link>
+              </Button>
+            )}
+            {!freeQuizAvailable && (
+              <Button variant="secondary" size="sm" asChild>
+                <Link href="/quizzes">View Quiz Progress</Link>
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild className="border-blue-200 bg-transparent text-white hover:bg-blue-500 hover:text-white">
               <Link href="/subscription">View Paid Plans</Link>
             </Button>

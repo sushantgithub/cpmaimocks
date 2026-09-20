@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { restartQuiz, type QuizKey } from '@/lib/quizzes'
+import { quizSummary, restartQuiz, type QuizKey } from '@/lib/quizzes'
 
 export async function POST(req: Request) {
   const session = await auth()
@@ -10,6 +10,15 @@ export async function POST(req: Request) {
   const key = typeof body.key === 'string' ? body.key : ''
   if (!/^(domain|tag):[A-Za-z0-9_-]+$/.test(key)) {
     return NextResponse.json({ error: 'Unknown quiz' }, { status: 400 })
+  }
+
+  const summary = await quizSummary(session.user.id, key as QuizKey)
+  if (!summary) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 })
+  if (summary.locked) {
+    return NextResponse.json(
+      { error: 'Your free quiz session is complete. A paid plan is required to restart this quiz.' },
+      { status: 402 }
+    )
   }
 
   const ok = await restartQuiz(session.user.id, key as QuizKey)

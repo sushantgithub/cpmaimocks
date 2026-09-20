@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { nextSitting, type QuizKey } from '@/lib/quizzes'
+import { nextSitting, QUIZ_FREE_QUESTION_LIMIT, type QuizKey } from '@/lib/quizzes'
 
 export async function POST(req: Request) {
   try {
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     }
     if (sitting.kind === 'locked') {
       return NextResponse.json({
-        error: `Free accounts get ${sitting.answered} questions per quiz. Subscribe for the rest.`,
+        error: `Free accounts get ${QUIZ_FREE_QUESTION_LIMIT} questions per quiz. View a paid plan to continue.`,
         locked: true,
       }, { status: 402 })
     }

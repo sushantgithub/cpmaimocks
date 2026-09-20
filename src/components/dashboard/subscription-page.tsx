@@ -24,6 +24,7 @@ interface Props {
   subscriptions: { planId: string; planName: string; planSlug: string; status: string; endDate: string; durationDays: number }[]
   plans: Plan[]
   certifications: Certification[]
+  freeQuizAvailable: boolean
 }
 
 declare global {
@@ -32,7 +33,7 @@ declare global {
   }
 }
 
-export function SubscriptionPage({ subscriptions, plans, certifications }: Props) {
+export function SubscriptionPage({ subscriptions, plans, certifications, freeQuizAvailable }: Props) {
   const router = useRouter()
   const [selectedCert, setSelectedCert] = useState<string>(certifications[0]?.id ?? '')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
@@ -264,18 +265,27 @@ export function SubscriptionPage({ subscriptions, plans, certifications }: Props
                 {isFree ? (
                   <div className="mt-4 space-y-2">
                     <p className="text-xs text-muted-foreground">
-                      No activation or payment is required. Free access is included with your account.
+                      {hasPremiumSubscription
+                        ? 'Free access is included with every account.'
+                        : freeQuizAvailable
+                          ? 'No activation or payment is required. You still have a free quiz session available.'
+                          : 'Your free 10-question session has been used in every quiz currently available.'}
                     </p>
                     <Button
                       type="button"
                       variant={freeIsCurrent ? 'default' : 'outline'}
                       className="w-full"
+                      disabled={!hasPremiumSubscription && !freeQuizAvailable}
                       onClick={(event) => {
                         event.stopPropagation()
                         router.push('/quizzes')
                       }}
                     >
-                      Continue with Free <ArrowRight className="h-4 w-4 ml-2" />
+                      {hasPremiumSubscription
+                        ? 'Go to Quizzes'
+                        : freeQuizAvailable
+                          ? <>Continue with Free <ArrowRight className="h-4 w-4 ml-2" /></>
+                          : 'Free quiz allowance used'}
                     </Button>
                   </div>
                 ) : (

@@ -108,7 +108,16 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
                 </div>
 
                 <div className="mt-4">
-                  {quiz.mastered ? (
+                  {quiz.locked ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        Your free 10-question session for this quiz is complete.
+                      </p>
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link href="/subscription"><Lock className="h-4 w-4 mr-2" />View paid plans to continue</Link>
+                      </Button>
+                    </div>
+                  ) : quiz.mastered ? (
                     <div className="space-y-2">
                       <p className="text-sm text-green-700">
                         Every question answered correctly. Nicely done.
@@ -117,10 +126,6 @@ export function QuizzesClient({ quizzes, showCertification }: { quizzes: QuizSum
                         <RotateCcw className="h-4 w-4 mr-2" />Practise again
                       </Button>
                     </div>
-                  ) : quiz.locked ? (
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link href="/subscription"><Lock className="h-4 w-4 mr-2" />Subscribe to continue</Link>
-                    </Button>
                   ) : (
                     <Button className="w-full" onClick={() => start(quiz)} loading={busy === quiz.key}>
                       {quiz.answered > 0 ? 'Continue' : 'Start'}
