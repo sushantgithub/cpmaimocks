@@ -22,12 +22,26 @@ export function practiceCertificationId(practiceConfig: unknown): string | null 
     : null
 }
 
+export function practiceAccessTier(practiceConfig: unknown): 'FREE' | 'PREMIUM' | null {
+  if (!practiceConfig || typeof practiceConfig !== 'object' || Array.isArray(practiceConfig)) {
+    return null
+  }
+
+  const accessTier = (practiceConfig as { accessTier?: unknown }).accessTier
+  return accessTier === 'FREE' || accessTier === 'PREMIUM' ? accessTier : null
+}
+
 export function countFreePracticeUsage(
   attempts: PracticeAttemptUsage[],
   certificationId: string
 ): number {
   return attempts.reduce((total, attempt) => {
     if (practiceCertificationId(attempt.practiceConfig) !== certificationId) return total
+
+    // Premium practice must never consume the free allowance. Attempts created
+    // before this marker existed are treated as free to preserve prior usage.
+    if (practiceAccessTier(attempt.practiceConfig) === 'PREMIUM') return total
+
     return total + Math.max(0, Math.floor(attempt.totalQuestions))
   }, 0)
 }
