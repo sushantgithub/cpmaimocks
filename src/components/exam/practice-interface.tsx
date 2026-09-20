@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -72,6 +72,14 @@ export function PracticeInterface({
   const [reviewQueue, setReviewQueue] = useState<number[] | null>(null)
   const [reviewCursor, setReviewCursor] = useState(0)
   const submitted = useRef(false)
+  const contentScrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    // The question pane is its own scroll container. Moving between questions
+    // must reset that container, otherwise a long previous explanation leaves
+    // the next question starting halfway down its stem on mobile.
+    contentScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' })
+  }, [current])
 
   const q = questions[current]
   const selectCount = expectedCount(q.correctAnswer)
@@ -293,7 +301,7 @@ export function PracticeInterface({
       <div className="flex flex-1 overflow-hidden">
         {/* Main question area */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div ref={contentScrollRef} className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="max-w-2xl mx-auto">
             {/* Meta badges */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">

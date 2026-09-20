@@ -18,6 +18,7 @@ import {
   Target,
 } from 'lucide-react'
 import type { QuizSlotSummary, QuizStartAction, QuizSummary } from '@/lib/quizzes'
+import { initialExpandedQuizSlotKeys, quizSlotExpansionKey } from '@/lib/quiz-ui-state'
 
 function scoreLabel(score: number | null) {
   return score === null ? '—' : Math.round(score) + '%'
@@ -45,9 +46,21 @@ export function QuizzesClient({
         .map((quiz) => quiz.key)
     )
   )
+  const [expandedSlots, setExpandedSlots] = useState<Set<string>>(
+    () => new Set(initialExpandedQuizSlotKeys(quizzes))
+  )
 
   function toggleDomain(key: string) {
     setExpanded((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function toggleSlot(key: string) {
+    setExpandedSlots((current) => {
       const next = new Set(current)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -311,50 +324,74 @@ export function QuizzesClient({
                 {isExpanded && (
                   <div className="px-5 pb-5 border-t">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
-                      {quiz.slots.map((slot) => (
-                        <div key={slot.number} className="rounded-xl border p-3">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div>
-                              <p className="font-semibold">Quiz {slot.number}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {slot.questionCount} questions · Untimed
-                              </p>
-                            </div>
-                            {slot.activeAttemptId ? (
-                              <Badge variant="secondary" className="text-xs">Full quiz in progress</Badge>
-                            ) : slot.activeRetryAttemptId ? (
-                              <Badge variant="secondary" className="text-xs">Mistake practice</Badge>
-                            ) : slot.completed ? (
-                              <Badge variant="success" className="text-xs">Completed</Badge>
-                            ) : slot.attemptCount > 0 ? (
-                              <Badge variant="secondary" className="text-xs">Incomplete</Badge>
-                            ) : slot.number === 1 && !quiz.premiumAccess ? (
-                              <Badge variant="secondary" className="text-xs">Free</Badge>
-                            ) : slot.lockReason ? (
-                              <Lock className="h-4 w-4 text-muted-foreground" />
-                            ) : null}
+                      {quiz.slots.map((slot) => {
+                        const slotKey = quizSlotExpansionKey(quiz.key, slot.number)
+                        const slotExpanded = expandedSlots.has(slotKey)
+
+                        return (
+                          <div key={slot.number} className="rounded-xl border">
+                            <button
+                              type="button"
+                              onClick={() => toggleSlot(slotKey)}
+                              aria-expanded={slotExpanded}
+                              className="w-full p-3 text-left"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 min-w-0">
+                                  {slotExpanded
+                                    ? <ChevronDown className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                                    : <ChevronRight className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />}
+                                  <div>
+                                    <p className="font-semibold">Quiz {slot.number}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {slot.questionCount} questions · Untimed
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {slot.activeAttemptId ? (
+                                  <Badge variant="secondary" className="text-xs">Full quiz in progress</Badge>
+                                ) : slot.activeRetryAttemptId ? (
+                                  <Badge variant="secondary" className="text-xs">Mistake practice</Badge>
+                                ) : slot.completed ? (
+                                  <Badge variant="success" className="text-xs">Completed</Badge>
+                                ) : slot.attemptCount > 0 ? (
+                                  <Badge variant="secondary" className="text-xs">Incomplete</Badge>
+                                ) : slot.number === 1 && !quiz.premiumAccess ? (
+                                  <Badge variant="secondary" className="text-xs">Free</Badge>
+                                ) : slot.lockReason ? (
+                                  <Lock className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <Badge variant="secondary" className="text-xs">Available</Badge>
+                                )}
+                              </div>
+                            </button>
+
+                            {slotExpanded && (
+                              <div className="px-3 pb-3 border-t pt-3">
+                                {slot.attemptCount > 0 && (
+                                  <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                                    <div className="rounded bg-gray-50 p-2">
+                                      <div className="text-xs text-muted-foreground">Latest full</div>
+                                      <div className="font-semibold">{scoreLabel(slot.latestScore)}</div>
+                                    </div>
+                                    <div className="rounded bg-gray-50 p-2">
+                                      <div className="text-xs text-muted-foreground">Best full</div>
+                                      <div className="font-semibold">{scoreLabel(slot.bestScore)}</div>
+                                    </div>
+                                    <div className="rounded bg-gray-50 p-2">
+                                      <div className="text-xs text-muted-foreground">Full attempts</div>
+                                      <div className="font-semibold">{slot.attemptCount}</div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {slotActions(quiz, slot)}
+                              </div>
+                            )}
                           </div>
-
-                          {slot.attemptCount > 0 && (
-                            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                              <div className="rounded bg-gray-50 p-2">
-                                <div className="text-xs text-muted-foreground">Latest full</div>
-                                <div className="font-semibold">{scoreLabel(slot.latestScore)}</div>
-                              </div>
-                              <div className="rounded bg-gray-50 p-2">
-                                <div className="text-xs text-muted-foreground">Best full</div>
-                                <div className="font-semibold">{scoreLabel(slot.bestScore)}</div>
-                              </div>
-                              <div className="rounded bg-gray-50 p-2">
-                                <div className="text-xs text-muted-foreground">Full attempts</div>
-                                <div className="font-semibold">{slot.attemptCount}</div>
-                              </div>
-                            </div>
-                          )}
-
-                          {slotActions(quiz, slot)}
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
 
                     {quiz.premiumAccess &&

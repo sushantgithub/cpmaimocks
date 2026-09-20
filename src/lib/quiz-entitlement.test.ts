@@ -62,10 +62,29 @@ describe('quiz entitlement helpers', () => {
     expect(questionCountForQuiz(64, 7)).toBe(4)
   })
 
-  it('keeps the next quiz locked while the previous full retake is active', () => {
-    expect(previousQuizAllowsNext(true, false)).toBe(true)
-    expect(previousQuizAllowsNext(true, true)).toBe(false)
-    expect(previousQuizAllowsNext(false, false)).toBe(false)
+  it('unlocks the next quiz only after the previous full quiz is completely answered', () => {
+    const complete = isFullyAnsweredQuizAttempt({
+      status: 'COMPLETED',
+      totalQuestions: 10,
+      unansweredCount: 0,
+      answers: Array.from({ length: 10 }, (_, index) => ({
+        questionId: 'q' + (index + 1),
+        isCorrect: index < 8,
+      })),
+    })
+    const incomplete = isFullyAnsweredQuizAttempt({
+      status: 'COMPLETED',
+      totalQuestions: 10,
+      unansweredCount: 2,
+      answers: Array.from({ length: 8 }, (_, index) => ({
+        questionId: 'q' + (index + 1),
+        isCorrect: index < 6,
+      })),
+    })
+
+    expect(previousQuizAllowsNext(complete, false)).toBe(true)
+    expect(previousQuizAllowsNext(incomplete, false)).toBe(false)
+    expect(previousQuizAllowsNext(complete, true)).toBe(false)
   })
 
   it('treats a submitted quiz with unanswered questions as incomplete', () => {
