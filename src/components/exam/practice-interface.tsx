@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '@/lib/answers'
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
+import { buildUnansweredQueue, reviewQueueTarget } from '@/lib/review-unanswered'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle, Lock
@@ -68,6 +69,8 @@ export function PracticeInterface({
   const [submitting, setSubmitting] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState<string | null>(null)
   const [answerSaving, setAnswerSaving] = useState<string | null>(null)
+  const [reviewQueue, setReviewQueue] = useState<number[] | null>(null)
+  const [reviewCursor, setReviewCursor] = useState(0)
   const submitted = useRef(false)
 
   const q = questions[current]
@@ -78,6 +81,8 @@ export function PracticeInterface({
   const revealed = !!selectedAnswer
   const isCorrect = revealed && isAnswerCorrect(selectedAnswer, q.correctAnswer)
   const totalAnswered = Object.values(answers).filter(Boolean).length
+  const unansweredCount = questions.length - totalAnswered
+  const reviewMode = reviewQueue !== null
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
   const hasPendingSelection = !revealed && pending.length > 0
@@ -145,6 +150,37 @@ export function PracticeInterface({
 
   function submitAnswer() {
     void commitAnswer(pending)
+  }
+
+  function startUnansweredReview() {
+    const queue = buildUnansweredQueue(
+      questions.map((question) => question.id),
+      answers,
+    )
+    if (queue.length === 0) {
+      setShowConfirm(false)
+      return
+    }
+
+    setReviewQueue(queue)
+    setReviewCursor(0)
+    setPending([])
+    setCurrent(queue[0])
+    setShowConfirm(false)
+  }
+
+  function moveReviewQueue(direction: -1 | 1) {
+    if (!reviewQueue) return
+
+    const target = reviewQueueTarget(reviewQueue, reviewCursor, direction)
+    if (!target) {
+      if (direction === 1) setShowConfirm(true)
+      return
+    }
+
+    setReviewCursor(target.cursor)
+    setPending([])
+    setCurrent(target.questionIndex)
   }
 
   async function toggleBookmark(questionId: string) {
@@ -218,7 +254,10 @@ export function PracticeInterface({
             <p className="font-semibold text-sm">
               {mode === 'QUIZ' ? (sessionTitle ?? 'Quiz') : 'Practice Mode'}
             </p>
-            <p className="text-xs text-muted-foreground">Q {current + 1} of {questions.length}</p>
+            <p className="text-xs text-muted-foreground">
+              Q {current + 1} of {questions.length}
+              {reviewMode && reviewQueue && ` · Review ${reviewCursor + 1} of ${reviewQueue.length}`}
+            </p>
           </div>
         </div>
 
@@ -357,10 +396,14 @@ export function PracticeInterface({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => { setPending([]); setCurrent((c) => Math.max(0, c - 1)) }}
-                disabled={current === 0 || answerSaving === q.id}
+                onClick={() => reviewMode
+                  ? moveReviewQueue(-1)
+                  : (setPending([]), setCurrent((c) => Math.max(0, c - 1)))
+                }
+                disabled={(reviewMode ? reviewCursor === 0 : current === 0) || answerSaving === q.id}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />Previous
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                {reviewMode ? 'Previous Unanswered' : 'Previous'}
               </Button>
 
               <button
@@ -388,6 +431,16 @@ export function PracticeInterface({
                 <Button size="sm" onClick={submitAnswer} disabled={!pendingReady || answerSaving === q.id} loading={answerSaving === q.id}>
                   Check Answer<ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
+              ) : reviewMode && reviewQueue ? (
+                reviewCursor === reviewQueue.length - 1 ? (
+                  <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting || answerSaving === q.id}>
+                    <Send className="h-4 w-4 mr-1" />Finish Review
+                  </Button>
+                ) : (
+                  <Button size="sm" onClick={() => moveReviewQueue(1)} disabled={answerSaving === q.id}>
+                    Next Unanswered<ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                )
               ) : current === questions.length - 1 ? (
                 <Button size="sm" onClick={() => setShowConfirm(true)} disabled={submitting || answerSaving === q.id}>
                   <Send className="h-4 w-4 mr-1" />Finish
@@ -415,10 +468,19 @@ export function PracticeInterface({
               return (
                 <button
                   key={i}
-                  onClick={() => { setPending([]); setCurrent(i) }}
-                  disabled={answerSaving === q.id}
+                  onClick={() => {
+                    if (reviewMode && reviewQueue) {
+                      const cursor = reviewQueue.indexOf(i)
+                      if (cursor < 0) return
+                      setReviewCursor(cursor)
+                    }
+                    setPending([])
+                    setCurrent(i)
+                  }}
+                  disabled={answerSaving === q.id || (reviewMode && !!reviewQueue && !reviewQueue.includes(i))}
                   className={cn(
                     'h-7 w-7 rounded text-xs font-medium border transition-colors',
+                    reviewMode && !!reviewQueue && !reviewQueue.includes(i) && 'opacity-35 cursor-not-allowed',
                     isCurrent ? 'bg-primary text-white border-primary' :
                     status === 'correct' ? 'bg-green-100 border-green-300 text-green-800' :
                     status === 'incorrect' ? 'bg-red-100 border-red-300 text-red-800' :
@@ -458,10 +520,20 @@ export function PracticeInterface({
                 return (
                   <button
                     key={i}
-                    onClick={() => { setPending([]); setCurrent(i); setShowPanel(false) }}
-                    disabled={answerSaving === q.id}
+                    onClick={() => {
+                      if (reviewMode && reviewQueue) {
+                        const cursor = reviewQueue.indexOf(i)
+                        if (cursor < 0) return
+                        setReviewCursor(cursor)
+                      }
+                      setPending([])
+                      setCurrent(i)
+                      setShowPanel(false)
+                    }}
+                    disabled={answerSaving === q.id || (reviewMode && !!reviewQueue && !reviewQueue.includes(i))}
                     className={cn(
                       'h-9 w-9 rounded-lg text-sm font-medium border',
+                      reviewMode && !!reviewQueue && !reviewQueue.includes(i) && 'opacity-35 cursor-not-allowed',
                       isCurrent ? 'bg-primary text-white border-primary' :
                       status === 'correct' ? 'bg-green-100 border-green-300 text-green-800' :
                       status === 'incorrect' ? 'bg-red-100 border-red-300 text-red-800' :
@@ -502,17 +574,29 @@ export function PracticeInterface({
               <p className="text-red-700">
                 <strong>{questions.filter((q) => answers[q.id] && !isAnswerCorrect(answers[q.id], q.correctAnswer)).length}</strong> incorrect
               </p>
-              {questions.length - totalAnswered > 0 && (
+              {unansweredCount > 0 && (
                 <p className="text-muted-foreground">
-                  <strong>{questions.length - totalAnswered}</strong> unanswered
+                  <strong>{unansweredCount}</strong> unanswered
                 </p>
               )}
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>Continue</Button>
-              <Button className="flex-1" onClick={() => { setShowConfirm(false); submitPractice() }} loading={submitting}>
-                See Results
-              </Button>
+            <div className="space-y-2">
+              {unansweredCount > 0 && (
+                <Button className="w-full" onClick={startUnansweredReview}>
+                  Review {unansweredCount} Unanswered
+                </Button>
+              )}
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setShowConfirm(false)}>Continue</Button>
+                <Button
+                  variant={unansweredCount > 0 ? 'outline' : 'default'}
+                  className="flex-1"
+                  onClick={() => { setShowConfirm(false); submitPractice() }}
+                  loading={submitting}
+                >
+                  See Results
+                </Button>
+              </div>
             </div>
           </div>
         </div>
