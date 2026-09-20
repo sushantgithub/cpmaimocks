@@ -25,17 +25,22 @@ export async function POST(req: Request) {
   const data = await req.json()
   const slug = slugify(data.title) + '-' + Date.now()
 
-  const certification = data.certificationId
-    ? await prisma.certification.findUnique({ where: { id: data.certificationId } })
-    : await prisma.certification.findFirst({ orderBy: { sortOrder: 'asc' } })
+  if (!data.certificationId) {
+    return NextResponse.json({ error: 'Certification is required' }, { status: 400 })
+  }
 
+  const certification = await prisma.certification.findUnique({ where: { id: data.certificationId } })
   if (!certification) {
-    return NextResponse.json({ error: 'No certification found. Run the seed first.' }, { status: 400 })
+    return NextResponse.json({ error: 'Certification not found' }, { status: 404 })
   }
   // Zero minutes means untimed, which is how domain mocks run. Zero as a pass
   // mark is not meaningful: every attempt would pass.
+  const questionCount = Number(data.questionCount)
   const timeLimitMinutes = Number(data.timeLimitMinutes ?? 120)
   const passingScore = Number(data.passingScore ?? 70)
+  if (!Number.isInteger(questionCount) || questionCount <= 0) {
+    return NextResponse.json({ error: 'questionCount must be a positive whole number' }, { status: 400 })
+  }
   if (!Number.isInteger(timeLimitMinutes) || timeLimitMinutes < 0) {
     return NextResponse.json({ error: 'timeLimitMinutes must be zero (untimed) or more' }, { status: 400 })
   }
@@ -50,7 +55,7 @@ export async function POST(req: Request) {
       slug,
       certificationId: certification.id,
       description: data.description ?? null,
-      questionCount: data.questionCount ?? 0,
+      questionCount,
       timeLimitMinutes: timeLimitMinutes,
       passingScore: passingScore,
       questionsPerAttempt: Number.isInteger(Number(data.questionsPerAttempt))
