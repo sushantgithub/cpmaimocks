@@ -2,7 +2,39 @@ import { describe, expect, it } from 'vitest'
 import {
   initialExpandedQuizSlotKeys,
   quizSlotExpansionKey,
+  quizSlotStatusLabel,
 } from './quiz-ui-state'
+
+describe('quiz slot status labels', () => {
+  const base = {
+    completed: false,
+    attemptCount: 0,
+    activeAttemptId: null,
+    activeRetryAttemptId: null,
+    lockReason: null,
+    number: 1,
+    premiumAccess: true,
+  }
+
+  it('uses a positive learning label after an unsuccessful full attempt', () => {
+    expect(quizSlotStatusLabel({ ...base, attemptCount: 4 })).toBe('Keep Practicing')
+  })
+
+  it('does not show a redundant status badge for active sessions', () => {
+    expect(quizSlotStatusLabel({ ...base, activeAttemptId: 'attempt-1' })).toBeNull()
+    expect(quizSlotStatusLabel({
+      ...base,
+      attemptCount: 2,
+      activeRetryAttemptId: 'retry-1',
+    })).toBeNull()
+  })
+
+  it('keeps completed, free and available states distinct', () => {
+    expect(quizSlotStatusLabel({ ...base, completed: true, attemptCount: 1 })).toBe('Completed')
+    expect(quizSlotStatusLabel({ ...base, premiumAccess: false })).toBe('Free')
+    expect(quizSlotStatusLabel({ ...base, number: 2 })).toBe('Available')
+  })
+})
 
 describe('quiz slot expansion state', () => {
   it('keeps completed quizzes collapsed and expands the next actionable quiz', () => {

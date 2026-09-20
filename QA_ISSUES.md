@@ -83,6 +83,8 @@ Question-content quality is intentionally outside this register.
 
 | QA-048 | Quiz mastery completion / sequential unlock | **Quiz 1 showed Completed and Quiz 2 was enabled at 80% mastery (10 attempted, 8 mastered).** Expected: answering/submitting all 10 is not enough; Quiz 1 is completed successfully only when all 10 fixed questions are currently mastered. Until then Dashboard must not count it as completed and Quiz 2 must remain locked. | Fixed | Added one shared mastery criterion used by both quiz summaries/Dashboard and the server start gate. Completion now requires a fully answered submitted STANDARD attempt plus a correct latest full-quiz verdict for every fixed question. At 8/10 mastery Quiz 1 remains Incomplete, Practice Incorrect stays available, and Quiz 2 remains locked. At 10/10 mastery Quiz 1 becomes Completed and Quiz 2 unlocks. Regression tests cover 80%, 100%, missing verdicts, and active-retake locking. |
 
+| QA-049 | Quiz status wording | **“Incomplete” felt negative after a learner had completed a full attempt but still had questions to master; active sessions also showed redundant In Progress badges even though the primary action already says Resume Quiz.** | Fixed | Replaced the unsuccessful-completion label with **Keep Practicing**. Active full-quiz and mistake-practice sessions no longer show extra status badges; their Resume actions communicate state directly. Completed, Free, Available and Locked states remain distinct. Added regression tests for status-label rules. |
+
 ## End-of-cycle verification
 
 Before release sign-off, re-test every row marked **Fixed** or **Monitor** and change it to **Verified** only after reproducing the expected behavior in the deployed application.

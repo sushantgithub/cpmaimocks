@@ -33,3 +33,23 @@ export function initialExpandedQuizSlotKeys(
 
   return expanded
 }
+
+
+export interface QuizSlotStatusInput {
+  completed: boolean
+  attemptCount: number
+  activeAttemptId: string | null
+  activeRetryAttemptId: string | null
+  lockReason: string | null
+  number: number
+  premiumAccess: boolean
+}
+
+export function quizSlotStatusLabel(slot: QuizSlotStatusInput): string | null {
+  if (slot.activeAttemptId || slot.activeRetryAttemptId) return null
+  if (slot.completed) return 'Completed'
+  if (slot.attemptCount > 0) return 'Keep Practicing'
+  if (slot.number === 1 && !slot.premiumAccess) return 'Free'
+  if (slot.lockReason) return null
+  return 'Available'
+}

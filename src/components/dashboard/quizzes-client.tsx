@@ -18,7 +18,7 @@ import {
   Target,
 } from 'lucide-react'
 import type { QuizSlotSummary, QuizStartAction, QuizSummary } from '@/lib/quizzes'
-import { initialExpandedQuizSlotKeys, quizSlotExpansionKey } from '@/lib/quiz-ui-state'
+import { initialExpandedQuizSlotKeys, quizSlotExpansionKey, quizSlotStatusLabel } from '@/lib/quiz-ui-state'
 
 function scoreLabel(score: number | null) {
   return score === null ? '—' : Math.round(score) + '%'
@@ -262,10 +262,6 @@ export function QuizzesClient({
               : 0
           const mixedBusy = busy === quiz.key + ':mixed:mixedReview'
           const isExpanded = expanded.has(quiz.key)
-          const activeSlot = quiz.slots.find(
-            (slot) => slot.activeAttemptId || slot.activeRetryAttemptId
-          )
-
           return (
             <Card key={quiz.key} className={quiz.mastered ? 'border-green-300' : ''}>
               <CardContent className="p-0">
@@ -296,12 +292,6 @@ export function QuizzesClient({
                         <CheckCircle2 className="h-3 w-3" />
                         Mastered
                       </Badge>
-                    ) : activeSlot ? (
-                      <Badge variant="secondary" className="text-xs">
-                        {activeSlot.activeAttemptId
-                          ? `Quiz ${activeSlot.number} in progress`
-                          : 'Mistake practice in progress'}
-                      </Badge>
                     ) : null}
                   </div>
 
@@ -327,6 +317,15 @@ export function QuizzesClient({
                       {quiz.slots.map((slot) => {
                         const slotKey = quizSlotExpansionKey(quiz.key, slot.number)
                         const slotExpanded = expandedSlots.has(slotKey)
+                        const statusLabel = quizSlotStatusLabel({
+                          completed: slot.completed,
+                          attemptCount: slot.attemptCount,
+                          activeAttemptId: slot.activeAttemptId,
+                          activeRetryAttemptId: slot.activeRetryAttemptId,
+                          lockReason: slot.lockReason,
+                          number: slot.number,
+                          premiumAccess: quiz.premiumAccess,
+                        })
 
                         return (
                           <div key={slot.number} className="rounded-xl border">
@@ -349,21 +348,13 @@ export function QuizzesClient({
                                   </div>
                                 </div>
 
-                                {slot.activeAttemptId ? (
-                                  <Badge variant="secondary" className="text-xs">Full quiz in progress</Badge>
-                                ) : slot.activeRetryAttemptId ? (
-                                  <Badge variant="secondary" className="text-xs">Mistake practice</Badge>
-                                ) : slot.completed ? (
+                                {statusLabel === 'Completed' ? (
                                   <Badge variant="success" className="text-xs">Completed</Badge>
-                                ) : slot.attemptCount > 0 ? (
-                                  <Badge variant="secondary" className="text-xs">Incomplete</Badge>
-                                ) : slot.number === 1 && !quiz.premiumAccess ? (
-                                  <Badge variant="secondary" className="text-xs">Free</Badge>
+                                ) : statusLabel ? (
+                                  <Badge variant="secondary" className="text-xs">{statusLabel}</Badge>
                                 ) : slot.lockReason ? (
                                   <Lock className="h-4 w-4 text-muted-foreground" />
-                                ) : (
-                                  <Badge variant="secondary" className="text-xs">Available</Badge>
-                                )}
+                                ) : null}
                               </div>
                             </button>
 
