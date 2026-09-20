@@ -648,3 +648,5 @@ This document does not claim implementation of unrelated future enhancements suc
 ## Deployment Note — 20 September 2026
 
 The required Supabase schema migration for `Certification.usesDomains` and `Question.contentType` was confirmed as applied before production deployment of this implementation.
+
+- Legacy untimed domain learning-mock records are retained for historical safety but hidden from the Mock Exams Admin list and Existing Mock import selector, because those domain pools are now represented by the Quiz experience.
