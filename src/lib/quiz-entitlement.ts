@@ -111,10 +111,10 @@ export function fixedQuizQuestionSet(
 }
 
 export function previousQuizAllowsNext(
-  hasCompletedAttempt: boolean,
+  hasSuccessfulCompletion: boolean,
   hasActiveRetake: boolean,
 ): boolean {
-  return hasCompletedAttempt && !hasActiveRetake
+  return hasSuccessfulCompletion && !hasActiveRetake
 }
 
 
@@ -150,4 +150,13 @@ export function latestQuizVerdicts(
 
 export function countsAsFullQuizAttempt(sessionKind: QuizSessionKind): boolean {
   return sessionKind === 'STANDARD'
+}
+
+
+export function isQuizMastered(
+  questionIds: string[],
+  verdicts: Map<string, boolean>,
+): boolean {
+  return questionIds.length > 0 &&
+    questionIds.every((questionId) => verdicts.get(questionId) === true)
 }

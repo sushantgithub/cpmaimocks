@@ -149,7 +149,7 @@ export function QuizzesClient({
             )}
           </div>
 
-          {quiz.premiumAccess && slot.completed && slot.latestIncorrect > 0 && (
+          {quiz.premiumAccess && slot.latestAttemptId && slot.latestIncorrect > 0 && (
             <div className="rounded-lg bg-blue-50/60 p-2">
               <Button
                 variant="secondary"

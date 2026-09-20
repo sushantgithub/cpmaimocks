@@ -10,6 +10,7 @@ import {
   isFullyAnsweredQuizAttempt,
   latestQuizVerdicts,
   countsAsFullQuizAttempt,
+  isQuizMastered,
   type QuizAccessTier,
   type QuizAttemptConfig,
   type QuizSessionKind,
@@ -235,9 +236,19 @@ function latestCompletedStandard(attempts: NormalizedAttempt[], quizNumber: numb
     .find((attempt) => attempt.status === 'COMPLETED') ?? null
 }
 
-function fullyCompletedStandard(attempts: NormalizedAttempt[], quizNumber: number) {
+function successfullyCompletedStandard(
+  attempts: NormalizedAttempt[],
+  quizNumber: number,
+  expectedQuestionCount: number,
+) {
   const latest = latestStandard(attempts, quizNumber)
-  return latest && isFullyAnsweredQuizAttempt(latest) ? latest : null
+  if (!latest || !isFullyAnsweredQuizAttempt(latest)) return null
+
+  const canonical = canonicalQuestionIds(attempts, quizNumber)
+  if (canonical.length !== expectedQuestionCount) return null
+
+  const verdicts = latestQuizVerdicts(standardForSlot(attempts, quizNumber))
+  return isQuizMastered(canonical, verdicts) ? latest : null
 }
 
 function activeStandard(attempts: NormalizedAttempt[], quizNumber: number) {
@@ -349,8 +360,14 @@ export async function quizSummary(
     const active = [...slotAttempts].reverse().find((attempt) => attempt.status === 'IN_PROGRESS') ?? null
     const history = historyForSlot(attempts, number)
     const latest = history[0] ?? null
+    const expected = questionCountForQuiz(ids.length, number, QUIZ_QUESTIONS_PER_SITTING)
+    const previousExpected =
+      number > 1
+        ? questionCountForQuiz(ids.length, number - 1, QUIZ_QUESTIONS_PER_SITTING)
+        : 0
     const previousCompleted =
-      number === 1 || fullyCompletedStandard(attempts, number - 1) !== null
+      number === 1 ||
+      successfullyCompletedStandard(attempts, number - 1, previousExpected) !== null
     const previousActiveRetake =
       number > 1 && activeStandard(attempts, number - 1) !== null
     const previousReady =
@@ -363,11 +380,8 @@ export async function quizSummary(
     else if (!hasAccess && number === 1 && freeState.locked && !active) lockReason = 'FREE_USED'
 
     const canonical = canonicalQuestionIds(attempts, number)
-    const expected = questionCountForQuiz(ids.length, number, QUIZ_QUESTIONS_PER_SITTING)
-    const latestStandardAttempt = latestStandard(attempts, number)
     const completed =
-      latestStandardAttempt !== null &&
-      isFullyAnsweredQuizAttempt(latestStandardAttempt)
+      successfullyCompletedStandard(attempts, number, expected) !== null
     const slotVerdicts = latestQuizVerdicts(slotAttempts)
     const currentIncorrect = Array.from(slotVerdicts.entries()).filter(
       ([questionId, correct]) =>
@@ -505,7 +519,11 @@ export async function prepareQuizSitting(
     const firstIncomplete = Array.from({ length: quizCount }, (_, index) => index + 1)
       .find(
         (number) =>
-          fullyCompletedStandard(attempts, number) === null ||
+          successfullyCompletedStandard(
+            attempts,
+            number,
+            questionCountForQuiz(poolIds.length, number, QUIZ_QUESTIONS_PER_SITTING),
+          ) === null ||
           activeStandard(attempts, number) !== null
       )
     if (firstIncomplete) {
@@ -545,7 +563,15 @@ export async function prepareQuizSitting(
   if (
     quizNumber > 1 &&
     !previousQuizAllowsNext(
-      fullyCompletedStandard(attempts, quizNumber - 1) !== null,
+      successfullyCompletedStandard(
+        attempts,
+        quizNumber - 1,
+        questionCountForQuiz(
+          poolIds.length,
+          quizNumber - 1,
+          QUIZ_QUESTIONS_PER_SITTING,
+        ),
+      ) !== null,
       activeStandard(attempts, quizNumber - 1) !== null,
     )
   ) {
@@ -578,7 +604,11 @@ export async function prepareQuizSitting(
     }
   }
 
-  const completed = fullyCompletedStandard(attempts, quizNumber)
+  const completed = successfullyCompletedStandard(
+    attempts,
+    quizNumber,
+    questionCountForQuiz(poolIds.length, quizNumber, QUIZ_QUESTIONS_PER_SITTING),
+  )
 
   if (action === 'start' && completed) {
     return { kind: 'completed', attemptId: completed.id }

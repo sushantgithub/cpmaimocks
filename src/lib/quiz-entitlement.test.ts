@@ -9,6 +9,7 @@ import {
   isFullyAnsweredQuizAttempt,
   latestQuizVerdicts,
   countsAsFullQuizAttempt,
+  isQuizMastered,
 } from './quiz-entitlement'
 
 describe('quiz entitlement helpers', () => {
@@ -62,29 +63,39 @@ describe('quiz entitlement helpers', () => {
     expect(questionCountForQuiz(64, 7)).toBe(4)
   })
 
-  it('unlocks the next quiz only after the previous full quiz is completely answered', () => {
-    const complete = isFullyAnsweredQuizAttempt({
+  it('unlocks the next quiz only after all fixed questions are mastered', () => {
+    const questionIds = Array.from({ length: 10 }, (_, index) => 'q' + (index + 1))
+    const fullyAnswered = isFullyAnsweredQuizAttempt({
       status: 'COMPLETED',
       totalQuestions: 10,
       unansweredCount: 0,
-      answers: Array.from({ length: 10 }, (_, index) => ({
-        questionId: 'q' + (index + 1),
+      answers: questionIds.map((questionId, index) => ({
+        questionId,
         isCorrect: index < 8,
       })),
     })
-    const incomplete = isFullyAnsweredQuizAttempt({
-      status: 'COMPLETED',
-      totalQuestions: 10,
-      unansweredCount: 2,
-      answers: Array.from({ length: 8 }, (_, index) => ({
-        questionId: 'q' + (index + 1),
-        isCorrect: index < 6,
-      })),
-    })
 
-    expect(previousQuizAllowsNext(complete, false)).toBe(true)
-    expect(previousQuizAllowsNext(incomplete, false)).toBe(false)
-    expect(previousQuizAllowsNext(complete, true)).toBe(false)
+    const eightyPercent = new Map(
+      questionIds.map((questionId, index) => [questionId, index < 8] as const)
+    )
+    const oneHundredPercent = new Map(
+      questionIds.map((questionId) => [questionId, true] as const)
+    )
+
+    expect(fullyAnswered).toBe(true)
+    expect(isQuizMastered(questionIds, eightyPercent)).toBe(false)
+    expect(previousQuizAllowsNext(
+      fullyAnswered && isQuizMastered(questionIds, eightyPercent),
+      false,
+    )).toBe(false)
+
+    expect(isQuizMastered(questionIds, oneHundredPercent)).toBe(true)
+    expect(previousQuizAllowsNext(
+      fullyAnswered && isQuizMastered(questionIds, oneHundredPercent),
+      false,
+    )).toBe(true)
+
+    expect(previousQuizAllowsNext(true, true)).toBe(false)
   })
 
   it('treats a submitted quiz with unanswered questions as incomplete', () => {
@@ -107,6 +118,24 @@ describe('quiz entitlement helpers', () => {
         isCorrect: index < 5,
       })),
     })).toBe(true)
+  })
+
+  it('does not mark a quiz mastered when any fixed question is currently wrong or missing', () => {
+    const ids = ['q1', 'q2', 'q3']
+    expect(isQuizMastered(ids, new Map([
+      ['q1', true],
+      ['q2', true],
+      ['q3', false],
+    ]))).toBe(false)
+    expect(isQuizMastered(ids, new Map([
+      ['q1', true],
+      ['q2', true],
+    ]))).toBe(false)
+    expect(isQuizMastered(ids, new Map([
+      ['q1', true],
+      ['q2', true],
+      ['q3', true],
+    ]))).toBe(true)
   })
 
   it('uses the latest checked verdict per question across full quiz attempts', () => {
