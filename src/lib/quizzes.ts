@@ -127,6 +127,7 @@ async function poolFilter(key: QuizKey) {
       certificationName: category.certification.name,
       where: {
         status: 'PUBLISHED' as const,
+        contentType: 'QUIZ' as const,
         categoryId: category.id,
         ...(claimedTags.length > 0 ? { NOT: { tags: { hasSome: claimedTags } } } : {}),
       },
@@ -147,6 +148,7 @@ async function poolFilter(key: QuizKey) {
       certificationName: quiz.certification.name,
       where: {
         status: 'PUBLISHED' as const,
+        contentType: 'QUIZ' as const,
         certificationId: quiz.certificationId,
         tags: { has: quiz.tag },
       },
@@ -314,7 +316,7 @@ function freeSlotState(attempts: NormalizedAttempt[]) {
 export async function listQuizzes(userId: string): Promise<QuizSummary[]> {
   const [categories, tagQuizzes, attempts, accessible] = await Promise.all([
     prisma.category.findMany({
-      where: { certification: { isActive: true } },
+      where: { certification: { isActive: true, usesDomains: true } },
       include: { certification: { select: { id: true, name: true, sortOrder: true } } },
       orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
     }),
@@ -488,13 +490,20 @@ function fixedQuestionsForSlot(
   budget: number,
 ) {
   const existing = canonicalQuestionIds(attempts, quizNumber)
-  const orderedPool = existing.length > 0 ? poolIds : shuffled(poolIds)
-  return fixedQuizQuestionSet(
-    existing,
-    orderedPool,
-    usedByOtherSlots(attempts, quizNumber),
-    budget,
-  )
+  if (existing.length > 0) {
+    return fixedQuizQuestionSet(
+      existing,
+      poolIds,
+      usedByOtherSlots(attempts, quizNumber),
+      budget,
+    )
+  }
+
+  // New quiz slots are deterministic for everyone: the first ten imported
+  // questions are Quiz 1, the next ten Quiz 2, and so on. Existing learners
+  // keep the canonical set recorded on their first attempt.
+  const start = (quizNumber - 1) * QUIZ_QUESTIONS_PER_SITTING
+  return poolIds.slice(start, start + budget)
 }
 
 export async function prepareQuizSitting(
@@ -506,7 +515,11 @@ export async function prepareQuizSitting(
   const pool = await poolFilter(key)
   if (!pool) return null
 
-  const questions = await prisma.question.findMany({ where: pool.where, select: { id: true } })
+  const questions = await prisma.question.findMany({
+    where: pool.where,
+    select: { id: true },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  })
   const poolIds = questions.map((question) => question.id)
   const quizCount = quizCountForQuestions(poolIds.length, QUIZ_QUESTIONS_PER_SITTING)
   if (quizCount === 0) return { kind: 'empty' }
