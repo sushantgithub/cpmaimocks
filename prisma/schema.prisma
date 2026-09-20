@@ -41,6 +41,12 @@ enum QuestionStatus {
   ARCHIVED
 }
 
+enum QuestionContentType {
+  QUIZ
+  MOCK_EXAM
+  PRACTICE_ONLY
+}
+
 enum ExamStatus {
   DRAFT
   PUBLISHED
@@ -254,6 +260,9 @@ model Certification {
   fullName    String?
   description String?
   isActive    Boolean  @default(true)
+  /// Certifications such as PMP/PMI-ACP/CPMAI use domains. Others can place
+  /// questions directly under the certification without domain validation.
+  usesDomains Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -327,8 +336,12 @@ model Question {
   certificationId String
   categoryId      String?
   topicId         String?
-  difficulty      Difficulty     @default(MEDIUM)
-  status          QuestionStatus @default(DRAFT)
+  difficulty      Difficulty          @default(MEDIUM)
+  status          QuestionStatus      @default(DRAFT)
+  /// Controls where the question is surfaced. Every published question is
+  /// still eligible for Practice; this prevents mock/practice-only imports
+  /// from leaking into the automatically generated domain quizzes.
+  contentType     QuestionContentType @default(QUIZ)
   /// Marks throwaway content imported to try the platform out, so it can be
   /// found and removed later without guessing from names or domains.
   isTest          Boolean        @default(false)
@@ -347,6 +360,7 @@ model Question {
   @@index([categoryId, difficulty, status])
   @@index([status])
   @@index([certificationId, status])
+  @@index([certificationId, contentType, status])
   @@index([isTest])
 }
 
