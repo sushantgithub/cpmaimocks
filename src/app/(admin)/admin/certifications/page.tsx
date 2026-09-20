@@ -16,6 +16,7 @@ interface Certification {
   isActive: boolean
   usesDomains: boolean
   _count: { questions: number; exams: number; categories: number }
+  inventory: { quiz: number; mockExam: number; practiceOnly: number; practiceTotal: number }
 }
 
 const EMPTY = { name: '', fullName: '', description: '', usesDomains: true }
@@ -184,6 +185,24 @@ export default function AdminCertificationsPage() {
                     <p className="text-xs text-gray-500 mt-1">
                       {cert._count.questions} questions · {cert._count.exams} exams · {cert._count.categories} domains
                     </p>
+                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="rounded-md border bg-gray-50 px-2.5 py-2">
+                        <span className="block text-gray-500">Quiz</span>
+                        <strong>{cert.inventory.quiz}</strong>
+                      </div>
+                      <div className="rounded-md border bg-gray-50 px-2.5 py-2">
+                        <span className="block text-gray-500">Mock</span>
+                        <strong>{cert.inventory.mockExam}</strong>
+                      </div>
+                      <div className="rounded-md border bg-gray-50 px-2.5 py-2">
+                        <span className="block text-gray-500">Practice only</span>
+                        <strong>{cert.inventory.practiceOnly}</strong>
+                      </div>
+                      <div className="rounded-md border bg-blue-50 px-2.5 py-2">
+                        <span className="block text-blue-700">Practice pool</span>
+                        <strong className="text-blue-900">{cert.inventory.practiceTotal}</strong>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                     <Button size="sm" variant="outline" onClick={() => toggleDomains(cert)}>
