@@ -7,13 +7,51 @@ export async function GET() {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const certifications = await prisma.certification.findMany({
-    orderBy: { sortOrder: 'asc' },
-    include: {
-      _count: { select: { questions: true, exams: true, categories: true } },
-    },
-  })
-  return NextResponse.json(certifications)
+  const [certifications, inventoryRows] = await Promise.all([
+    prisma.certification.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: {
+        _count: { select: { questions: true, exams: true, categories: true } },
+      },
+    }),
+    prisma.question.groupBy({
+      by: ['certificationId', 'contentType'],
+      where: { status: 'PUBLISHED' },
+      _count: { _all: true },
+    }),
+  ])
+
+  const inventory = new Map<
+    string,
+    { quiz: number; mockExam: number; practiceOnly: number; practiceTotal: number }
+  >()
+
+  for (const row of inventoryRows) {
+    const current = inventory.get(row.certificationId) ?? {
+      quiz: 0,
+      mockExam: 0,
+      practiceOnly: 0,
+      practiceTotal: 0,
+    }
+    const count = row._count._all
+    if (row.contentType === 'QUIZ') current.quiz += count
+    if (row.contentType === 'MOCK_EXAM') current.mockExam += count
+    if (row.contentType === 'PRACTICE_ONLY') current.practiceOnly += count
+    current.practiceTotal += count
+    inventory.set(row.certificationId, current)
+  }
+
+  return NextResponse.json(
+    certifications.map((certification) => ({
+      ...certification,
+      inventory: inventory.get(certification.id) ?? {
+        quiz: 0,
+        mockExam: 0,
+        practiceOnly: 0,
+        practiceTotal: 0,
+      },
+    }))
+  )
 }
 
 export async function POST(req: Request) {
