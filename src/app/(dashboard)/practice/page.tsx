@@ -1,23 +1,32 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
-import { BookOpen, Target, RotateCcw, Shuffle } from 'lucide-react'
+import { BookOpen, Target, RotateCcw, Shuffle, Lock } from 'lucide-react'
 
 const DIFFICULTY_OPTIONS = ['EASY', 'MEDIUM', 'HARD']
-const QUESTION_COUNTS = [10, 20, 30, 50]
+const QUESTION_COUNTS = [5, 10, 20, 25, 30, 50]
 
 interface Category { id: string; name: string }
 interface Certification { id: string; name: string; fullName?: string | null; usesDomains: boolean }
+interface PracticeAccess {
+  unlimited: boolean
+  limit: number | null
+  used: number | null
+  remaining: number | null
+}
 
 export default function PracticePage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
   const [certifications, setCertifications] = useState<Certification[]>([])
+  const [practiceAccess, setPracticeAccess] = useState<PracticeAccess | null>(null)
+  const [accessLoading, setAccessLoading] = useState(false)
   const [config, setConfig] = useState({
     questionCount: 10,
     certificationId: '',
@@ -27,6 +36,15 @@ export default function PracticePage() {
   })
   const [loading, setLoading] = useState(false)
   const selectedCertification = certifications.find((cert) => cert.id === config.certificationId) ?? null
+
+  const questionCounts = practiceAccess && !practiceAccess.unlimited && practiceAccess.remaining !== null
+    ? practiceAccess.remaining > 0
+      ? Array.from(new Set([
+          ...QUESTION_COUNTS.filter((count) => count <= practiceAccess.remaining!),
+          practiceAccess.remaining,
+        ])).sort((a, b) => a - b)
+      : []
+    : QUESTION_COUNTS
 
   useEffect(() => {
     fetch('/api/certifications')
@@ -38,7 +56,7 @@ export default function PracticePage() {
       .catch(() => {})
   }, [])
 
-  // Domains belong to a certification, so reload them whenever it changes
+  // Domains belong to a certification, so reload them whenever it changes.
   useEffect(() => {
     if (!config.certificationId) return
     const cert = certifications.find((item) => item.id === config.certificationId)
@@ -53,6 +71,39 @@ export default function PracticePage() {
       .catch(() => {})
     setConfig((p) => ({ ...p, categoryIds: [] }))
   }, [config.certificationId, certifications])
+
+  // Free practice is a lifetime allowance per certification. Load the exact
+  // remaining balance so the UI never offers a session the server will reject.
+  useEffect(() => {
+    if (!config.certificationId) return
+    let cancelled = false
+    setAccessLoading(true)
+
+    fetch(`/api/practice/start?certificationId=${encodeURIComponent(config.certificationId)}`)
+      .then(async (response) => {
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error ?? 'Could not load practice access')
+        return data as PracticeAccess
+      })
+      .then((access) => {
+        if (cancelled) return
+        setPracticeAccess(access)
+        if (!access.unlimited && access.remaining !== null && access.remaining > 0) {
+          setConfig((current) => current.questionCount > access.remaining!
+            ? { ...current, questionCount: access.remaining! }
+            : current
+          )
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPracticeAccess(null)
+      })
+      .finally(() => {
+        if (!cancelled) setAccessLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [config.certificationId])
 
   function toggleDifficulty(d: string) {
     setConfig((prev) => ({
@@ -100,12 +151,35 @@ export default function PracticePage() {
     }
   }
 
+  const freeExhausted = practiceAccess?.unlimited === false && practiceAccess.remaining === 0
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-20 md:pb-6">
       <div>
         <h1 className="text-2xl font-bold">Practice Mode</h1>
         <p className="text-muted-foreground text-sm mt-1">Customise your practice session.</p>
       </div>
+
+      {practiceAccess && !practiceAccess.unlimited && (
+        <div className={`rounded-xl border p-4 ${freeExhausted ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className={`font-medium text-sm ${freeExhausted ? 'text-amber-900' : 'text-blue-900'}`}>
+                Free practice allowance
+              </p>
+              <p className={`text-sm mt-0.5 ${freeExhausted ? 'text-amber-800' : 'text-blue-700'}`}>
+                {practiceAccess.remaining} of {practiceAccess.limit} questions remaining for this certification.
+              </p>
+            </div>
+            <Badge variant="secondary">{practiceAccess.used}/{practiceAccess.limit} used</Badge>
+          </div>
+          {freeExhausted && (
+            <Button className="mt-3" size="sm" asChild>
+              <Link href="/subscription"><Lock className="h-4 w-4 mr-2" />Unlock Unlimited Practice</Link>
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Mode */}
       <Card>
@@ -120,7 +194,8 @@ export default function PracticePage() {
               <button
                 key={m.mode}
                 onClick={() => setConfig((p) => ({ ...p, mode: m.mode }))}
-                className={`border-2 rounded-xl p-3 text-center transition-all ${config.mode === m.mode ? 'border-primary bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
+                disabled={freeExhausted}
+                className={`border-2 rounded-xl p-3 text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed ${config.mode === m.mode ? 'border-primary bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <m.icon className={`h-5 w-5 mx-auto mb-1 ${config.mode === m.mode ? 'text-primary' : 'text-gray-400'}`} />
                 <p className="text-sm font-medium">{m.label}</p>
@@ -158,17 +233,23 @@ export default function PracticePage() {
       <Card>
         <CardContent className="p-4">
           <h3 className="font-semibold mb-3">Number of Questions</h3>
-          <div className="flex gap-3">
-            {QUESTION_COUNTS.map((n) => (
-              <button
-                key={n}
-                onClick={() => setConfig((p) => ({ ...p, questionCount: n }))}
-                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${config.questionCount === n ? 'border-primary bg-primary text-white' : 'border-gray-200 hover:border-gray-300'}`}
-              >
-                {n}
-              </button>
-            ))}
-          </div>
+          {accessLoading ? (
+            <p className="text-sm text-muted-foreground">Checking your practice allowance...</p>
+          ) : freeExhausted ? (
+            <p className="text-sm text-muted-foreground">Upgrade to continue practising this certification.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3">
+              {questionCounts.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setConfig((p) => ({ ...p, questionCount: n }))}
+                  className={`py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${config.questionCount === n ? 'border-primary bg-primary text-white' : 'border-gray-200 hover:border-gray-300'}`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -181,7 +262,8 @@ export default function PracticePage() {
               <button
                 key={d}
                 onClick={() => toggleDifficulty(d)}
-                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold capitalize transition-all ${
+                disabled={freeExhausted}
+                className={`flex-1 py-2.5 rounded-xl border-2 text-sm font-semibold capitalize transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   config.difficulty.includes(d)
                     ? d === 'EASY' ? 'border-green-500 bg-green-100 text-green-800'
                     : d === 'MEDIUM' ? 'border-yellow-500 bg-yellow-100 text-yellow-800'
@@ -206,7 +288,8 @@ export default function PracticePage() {
                 <button
                   key={cat.id}
                   onClick={() => toggleCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-full border text-sm transition-all ${config.categoryIds.includes(cat.id) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 hover:border-gray-300'}`}
+                  disabled={freeExhausted}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${config.categoryIds.includes(cat.id) ? 'border-primary bg-blue-50 text-primary' : 'border-gray-200 hover:border-gray-300'}`}
                 >
                   {cat.name}
                 </button>
@@ -217,17 +300,27 @@ export default function PracticePage() {
       )}
 
       {/* Summary */}
-      <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 flex items-center justify-between">
+      <div className="bg-blue-50 rounded-xl border border-blue-200 p-4 flex items-center justify-between gap-4">
         <div>
-          <p className="font-medium text-blue-900">{config.questionCount} questions</p>
+          <p className="font-medium text-blue-900">
+            {freeExhausted ? 'Free practice complete' : `${config.questionCount} questions`}
+          </p>
           <p className="text-sm text-blue-700">
-            {config.mode === 'RANDOM' ? 'Random selection' : config.mode === 'INCORRECT' ? 'Previously incorrect' : 'Bookmarked'} •{' '}
-            {config.difficulty.length > 0 ? config.difficulty.join(', ') : 'All difficulties'}
+            {freeExhausted
+              ? 'Subscribe to unlock unlimited practice.'
+              : <>{config.mode === 'RANDOM' ? 'Random selection' : config.mode === 'INCORRECT' ? 'Previously incorrect' : 'Bookmarked'} •{' '}
+                {config.difficulty.length > 0 ? config.difficulty.join(', ') : 'All difficulties'}</>}
           </p>
         </div>
-        <Button onClick={startPractice} loading={loading} size="lg">
-          <Target className="h-4 w-4 mr-2" />Start
-        </Button>
+        {freeExhausted ? (
+          <Button size="lg" asChild>
+            <Link href="/subscription"><Lock className="h-4 w-4 mr-2" />Upgrade</Link>
+          </Button>
+        ) : (
+          <Button onClick={startPractice} loading={loading || accessLoading} size="lg">
+            <Target className="h-4 w-4 mr-2" />Start
+          </Button>
+        )}
       </div>
     </div>
   )
