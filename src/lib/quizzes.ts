@@ -41,6 +41,8 @@ export interface QuizSlotSummary {
   latestScore: number | null
   bestScore: number | null
   latestIncorrect: number
+  answeredCount: number
+  masteredCount: number
   attemptCount: number
   history: QuizAttemptHistory[]
   lockReason: QuizLockReason
@@ -400,6 +402,10 @@ export async function quizSummary(
     const currentIncorrect = completed
       ? 0
       : canonical.filter((questionId) => progress.verdicts.get(questionId) === false).length
+    const answeredCount = canonical.filter((questionId) => progress.verdicts.has(questionId)).length
+    const masteredCount = canonical.filter(
+      (questionId) => progress.verdicts.get(questionId) === true,
+    ).length
 
     return {
       number,
@@ -412,6 +418,8 @@ export async function quizSummary(
       bestScore:
         history.length > 0 ? Math.max(...history.map((attempt) => attempt.score)) : null,
       latestIncorrect: currentIncorrect,
+      answeredCount,
+      masteredCount,
       attemptCount: history.length,
       history,
       lockReason,
