@@ -17,7 +17,12 @@ import {
   RotateCcw,
 } from 'lucide-react'
 import type { QuizSlotSummary, QuizStartAction, QuizSummary } from '@/lib/quizzes'
-import { initialExpandedQuizSlotKeys, quizSlotExpansionKey, quizSlotStatusLabel } from '@/lib/quiz-ui-state'
+import {
+  initialExpandedQuizSlotKeys,
+  quizSlotExpansionKey,
+  quizSlotStatusLabel,
+  showQuizHistorySummary,
+} from '@/lib/quiz-ui-state'
 
 function scoreLabel(score: number | null) {
   return score === null ? '—' : Math.round(score) + '%'
@@ -345,7 +350,7 @@ export function QuizzesClient({
 
                             {slotExpanded && (
                               <div className="px-3 pb-3 border-t pt-3">
-                                {slot.attemptCount > 0 && (
+                                {showQuizHistorySummary(slot) && (
                                   <div className="grid grid-cols-3 gap-2 mb-3 text-center">
                                     <div className="rounded bg-gray-50 p-2">
                                       <div className="text-xs text-muted-foreground">Latest full</div>
@@ -359,6 +364,12 @@ export function QuizzesClient({
                                       <div className="text-xs text-muted-foreground">Full attempts</div>
                                       <div className="font-semibold">{slot.attemptCount}</div>
                                     </div>
+                                  </div>
+                                )}
+
+                                {(slot.activeAttemptId || slot.activeRetryAttemptId) && (
+                                  <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                                    Quiz in progress — resume where you left off.
                                   </div>
                                 )}
 
