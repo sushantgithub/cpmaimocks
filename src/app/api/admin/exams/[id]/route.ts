@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import {
-  effectiveMockSortOrder,
   hasDuplicateMockExamTitle,
+  mockNumberFromTitle,
 } from '@/lib/mock-exams'
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
@@ -165,8 +165,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     // Old Mock rows used sortOrder=0. Freeze their current title-derived
     // position before a rename so changing the title never moves the card.
     if (body.sortOrder === undefined && current.sortOrder <= 0) {
-      const recoveredOrder = effectiveMockSortOrder(current)
-      if (Number.isFinite(recoveredOrder)) data.sortOrder = recoveredOrder
+      const recoveredOrder = mockNumberFromTitle(current.title)
+      if (recoveredOrder !== null) data.sortOrder = recoveredOrder
     }
   }
   if (body.description === null || typeof body.description === 'string') {
