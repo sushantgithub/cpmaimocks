@@ -23,6 +23,7 @@ describe('quiz entitlement helpers', () => {
       quizNumber: 2,
       sessionKind: 'STANDARD',
       questionIds: ['q1', 'q2', 'q2'],
+      resumeQuestionIndex: 3,
     })).toEqual({
       quizKey: 'domain:abc_123',
       quizTitle: 'Responsible AI · Quiz 2',
@@ -30,10 +31,23 @@ describe('quiz entitlement helpers', () => {
       quizNumber: 2,
       sessionKind: 'STANDARD',
       questionIds: ['q1', 'q2'],
+      resumeQuestionIndex: 3,
     })
 
     expect(readQuizAttemptConfig({ quizKey: 'not-a-quiz' })).toBeNull()
     expect(readQuizAttemptConfig(null)).toBeNull()
+  })
+
+  it('ignores invalid persisted resume positions', () => {
+    expect(readQuizAttemptConfig({
+      quizKey: 'domain:abc',
+      resumeQuestionIndex: -1,
+    })).toEqual({ quizKey: 'domain:abc' })
+
+    expect(readQuizAttemptConfig({
+      quizKey: 'domain:abc',
+      resumeQuestionIndex: 101,
+    })).toEqual({ quizKey: 'domain:abc' })
   })
 
   it('resumes the one active free sitting instead of granting another', () => {
