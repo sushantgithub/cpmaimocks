@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { PracticeInterface } from '@/components/exam/practice-interface'
 import { hasAccessToCertification } from '@/lib/subscription'
 import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
+import { resolveQuizResumeQuestionIndex } from '@/lib/quiz-resume'
 
 export default async function PracticeAttemptPage({ params }: { params: { attemptId: string } }) {
   const session = await requireActiveSession()
@@ -88,6 +89,14 @@ export default async function PracticeAttemptPage({ params }: { params: { attemp
     selectedAnswer: answer.isCorrect !== null ? answer.selectedAnswer : null,
   }))
 
+  const initialQuestionIndex =
+    attempt.mode === 'QUIZ'
+      ? resolveQuizResumeQuestionIndex(
+          quizConfig?.resumeQuestionIndex,
+          questions.map((question) => question.selectedAnswer),
+        )
+      : 0
+
   return (
     <PracticeInterface
       attemptId={attempt.id}
@@ -99,6 +108,7 @@ export default async function PracticeAttemptPage({ params }: { params: { attemp
         attempt.mode === 'QUIZ' &&
         (quizConfig?.accessTier === 'FREE' || (!quizConfig?.accessTier && !hasPremiumAccess))
       }
+      initialQuestionIndex={initialQuestionIndex}
     />
   )
 }

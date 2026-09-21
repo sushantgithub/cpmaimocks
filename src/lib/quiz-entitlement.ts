@@ -8,6 +8,7 @@ export interface QuizAttemptConfig {
   quizNumber?: number
   sessionKind?: QuizSessionKind
   questionIds?: string[]
+  resumeQuestionIndex?: number
 }
 
 export function readQuizAttemptConfig(value: unknown): QuizAttemptConfig | null {
@@ -40,6 +41,14 @@ export function readQuizAttemptConfig(value: unknown): QuizAttemptConfig | null 
       ))
     : undefined
 
+  const resumeQuestionIndex =
+    typeof record.resumeQuestionIndex === 'number' &&
+    Number.isInteger(record.resumeQuestionIndex) &&
+    record.resumeQuestionIndex >= 0 &&
+    record.resumeQuestionIndex <= 100
+      ? record.resumeQuestionIndex
+      : undefined
+
   return {
     quizKey,
     quizTitle: typeof record.quizTitle === 'string' ? record.quizTitle : undefined,
@@ -50,6 +59,7 @@ export function readQuizAttemptConfig(value: unknown): QuizAttemptConfig | null 
     quizNumber,
     sessionKind,
     questionIds: questionIds && questionIds.length > 0 ? questionIds : undefined,
+    ...(resumeQuestionIndex !== undefined ? { resumeQuestionIndex } : {}),
   }
 }
 
