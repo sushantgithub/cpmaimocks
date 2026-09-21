@@ -22,10 +22,12 @@ feature branch
 - `claude/cpmai-exam-platform-dg2pob` — production branch.
 - Feature branches should normally branch from `staging` and return to `staging`.
 
-Vercel builds are intentionally opt-in:
+Vercel deployments are intentionally restricted:
+- Feature branches are disabled at `git.deploymentEnabled`, so their pushes use GitHub CI only and do not create Vercel deployment attempts.
+- Only `staging` and `claude/cpmai-exam-platform-dg2pob` may deploy through the Git integration.
 - Use `[staging]` in the final staging merge commit to request a staging build.
 - Use `[deploy]` only for an approved production merge.
-- Intermediate feature commits should use neither marker, so Vercel skips them and GitHub CI does the testing.
+- Commits on those permanent branches without the appropriate marker are ignored by the build gate.
 
 ## Required isolation
 
