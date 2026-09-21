@@ -49,10 +49,12 @@ export async function PATCH(
   await prisma.examAttempt.update({
     where: { id: attempt.id },
     data: {
-      practiceConfig: mergeQuizResumePosition(
-        attempt.practiceConfig,
-        questionIndex,
-      ),
+      practiceConfig: JSON.parse(JSON.stringify(
+        mergeQuizResumePosition(
+          attempt.practiceConfig,
+          questionIndex,
+        ),
+      )),
     },
   })
 
