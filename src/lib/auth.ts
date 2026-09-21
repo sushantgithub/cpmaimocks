@@ -7,6 +7,7 @@ import { prisma } from '@/lib/db'
 import { clientIp, isRateLimited, recordAttempt } from '@/lib/rate-limit'
 import { authConfig } from '@/lib/auth.config'
 import { activeAccountRole } from '@/lib/session-access'
+import { stagingGoogleOAuthAllowed } from '@/lib/environment-safety'
 
 const nextAuth = NextAuth({
   ...authConfig,
@@ -14,7 +15,7 @@ const nextAuth = NextAuth({
   providers: [
     // Registered only when credentials exist, so the sign-in page never offers
     // a Google button that cannot work.
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    ...(stagingGoogleOAuthAllowed() && process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
       ? [
           GoogleProvider({
             clientId: process.env.GOOGLE_CLIENT_ID,
