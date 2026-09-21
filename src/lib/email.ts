@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
 })
 
 // `||` rather than `??`: a variable left blank in the host must not blank out the mail.
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : 'http://localhost:3000')
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'CertMocks'
 const FROM = `"${process.env.EMAIL_FROM_NAME || APP_NAME}" <${process.env.EMAIL_FROM || process.env.SMTP_USER || ''}>`
 

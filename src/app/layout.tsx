@@ -4,9 +4,10 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SessionProvider } from '@/components/shared/session-provider'
 import { Analytics } from '@vercel/analytics/react'
+import { isStagingEnvironment } from '@/lib/environment-safety'
 
 const inter = Inter({ subsets: ['latin'] })
-const isStaging = process.env.NEXT_PUBLIC_APP_ENV === 'staging' || process.env.APP_ENV === 'staging'
+const isStaging = isStagingEnvironment()
 
 export const metadata: Metadata = {
   title: {
