@@ -15,7 +15,6 @@ import {
   History,
   Lock,
   RotateCcw,
-  Target,
 } from 'lucide-react'
 import type { QuizSlotSummary, QuizStartAction, QuizSummary } from '@/lib/quizzes'
 import { initialExpandedQuizSlotKeys, quizSlotExpansionKey, quizSlotStatusLabel } from '@/lib/quiz-ui-state'
@@ -149,24 +148,6 @@ export function QuizzesClient({
             )}
           </div>
 
-          {quiz.premiumAccess && !slot.completed && slot.latestAttemptId && slot.latestIncorrect > 0 && (
-            <div className="rounded-lg bg-blue-50/60 p-2">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => launch(quiz, slot.number, 'retryIncorrect')}
-                loading={retryBusy}
-              >
-                <Target className="h-4 w-4 mr-2" />
-                {slot.activeRetryAttemptId
-                  ? 'Resume practice'
-                  : `Practice ${slot.latestIncorrect} ${slot.latestIncorrect === 1 ? 'question' : 'questions'}`}
-              </Button>
-              <p className="text-[11px] text-muted-foreground mt-1.5 px-1">
-                Focused practice helps you master this quiz and does not add a full Quiz {slot.number} attempt.
-              </p>
-            </div>
-          )}
 
           {slot.history.length > 0 && (
             <details className="rounded-lg border bg-gray-50 px-3 py-2">
