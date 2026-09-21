@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isFullMockExam } from './mock-exams'
+import { isFullMockExam, mockExamDisplayGroup, mockExamDisplayLabel } from './mock-exams'
 
 describe('isFullMockExam', () => {
   it('accepts a timed exam that serves its full pool', () => {
@@ -48,5 +48,24 @@ describe('isFullMockExam', () => {
       questionsPerAttempt: 10,
       timeLimitMinutes: 60,
     })).toBe(false)
+  })
+})
+
+
+describe('mock exam display grouping', () => {
+  it('puts the planned 40-question mocks in their own section', () => {
+    expect(mockExamDisplayGroup(40)).toBe('FORTY_QUESTION')
+    expect(mockExamDisplayLabel(40)).toBe('40-Question Mock')
+  })
+
+  it('treats 100+ question exams as full-length', () => {
+    expect(mockExamDisplayGroup(100)).toBe('FULL_LENGTH')
+    expect(mockExamDisplayGroup(120)).toBe('FULL_LENGTH')
+    expect(mockExamDisplayLabel(120)).toBe('Full-Length Mock')
+  })
+
+  it('keeps other timed mock sizes in a safe fallback group', () => {
+    expect(mockExamDisplayGroup(50)).toBe('OTHER')
+    expect(mockExamDisplayLabel(50)).toBe('Mock Exam')
   })
 })
