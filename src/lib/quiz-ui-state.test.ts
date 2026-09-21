@@ -107,7 +107,7 @@ describe('quiz slot expansion state', () => {
     ])).toEqual([quizSlotExpansionKey('domain:ai', 1)])
   })
 
-  it('ignores stale active retry state on completed quizzes and expands the next actionable quiz', () => {
+  it('expands active mistake practice but leaves fully locked domains collapsed', () => {
     expect(initialExpandedQuizSlotKeys([
       {
         key: 'domain:ai',
@@ -117,14 +117,7 @@ describe('quiz slot expansion state', () => {
             completed: true,
             lockReason: null,
             activeAttemptId: null,
-            activeRetryAttemptId: 'legacy-retry-1',
-          },
-          {
-            number: 2,
-            completed: false,
-            lockReason: null,
-            activeAttemptId: null,
-            activeRetryAttemptId: null,
+            activeRetryAttemptId: 'retry-1',
           },
         ],
       },
@@ -140,6 +133,6 @@ describe('quiz slot expansion state', () => {
           },
         ],
       },
-    ])).toEqual([quizSlotExpansionKey('domain:ai', 2)])
+    ])).toEqual([quizSlotExpansionKey('domain:ai', 1)])
   })
 })
