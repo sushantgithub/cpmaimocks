@@ -24,9 +24,10 @@ describe('question bank content type filters', () => {
     })
   })
 
-  it('preserves active filters when moving between pages', () => {
+  it('preserves active filters and content set when moving between pages', () => {
     const href = buildQuestionBankPageHref({
       contentType: 'MOCK_EXAM',
+      contentSet: 'mock:mock-3',
       status: 'PUBLISHED',
       difficulty: 'HARD',
       certification: 'cpmai',
@@ -34,6 +35,7 @@ describe('question bank content type filters', () => {
 
     const params = new URLSearchParams(href.slice(1))
     expect(params.get('contentType')).toBe('MOCK_EXAM')
+    expect(params.get('contentSet')).toBe('mock:mock-3')
     expect(params.get('status')).toBe('PUBLISHED')
     expect(params.get('difficulty')).toBe('HARD')
     expect(params.get('certification')).toBe('cpmai')
