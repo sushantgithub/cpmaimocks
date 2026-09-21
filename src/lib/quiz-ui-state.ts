@@ -22,7 +22,9 @@ export function initialExpandedQuizSlotKeys(
 
   for (const quiz of quizzes) {
     const active = quiz.slots.find(
-      (slot) => slot.activeAttemptId || slot.activeRetryAttemptId
+      (slot) =>
+        !slot.completed &&
+        (slot.activeAttemptId || slot.activeRetryAttemptId)
     )
     const nextActionable = quiz.slots.find(
       (slot) => !slot.completed && slot.lockReason === null
@@ -46,8 +48,10 @@ export interface QuizSlotStatusInput {
 }
 
 export function quizSlotStatusLabel(slot: QuizSlotStatusInput): string | null {
-  if (slot.activeAttemptId || slot.activeRetryAttemptId) return null
+  // Completion is a permanent milestone. A later/stale in-progress attempt
+  // must never hide the Completed badge once this quiz has been mastered.
   if (slot.completed) return 'Completed'
+  if (slot.activeAttemptId || slot.activeRetryAttemptId) return null
   if (slot.attemptCount > 0) return 'Keep Practicing'
   if (slot.number === 1 && !slot.premiumAccess) return 'Free'
   if (slot.lockReason) return null
