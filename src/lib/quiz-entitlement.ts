@@ -59,7 +59,7 @@ export function readQuizAttemptConfig(value: unknown): QuizAttemptConfig | null 
     quizNumber,
     sessionKind,
     questionIds: questionIds && questionIds.length > 0 ? questionIds : undefined,
-    resumeQuestionIndex,
+    ...(resumeQuestionIndex !== undefined ? { resumeQuestionIndex } : {}),
   }
 }
 
