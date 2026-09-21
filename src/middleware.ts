@@ -12,18 +12,21 @@ function loginRedirect(req: { url: string; nextUrl: { pathname: string; search: 
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
-  // Protect dashboard routes
-  if (pathname.startsWith('/dashboard') || pathname.startsWith('/exams') ||
-      pathname.startsWith('/practice') || pathname.startsWith('/quizzes') || pathname.startsWith('/results') ||
-      pathname.startsWith('/bookmarks') || pathname.startsWith('/profile') ||
-      pathname.startsWith('/subscription')) {
+  // Edge middleware performs the fast signed-JWT presence check only. It does
+  // not query Prisma, so current isActive/role state is enforced by the
+  // database-backed server guards and API auth checks after this point.
+  if (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/exams') ||
+    pathname.startsWith('/practice') ||
+    pathname.startsWith('/quizzes') ||
+    pathname.startsWith('/results') ||
+    pathname.startsWith('/bookmarks') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/subscription') ||
+    pathname.startsWith('/admin')
+  ) {
     if (!req.auth) return loginRedirect(req)
-  }
-
-  // Protect admin routes
-  if (pathname.startsWith('/admin')) {
-    if (!req.auth) return loginRedirect(req)
-    if (req.auth.user.role !== 'ADMIN') return Response.redirect(new URL('/dashboard', req.url))
   }
 })
 
