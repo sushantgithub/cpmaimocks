@@ -122,7 +122,6 @@ export function PracticeInterface({
   const reviewMode = reviewQueue !== null
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
-  const hasPendingSelection = !revealed && pending.length > 0
   const pendingReady = multi ? pending.length === selectCount : pending.length === 1
   const multiNeedsCheck = needsMultiAnswerCheck({
     isMultiAnswer: multi,
