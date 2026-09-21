@@ -3,6 +3,7 @@ import type { PracticeConfig } from '@/types'
 import { isAnswerCorrect, normalizeAnswer } from '@/lib/answers'
 import { answerForFinalScoring, latestCheckedVerdicts, questionHistoryState } from '@/lib/exam-progress'
 import { isFullMockExam } from '@/lib/mock-exams'
+import { selectRandomPracticeQuestionIds } from '@/lib/practice-selection'
 
 export class ExamSubmissionError extends Error {
   constructor(public code: 'ALREADY_SUBMITTED' | 'TIME_EXPIRED', message: string) {
@@ -121,6 +122,22 @@ export function selectForAttempt<T>(
   return ordered.slice(0, perAttempt)
 }
 
+const PRACTICE_QUESTION_SELECT = {
+  id: true,
+  questionId: true,
+  text: true,
+  optionA: true,
+  optionB: true,
+  optionC: true,
+  optionD: true,
+  optionE: true,
+  optionF: true,
+  correctAnswer: true,
+  difficulty: true,
+  category: { select: { name: true } },
+  topic: { select: { name: true } },
+} as const
+
 export async function getPracticeQuestions(userId: string, config: PracticeConfig) {
   const where: Record<string, unknown> = { status: 'PUBLISHED' }
 
@@ -135,6 +152,53 @@ export async function getPracticeQuestions(userId: string, config: PracticeConfi
   }
   if (config.topicIds && config.topicIds.length > 0) {
     where.topicId = { in: config.topicIds }
+  }
+
+  if (config.mode === 'RANDOM') {
+    // Random Practice is intentionally history-aware. Fetch only eligible IDs
+    // first so selection considers the entire matching pool instead of an
+    // arbitrary first 3×N slice of the database.
+    const eligible = await prisma.question.findMany({
+      where,
+      select: { id: true },
+    })
+    const poolIds = eligible.map((question) => question.id)
+    if (poolIds.length === 0) return []
+
+    // A question becomes "seen" when it is put into a Practice attempt, not
+    // only after it is answered. That prevents abandoned/in-progress sessions
+    // from wasting future Random Practice (and the finite free allowance) on
+    // repeats while unseen matching questions still exist.
+    const history = await prisma.examAnswer.findMany({
+      where: {
+        attempt: { userId, mode: 'PRACTICE' },
+        questionId: { in: poolIds },
+      },
+      select: {
+        questionId: true,
+        isCorrect: true,
+      },
+      orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+    })
+
+    const selectedIds = selectRandomPracticeQuestionIds(
+      poolIds,
+      history,
+      config.questionCount,
+    )
+    if (selectedIds.length === 0) return []
+
+    const selected = await prisma.question.findMany({
+      where: { id: { in: selectedIds } },
+      select: PRACTICE_QUESTION_SELECT,
+    })
+    const byId = new Map(selected.map((question) => [question.id, question]))
+
+    // Prisma does not preserve the order of an IN clause. Restore the selected
+    // priority/order so unseen questions remain ahead of review fallbacks.
+    return selectedIds
+      .map((id) => byId.get(id))
+      .filter((question): question is NonNullable<typeof question> => Boolean(question))
   }
 
   if (config.mode === 'INCORRECT') {
@@ -154,24 +218,12 @@ export async function getPracticeQuestions(userId: string, config: PracticeConfi
     where.id = { in: bookmarks.map((b) => b.questionId) }
   }
 
+  // My Mistakes and Bookmarked keep their existing semantics: randomly sample
+  // from the questions matching those explicit review modes.
   const questions = await prisma.question.findMany({
     where,
-    select: {
-      id: true,
-      questionId: true,
-      text: true,
-      optionA: true,
-      optionB: true,
-      optionC: true,
-      optionD: true,
-      optionE: true,
-      optionF: true,
-      correctAnswer: true,
-      difficulty: true,
-      category: { select: { name: true } },
-      topic: { select: { name: true } },
-    },
-    take: config.questionCount * 3, // fetch more for randomization
+    select: PRACTICE_QUESTION_SELECT,
+    take: config.questionCount * 3,
   })
 
   return shuffle(questions).slice(0, config.questionCount)

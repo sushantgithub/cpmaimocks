@@ -188,7 +188,7 @@ export default function PracticePage() {
           <h3 className="font-semibold mb-3">Practice Mode</h3>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { mode: 'RANDOM' as const, icon: Shuffle, label: 'Random', desc: 'Mixed questions' },
+              { mode: 'RANDOM' as const, icon: Shuffle, label: 'Random', desc: 'New questions first' },
               { mode: 'INCORRECT' as const, icon: RotateCcw, label: 'My Mistakes', desc: 'Previously wrong' },
               { mode: 'BOOKMARKED' as const, icon: BookOpen, label: 'Bookmarked', desc: 'Saved questions' },
             ].map((m) => (
@@ -309,7 +309,7 @@ export default function PracticePage() {
           <p className="text-sm text-blue-700">
             {freeExhausted
               ? 'Subscribe to unlock unlimited practice.'
-              : <>{config.mode === 'RANDOM' ? 'Random selection' : config.mode === 'INCORRECT' ? 'Previously incorrect' : 'Bookmarked'} •{' '}
+              : <>{config.mode === 'RANDOM' ? 'Unseen first, then review' : config.mode === 'INCORRECT' ? 'Previously incorrect' : 'Bookmarked'} •{' '}
                 {config.difficulty.length > 0 ? config.difficulty.join(', ') : 'All difficulties'}</>}
           </p>
         </div>
