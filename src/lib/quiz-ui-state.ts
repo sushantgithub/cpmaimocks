@@ -55,3 +55,30 @@ export function quizSlotStatusLabel(slot: QuizSlotStatusInput): string | null {
   if (slot.lockReason) return null
   return 'Available'
 }
+
+
+export function needsMultiAnswerCheck({
+  isMultiAnswer,
+  revealed,
+}: {
+  isMultiAnswer: boolean
+  revealed: boolean
+}): boolean {
+  return isMultiAnswer && !revealed
+}
+
+export function showQuizHistorySummary({
+  attemptCount,
+  activeAttemptId,
+  activeRetryAttemptId,
+}: {
+  attemptCount: number
+  activeAttemptId: string | null
+  activeRetryAttemptId: string | null
+}): boolean {
+  return (
+    attemptCount > 0 &&
+    !activeAttemptId &&
+    !activeRetryAttemptId
+  )
+}
