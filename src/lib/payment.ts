@@ -1,5 +1,6 @@
 import Razorpay from 'razorpay'
 import crypto from 'crypto'
+import { isStagingEnvironment, stagingRazorpayAllowed } from '@/lib/environment-safety'
 
 // Payment provider abstraction — swap Razorpay for another provider here
 // without changing any other part of the application
@@ -7,6 +8,9 @@ import crypto from 'crypto'
 let razorpay: Razorpay | null = null
 
 function getRazorpay() {
+  if (!stagingRazorpayAllowed()) {
+    throw new Error('Staging payments are disabled until Razorpay test credentials are configured')
+  }
   if (!razorpay) {
     razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID ?? '',
@@ -52,12 +56,14 @@ export function verifyPaymentSignature(
   paymentId: string,
   signature: string
 ): boolean {
+  if (isStagingEnvironment() && !stagingRazorpayAllowed()) return false
   const secret = process.env.RAZORPAY_KEY_SECRET
   if (!secret) return false
   return hmacMatches(secret, `${orderId}|${paymentId}`, signature)
 }
 
 export function verifyWebhookSignature(body: string, signature: string): boolean {
+  if (isStagingEnvironment() && !stagingRazorpayAllowed()) return false
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET
   if (!secret) return false
   return hmacMatches(secret, body, signature)

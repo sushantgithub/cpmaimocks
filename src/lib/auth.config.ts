@@ -1,9 +1,12 @@
 import type { NextAuthConfig } from 'next-auth'
+import { authSecretForEnvironment } from '@/lib/environment-safety'
 
 // The Edge middleware only needs to read the session cookie. Everything that
 // touches the database, bcrypt or the mailer stays in auth.ts so none of it
 // is bundled for the Edge runtime.
 export const authConfig = {
+  secret: authSecretForEnvironment(),
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',

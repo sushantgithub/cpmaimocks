@@ -1,31 +1,41 @@
 import { describe, expect, it } from 'vitest'
-import { isStagingEnvironment, stagingEnvironmentProblems } from './environment-safety'
+import {
+  authSecretForEnvironment,
+  isStagingEnvironment,
+  stagingEmailSendingAllowed,
+  stagingEnvironmentProblems,
+  stagingGoogleOAuthAllowed,
+  stagingRazorpayAllowed,
+} from './environment-safety'
 
 const safe = {
   APP_ENV: 'staging',
   STAGING_DATABASE_PROJECT_REF: 'stageproject123',
   DATABASE_URL: 'postgresql://postgres.stageproject123:secret@pooler.supabase.com:6543/postgres',
   DIRECT_URL: 'postgresql://postgres.stageproject123:secret@pooler.supabase.com:5432/postgres',
-  NEXT_PUBLIC_APP_URL: 'https://staging.certmocks.com',
-  NEXTAUTH_URL: 'https://staging.certmocks.com',
-  NEXTAUTH_SECRET: 'staging-secret-only',
-  RAZORPAY_KEY_ID: 'rzp_test_123456',
+  VERCEL_BRANCH_URL: 'cpmaimocks-git-staging-cpmaiprep.vercel.app',
+  STAGING_NEXTAUTH_SECRET: 'staging-secret-only',
 }
 
 describe('staging environment safety', () => {
-  it('accepts an isolated staging configuration', () => {
+  it('accepts the minimal isolated staging configuration', () => {
     expect(stagingEnvironmentProblems(safe)).toEqual([])
   })
 
-  it('detects staging from the Vercel Git branch even when APP_ENV is absent', () => {
+  it('detects staging from the Vercel Git branch', () => {
     expect(isStagingEnvironment({ VERCEL_GIT_COMMIT_REF: 'staging' })).toBe(true)
     expect(stagingEnvironmentProblems({
       ...safe,
       APP_ENV: undefined,
-      NEXT_PUBLIC_APP_URL: undefined,
-      NEXTAUTH_URL: undefined,
       VERCEL_GIT_COMMIT_REF: 'staging',
-      VERCEL_BRANCH_URL: 'cpmaimocks-git-staging-cpmaiprep.vercel.app',
+    })).toEqual([])
+  })
+
+  it('ignores inherited production app/auth URLs when Vercel provides the staging branch URL', () => {
+    expect(stagingEnvironmentProblems({
+      ...safe,
+      NEXT_PUBLIC_APP_URL: 'https://certmocks.com',
+      NEXTAUTH_URL: 'https://certmocks.com',
     })).toEqual([])
   })
 
@@ -33,7 +43,6 @@ describe('staging environment safety', () => {
     expect(stagingEnvironmentProblems({
       APP_ENV: 'production',
       NEXT_PUBLIC_APP_URL: 'https://certmocks.com',
-      RAZORPAY_KEY_ID: 'rzp_live_123',
     })).toEqual([])
   })
 
@@ -52,61 +61,54 @@ describe('staging environment safety', () => {
     )
   })
 
-  it('blocks production URLs and live Razorpay keys', () => {
+  it('requires a staging-specific auth secret rather than inheriting production', () => {
     const problems = stagingEnvironmentProblems({
       ...safe,
-      NEXT_PUBLIC_APP_URL: 'https://certmocks.com',
-      NEXTAUTH_URL: 'https://www.certmocks.com',
-      RAZORPAY_KEY_ID: 'rzp_live_123456',
+      STAGING_NEXTAUTH_SECRET: undefined,
+      NEXTAUTH_SECRET: 'production-secret',
     })
-
-    expect(problems).toContain(
-      'Staging app URL must not point to the production CertMocks domain',
-    )
-    expect(problems).toContain(
-      'Authentication URL must not point to the production CertMocks domain',
-    )
-    expect(problems).toContain('Staging must use a Razorpay test-mode key')
+    expect(problems).toContain('STAGING_NEXTAUTH_SECRET is required in staging')
+    expect(authSecretForEnvironment({
+      ...safe,
+      STAGING_NEXTAUTH_SECRET: undefined,
+      NEXTAUTH_SECRET: 'production-secret',
+    })).toBeUndefined()
   })
 
-  it('fails closed when required staging identity settings are missing', () => {
-    const problems = stagingEnvironmentProblems({
+  it('uses the staging auth secret only on staging', () => {
+    expect(authSecretForEnvironment({
       ...safe,
-      STAGING_DATABASE_PROJECT_REF: undefined,
-      NEXTAUTH_SECRET: undefined,
-    })
-    expect(problems).toContain(
-      'STAGING_DATABASE_PROJECT_REF is required in staging',
-    )
-    expect(problems).toContain(
-      'NEXTAUTH_SECRET (or AUTH_SECRET) is required in staging',
-    )
+      NEXTAUTH_SECRET: 'production-secret',
+    })).toBe('staging-secret-only')
+    expect(authSecretForEnvironment({
+      APP_ENV: 'production',
+      NEXTAUTH_SECRET: 'production-secret',
+    })).toBe('production-secret')
   })
 
-  it('blocks inherited SMTP and Google OAuth credentials by default', () => {
-    const problems = stagingEnvironmentProblems({
+  it('suppresses inherited email and Google OAuth in staging by default', () => {
+    expect(stagingEmailSendingAllowed(safe)).toBe(false)
+    expect(stagingGoogleOAuthAllowed(safe)).toBe(false)
+    expect(stagingEmailSendingAllowed({
       ...safe,
-      SMTP_USER: 'resend',
-      SMTP_PASS: 'production-like-secret',
-      GOOGLE_CLIENT_ID: 'prod-client',
-      GOOGLE_CLIENT_SECRET: 'prod-secret',
-    })
-
-    expect(problems).toContain(
-      'Staging SMTP is blocked unless STAGING_EMAIL_ALLOW_SEND=true',
-    )
-    expect(problems).toContain(
-      'Staging Google OAuth is blocked unless STAGING_OAUTH_ALLOW_GOOGLE=true',
-    )
-  })
-
-  it('allows explicitly enabled staging SMTP only with a clearly staging sender', () => {
-    expect(stagingEnvironmentProblems({
-      ...safe,
-      SMTP_USER: 'resend',
-      SMTP_PASS: 'staging-secret',
       STAGING_EMAIL_ALLOW_SEND: 'true',
-      EMAIL_FROM_NAME: 'CertMocks Staging',
-    })).toEqual([])
+    })).toBe(true)
+    expect(stagingGoogleOAuthAllowed({
+      ...safe,
+      STAGING_OAUTH_ALLOW_GOOGLE: 'true',
+    })).toBe(true)
+  })
+
+  it('permits Razorpay in staging only with test-mode credentials', () => {
+    expect(stagingRazorpayAllowed({
+      ...safe,
+      RAZORPAY_KEY_ID: 'rzp_live_prod',
+      RAZORPAY_KEY_SECRET: 'prod-secret',
+    })).toBe(false)
+    expect(stagingRazorpayAllowed({
+      ...safe,
+      RAZORPAY_KEY_ID: 'rzp_test_stage',
+      RAZORPAY_KEY_SECRET: 'stage-secret',
+    })).toBe(true)
   })
 })

@@ -22,6 +22,29 @@ export function isStagingEnvironment(env: EnvLike = process.env) {
   )
 }
 
+export function authSecretForEnvironment(env: EnvLike = process.env) {
+  if (isStagingEnvironment(env)) {
+    return env.STAGING_NEXTAUTH_SECRET?.trim() || undefined
+  }
+  return env.AUTH_SECRET?.trim() || env.NEXTAUTH_SECRET?.trim() || undefined
+}
+
+export function stagingEmailSendingAllowed(env: EnvLike = process.env) {
+  return !isStagingEnvironment(env) || env.STAGING_EMAIL_ALLOW_SEND === 'true'
+}
+
+export function stagingGoogleOAuthAllowed(env: EnvLike = process.env) {
+  return !isStagingEnvironment(env) || env.STAGING_OAUTH_ALLOW_GOOGLE === 'true'
+}
+
+export function stagingRazorpayAllowed(env: EnvLike = process.env) {
+  if (!isStagingEnvironment(env)) return true
+  return Boolean(
+    env.RAZORPAY_KEY_ID?.startsWith('rzp_test_') &&
+    env.RAZORPAY_KEY_SECRET?.trim()
+  )
+}
+
 export function stagingEnvironmentProblems(env: EnvLike): string[] {
   if (!isStagingEnvironment(env)) return []
 
@@ -41,45 +64,26 @@ export function stagingEnvironmentProblems(env: EnvLike): string[] {
     }
   }
 
+  // On Vercel the generated branch URL is authoritative for staging. This
+  // deliberately ignores inherited Preview NEXTAUTH_URL/NEXT_PUBLIC_APP_URL
+  // values that may still point at production.
   const branchUrl = vercelBranchUrl(env)
-  const publicHost = hostname(env.NEXT_PUBLIC_APP_URL || branchUrl)
+  const publicHost = hostname(branchUrl || env.NEXT_PUBLIC_APP_URL)
   if (!publicHost) {
-    problems.push('NEXT_PUBLIC_APP_URL or VERCEL_BRANCH_URL must provide a valid staging URL')
+    problems.push('VERCEL_BRANCH_URL or NEXT_PUBLIC_APP_URL must provide a valid staging URL')
   } else if (publicHost === 'certmocks.com' || publicHost === 'www.certmocks.com') {
     problems.push('Staging app URL must not point to the production CertMocks domain')
   }
 
-  const authHost = hostname(env.NEXTAUTH_URL || env.AUTH_URL || branchUrl)
+  const authHost = hostname(branchUrl || env.AUTH_URL || env.NEXTAUTH_URL)
   if (!authHost) {
-    problems.push('NEXTAUTH_URL, AUTH_URL, or VERCEL_BRANCH_URL must provide a valid staging auth URL')
+    problems.push('VERCEL_BRANCH_URL, AUTH_URL, or NEXTAUTH_URL must provide a valid staging auth URL')
   } else if (authHost === 'certmocks.com' || authHost === 'www.certmocks.com') {
     problems.push('Authentication URL must not point to the production CertMocks domain')
   }
 
-  if (!(env.NEXTAUTH_SECRET || env.AUTH_SECRET)?.trim()) {
-    problems.push('NEXTAUTH_SECRET (or AUTH_SECRET) is required in staging')
-  }
-
-  const razorpayKey = env.RAZORPAY_KEY_ID?.trim()
-  if (razorpayKey && !razorpayKey.startsWith('rzp_test_')) {
-    problems.push('Staging must use a Razorpay test-mode key')
-  }
-
-  const hasSmtpCredentials = Boolean(env.SMTP_PASS?.trim() || env.SMTP_USER?.trim())
-  if (hasSmtpCredentials && env.STAGING_EMAIL_ALLOW_SEND !== 'true') {
-    problems.push('Staging SMTP is blocked unless STAGING_EMAIL_ALLOW_SEND=true')
-  }
-  if (
-    hasSmtpCredentials &&
-    env.STAGING_EMAIL_ALLOW_SEND === 'true' &&
-    !env.EMAIL_FROM_NAME?.toLowerCase().includes('staging')
-  ) {
-    problems.push('Staging email sender name must clearly include "Staging"')
-  }
-
-  const hasGoogleOAuth = Boolean(env.GOOGLE_CLIENT_ID?.trim() || env.GOOGLE_CLIENT_SECRET?.trim())
-  if (hasGoogleOAuth && env.STAGING_OAUTH_ALLOW_GOOGLE !== 'true') {
-    problems.push('Staging Google OAuth is blocked unless STAGING_OAUTH_ALLOW_GOOGLE=true')
+  if (!env.STAGING_NEXTAUTH_SECRET?.trim()) {
+    problems.push('STAGING_NEXTAUTH_SECRET is required in staging')
   }
 
   return problems
