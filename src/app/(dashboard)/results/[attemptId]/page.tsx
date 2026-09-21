@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { getAttemptResults } from '@/lib/quiz'
 import { redirect } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
@@ -14,11 +14,11 @@ import { prisma } from '@/lib/db'
 import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
 
 export default async function ResultsPage({ params, searchParams }: { params: { attemptId: string }; searchParams?: { review?: string } }) {
-  const session = await auth()
-  const result = await getAttemptResults(params.attemptId, session!.user.id)
+  const session = await requireActiveSession()
+  const result = await getAttemptResults(params.attemptId, session.user.id)
   if (!result) {
     const attempt = await prisma.examAttempt.findFirst({
-      where: { id: params.attemptId, userId: session!.user.id },
+      where: { id: params.attemptId, userId: session.user.id },
       select: { status: true, mode: true, examId: true },
     })
     if (attempt?.status === 'IN_PROGRESS') {
@@ -69,7 +69,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
   if (isStandardQuiz) {
     const quizAttempts = await prisma.examAttempt.findMany({
       where: {
-        userId: session!.user.id,
+        userId: session.user.id,
         mode: 'QUIZ',
         status: 'COMPLETED',
       },
@@ -98,7 +98,7 @@ export default async function ResultsPage({ params, searchParams }: { params: { 
   if (isExam && result.examId) {
     const examAttempts = await prisma.examAttempt.findMany({
       where: {
-        userId: session!.user.id,
+        userId: session.user.id,
         examId: result.examId,
         mode: 'EXAM',
         status: 'COMPLETED',
