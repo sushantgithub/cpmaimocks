@@ -111,6 +111,7 @@ export async function POST(req: Request) {
       certificationId?: string
       contentType?: ContentType
       examId?: string
+      publishMock?: boolean
     }
 
     const questions = body.questions
@@ -194,6 +195,7 @@ export async function POST(req: Request) {
 
     const created = await prisma.$transaction(async (tx) => {
       const questionIds: string[] = []
+      let examStatus: 'PUBLISHED' | null = null
 
       for (let index = 0; index < questions.length; index++) {
         const row = questions[index]
@@ -286,13 +288,37 @@ export async function POST(req: Request) {
         }
       }
 
-      return questionIds
+      if (mockExam && body.publishMock) {
+        const [assignedCount, publishedAssignedCount] = await Promise.all([
+          tx.mockExamQuestion.count({ where: { examId: mockExam.id } }),
+          tx.mockExamQuestion.count({
+            where: {
+              examId: mockExam.id,
+              question: { status: 'PUBLISHED' },
+            },
+          }),
+        ])
+
+        if (
+          assignedCount === mockExam.questionCount &&
+          publishedAssignedCount === mockExam.questionCount
+        ) {
+          await tx.mockExam.update({
+            where: { id: mockExam.id },
+            data: { status: 'PUBLISHED' },
+          })
+          examStatus = 'PUBLISHED'
+        }
+      }
+
+      return { questionIds, examStatus }
     })
 
     return NextResponse.json({
-      imported: created.length,
+      imported: created.questionIds.length,
       contentType: body.contentType,
       examId: mockExam?.id ?? null,
+      examStatus: created.examStatus,
       errors: [],
     })
   } catch (err) {
