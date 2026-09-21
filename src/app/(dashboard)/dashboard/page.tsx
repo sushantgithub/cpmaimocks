@@ -5,6 +5,7 @@ import { listQuizzes } from '@/lib/quizzes'
 import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
 import { getUserActiveSubscriptions } from '@/lib/subscription'
 import { isFullMockExam } from '@/lib/mock-exams'
+import { dashboardQuizMetrics } from '@/lib/quiz-dashboard-metrics'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -36,16 +37,13 @@ export default async function DashboardPage() {
   const freeQuizAvailable = !isSubscribed && hasRemainingFreeQuizSession(quizzes)
   const examCount = publishedExamShapes.filter(isFullMockExam).length
 
-  const quizCount = quizzes.reduce((sum, quiz) => sum + quiz.quizCount, 0)
-  const completedQuizzes = quizzes.reduce((sum, quiz) => sum + quiz.completedQuizzes, 0)
-  const quizQuestionsAttempted = quizzes.reduce((sum, quiz) => sum + quiz.answered, 0)
-  const quizQuestionsMastered = quizzes.reduce(
-    (sum, quiz) => sum + Math.max(0, quiz.answered - quiz.wrong),
-    0,
-  )
-  const quizAccuracy = quizQuestionsAttempted > 0
-    ? Math.round((quizQuestionsMastered / quizQuestionsAttempted) * 100)
-    : 0
+  const {
+    quizCount,
+    completedQuizzes,
+    questionsAttempted: quizQuestionsAttempted,
+    questionsMastered: quizQuestionsMastered,
+    accuracy: quizAccuracy,
+  } = dashboardQuizMetrics(quizzes)
 
   return (
     <div className="space-y-6 pb-20 md:pb-6">
