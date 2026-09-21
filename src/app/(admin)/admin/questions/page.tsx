@@ -9,7 +9,7 @@ import { TestQuestionsBanner } from '@/components/admin/test-questions-banner'
 
 interface SearchParams {
   search?: string; status?: string; difficulty?: string; page?: string; certification?: string
-  isTest?: string
+  isTest?: string; contentType?: string
 }
 
 export default async function QuestionsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -25,6 +25,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
     ]
   }
   if (searchParams.status) where.status = searchParams.status
+  if (
+    searchParams.contentType &&
+    ['QUIZ', 'MOCK_EXAM', 'PRACTICE_ONLY'].includes(searchParams.contentType)
+  ) {
+    where.contentType = searchParams.contentType
+  }
   if (searchParams.difficulty) where.difficulty = searchParams.difficulty
   if (searchParams.certification) where.certificationId = searchParams.certification
   if (searchParams.isTest === 'only') where.isTest = true
@@ -88,6 +94,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Se
             ))}
           </select>
         )}
+        <select name="contentType" defaultValue={searchParams.contentType} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="">All Content Types</option>
+          <option value="QUIZ">Quiz</option>
+          <option value="MOCK_EXAM">Mock Exam</option>
+          <option value="PRACTICE_ONLY">Practice Only</option>
+        </select>
         <select name="status" defaultValue={searchParams.status} className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
           <option value="">All Status</option>
           <option value="PUBLISHED">Published</option>
