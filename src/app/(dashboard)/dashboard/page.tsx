@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { prisma } from '@/lib/db'
 import { getUserStats } from '@/lib/quiz'
 import { listQuizzes } from '@/lib/quizzes'
@@ -19,8 +19,8 @@ import {
 } from 'lucide-react'
 
 export default async function DashboardPage() {
-  const session = await auth()
-  const userId = session!.user.id
+  const session = await requireActiveSession()
+  const userId = session.user.id
 
   const [stats, subscription, quizzes, publishedExamShapes] = await Promise.all([
     getUserStats(userId),
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
     <div className="space-y-6 pb-20 md:pb-6">
       <div>
         <h1 className="text-2xl font-bold">
-          Welcome back, {session!.user.name?.split(' ')[0]} 👋
+          Welcome back, {session.user.name?.split(' ')[0]} 👋
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
           Your quiz and mock-exam progress at a glance.

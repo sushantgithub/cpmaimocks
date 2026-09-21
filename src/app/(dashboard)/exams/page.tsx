@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { prisma } from '@/lib/db'
 import { getAccessibleCertificationIds } from '@/lib/subscription'
 import { Card, CardContent } from '@/components/ui/card'
@@ -14,8 +14,8 @@ import {
 import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
 
 export default async function ExamsPage() {
-  const session = await auth()
-  const userId = session!.user.id
+  const session = await requireActiveSession()
+  const userId = session.user.id
 
   const [accessible, publishedExams, attempts] = await Promise.all([
     getAccessibleCertificationIds(userId),

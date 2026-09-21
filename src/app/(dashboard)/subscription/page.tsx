@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { prisma } from '@/lib/db'
 import { getUserActiveSubscriptions } from '@/lib/subscription'
 import { listQuizzes } from '@/lib/quizzes'
@@ -6,8 +6,8 @@ import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
 import { SubscriptionPage } from '@/components/dashboard/subscription-page'
 
 export default async function SubscriptionRoute() {
-  const session = await auth()
-  const userId = session!.user.id
+  const session = await requireActiveSession()
+  const userId = session.user.id
 
   const [subscription, plans, certifications, quizzes] = await Promise.all([
     getUserActiveSubscriptions(userId),

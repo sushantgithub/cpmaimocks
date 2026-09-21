@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { prisma } from '@/lib/db'
 import { hasAccessToCertification } from '@/lib/subscription'
 import { getExamQuestions, submitExam } from '@/lib/quiz'
@@ -26,8 +26,8 @@ const questionSelect = {
 } as const
 
 export default async function ExamPage({ params, searchParams }: { params: { examId: string }; searchParams?: { fresh?: string } }) {
-  const session = await auth()
-  const userId = session!.user.id
+  const session = await requireActiveSession()
+  const userId = session.user.id
 
   const result = await getExamQuestions(params.examId, userId)
   if (!result) redirect('/exams')

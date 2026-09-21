@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { redirect, notFound } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { PracticeInterface } from '@/components/exam/practice-interface'
@@ -6,8 +6,7 @@ import { hasAccessToCertification } from '@/lib/subscription'
 import { readQuizAttemptConfig } from '@/lib/quiz-entitlement'
 
 export default async function PracticeAttemptPage({ params }: { params: { attemptId: string } }) {
-  const session = await auth()
-  if (!session) redirect('/login')
+  const session = await requireActiveSession()
 
   const attempt = await prisma.examAttempt.findUnique({
     where: { id: params.attemptId },

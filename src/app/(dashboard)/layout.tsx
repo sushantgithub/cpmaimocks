@@ -1,13 +1,17 @@
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
+import { requireActiveSession } from '@/lib/require-auth'
 import { DashboardNav } from '@/components/layout/dashboard-nav'
 import { DashboardSidebar } from '@/components/layout/dashboard-sidebar'
 
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  robots: { index: false, follow: false },
+}
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session) redirect('/login')
+  const session = await requireActiveSession()
 
   return (
     <div className="min-h-screen bg-gray-50">

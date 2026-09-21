@@ -1,12 +1,12 @@
-import { auth } from '@/lib/auth'
+import { requireActiveSession } from '@/lib/require-auth'
 import { prisma } from '@/lib/db'
 import { getUserActiveSubscriptions } from '@/lib/subscription'
 import { ProfileClient } from '@/components/dashboard/profile-client'
 import { formatDate, accessUntilLabel } from '@/lib/utils'
 
 export default async function ProfilePage() {
-  const session = await auth()
-  const userId = session!.user.id
+  const session = await requireActiveSession()
+  const userId = session.user.id
 
   const [user, subscription] = await Promise.all([
     prisma.user.findUnique({
