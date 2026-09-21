@@ -45,6 +45,7 @@ interface Props {
   sessionTitle?: string
   bookmarksEnabled?: boolean
   freeQuizSession?: boolean
+  initialQuestionIndex?: number
 }
 
 export function PracticeInterface({
@@ -54,9 +55,14 @@ export function PracticeInterface({
   sessionTitle,
   bookmarksEnabled = true,
   freeQuizSession = false,
+  initialQuestionIndex = 0,
 }: Props) {
   const router = useRouter()
-  const [current, setCurrent] = useState(0)
+  const safeInitialQuestionIndex =
+    questions.length > 0
+      ? Math.min(Math.max(0, initialQuestionIndex), questions.length - 1)
+      : 0
+  const [current, setCurrent] = useState(safeInitialQuestionIndex)
   // answers: questionId -> selected option key
   const [answers, setAnswers] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {}
@@ -73,6 +79,28 @@ export function PracticeInterface({
   const [reviewCursor, setReviewCursor] = useState(0)
   const submitted = useRef(false)
   const contentScrollRef = useRef<HTMLDivElement>(null)
+  const lastQueuedPosition = useRef(safeInitialQuestionIndex)
+  const positionSaveQueue = useRef<Promise<void>>(Promise.resolve())
+
+  useEffect(() => {
+    if (mode !== 'QUIZ' || current === lastQueuedPosition.current) return
+
+    lastQueuedPosition.current = current
+    positionSaveQueue.current = positionSaveQueue.current.then(async () => {
+      try {
+        await fetch(`/api/attempts/${attemptId}/position`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ questionIndex: current }),
+          keepalive: true,
+        })
+      } catch {
+        // Resume-position persistence is best effort. Checked answers are still
+        // persisted independently, and the server falls back to the first
+        // unanswered question if this lightweight position update ever fails.
+      }
+    })
+  }, [attemptId, current, mode])
 
   useEffect(() => {
     // The question pane is its own scroll container. Moving between questions
