@@ -6,8 +6,9 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { clientIp, isRateLimited, recordAttempt } from '@/lib/rate-limit'
 import { authConfig } from '@/lib/auth.config'
+import { activeAccountRole } from '@/lib/session-access'
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -106,3 +107,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 })
+
+
+export const { handlers, signIn, signOut } = nextAuth
+const rawAuth = nextAuth.auth
+
+// Every server-side authorization check re-reads the user's current account
+// state. JWT sessions otherwise remain valid after an admin deactivates an
+// account, which would let an already-signed-in user keep using protected
+// pages and APIs until the token expires.
+export async function auth() {
+  const session = await rawAuth()
+  if (!session?.user?.id) return session
+
+  const account = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true, role: true },
+  })
+  const role = activeAccountRole(account)
+  if (!role) return null
+
+  // Keep role changes made by an admin effective for existing sessions too.
+  session.user.role = role
+  return session
+}

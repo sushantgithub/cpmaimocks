@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   CheckCircle2, Clock, BarChart3, BookMarked,
-  Trophy, Users, Star, ArrowRight, Brain, Target,
+  Trophy, ArrowRight, Brain, Target,
   ShieldCheck, Smartphone
 } from 'lucide-react'
 import { PublicNav } from '@/components/layout/public-nav'
@@ -91,12 +91,12 @@ export default async function HomePage() {
             PMI CPMAI Exam Preparation
           </Badge>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6 text-balance">
-            Pass Your CPMAI Exam<br />
-            <span className="text-blue-200">With Confidence</span>
+            Prepare Smarter for the PMI CPMAI Exam<br />
+            <span className="text-blue-200">Know What to Improve Before Exam Day</span>
           </h1>
           <p className="text-lg md:text-xl text-blue-100 max-w-2xl mx-auto mb-8 leading-relaxed">
-            Realistic 120-question mock exams, domain-wise practice, and detailed explanations
-            — everything you need to clear the PMI CPMAI certification.
+            Build exam readiness with domain-wise quizzes, realistic timed mock exams, and detailed
+            explanations that show why each option is right or wrong.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="xl" className="bg-white text-blue-900 hover:bg-blue-50" asChild>
@@ -109,6 +109,17 @@ export default async function HomePage() {
             </Button>
           </div>
           <p className="mt-4 text-sm text-blue-200">Free plan available — no credit card required</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-blue-100">
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-4 w-4" /> Independent exam preparation
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Detailed answer explanations
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Smartphone className="h-4 w-4" /> Mobile friendly
+            </span>
+          </div>
         </div>
       </section>
 
@@ -175,7 +186,7 @@ export default async function HomePage() {
                 ))}
               </ul>
               <Button className="mt-8" asChild>
-                <Link href="/register">Try a Free Exam</Link>
+                <Link href="/register">Start Free CPMAI Practice</Link>
               </Button>
             </div>
 
