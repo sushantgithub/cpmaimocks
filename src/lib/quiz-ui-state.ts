@@ -22,9 +22,7 @@ export function initialExpandedQuizSlotKeys(
 
   for (const quiz of quizzes) {
     const active = quiz.slots.find(
-      (slot) =>
-        !slot.completed &&
-        (slot.activeAttemptId || slot.activeRetryAttemptId)
+      (slot) => slot.activeAttemptId || slot.activeRetryAttemptId
     )
     const nextActionable = quiz.slots.find(
       (slot) => !slot.completed && slot.lockReason === null
