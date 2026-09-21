@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
 import { normalizeAnswer, OPTION_KEYS } from '@/lib/answers'
 import {
+  assessExistingMockQuestionCollisions,
   explicitImportQuestionIds,
   questionIdImportErrors,
   validateNewMockImportConfig,
@@ -120,6 +121,7 @@ export async function POST(req: Request) {
       examId?: string
       newMock?: NewMockImportConfig
       publishMock?: boolean
+      replaceOrphanedMockQuestions?: boolean
     }
 
     const questions = body.questions
@@ -151,30 +153,72 @@ export async function POST(req: Request) {
       )
     }
 
-    // Preflight all explicit CSV question IDs before creating any questions or
-    // any new Mock Exam. This turns Prisma unique failures into actionable row
-    // errors and prevents an empty draft mock being left behind.
+    // First catch duplicate IDs inside the CSV itself. Existing-bank collisions
+    // are assessed separately so an admin can explicitly replace only safe,
+    // orphaned Mock questions left behind after deleting a Mock Exam.
+    const csvIdErrors = questionIdImportErrors(questions, [])
+    if (csvIdErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Duplicate question_id values must be fixed before import.',
+          errors: csvIdErrors.slice(0, 20),
+        },
+        { status: 409 },
+      )
+    }
+
     const explicitIds = explicitImportQuestionIds(questions)
     const uniqueExplicitIds = Array.from(new Set(explicitIds.map((item) => item.questionId)))
     const existingQuestions = uniqueExplicitIds.length > 0
       ? await prisma.question.findMany({
           where: { questionId: { in: uniqueExplicitIds } },
-          select: { questionId: true },
+          select: {
+            id: true,
+            questionId: true,
+            certificationId: true,
+            contentType: true,
+            _count: {
+              select: {
+                mockExamQuestions: true,
+                examAnswers: true,
+                bookmarks: true,
+              },
+            },
+          },
         })
       : []
-    const idErrors = questionIdImportErrors(
-      questions,
-      existingQuestions.map((question) => question.questionId),
-    )
-    if (idErrors.length > 0) {
+
+    const collisionAssessment = assessExistingMockQuestionCollisions({
+      rows: questions,
+      certificationId: certification.id,
+      allowReplaceOrphans:
+        body.contentType === 'MOCK_EXAM' &&
+        body.replaceOrphanedMockQuestions === true,
+      existingQuestions: existingQuestions.map((question) => ({
+        id: question.id,
+        questionId: question.questionId,
+        certificationId: question.certificationId,
+        contentType: question.contentType,
+        mockExamCount: question._count.mockExamQuestions,
+        examAnswerCount: question._count.examAnswers,
+        bookmarkCount: question._count.bookmarks,
+      })),
+    })
+
+    if (collisionAssessment.errors.length > 0) {
       return NextResponse.json(
         {
-          error: 'Duplicate question_id values must be fixed before import.',
-          errors: idErrors.slice(0, 20),
+          error:
+            body.contentType === 'MOCK_EXAM' && body.replaceOrphanedMockQuestions
+              ? 'Some existing questions cannot be replaced safely.'
+              : 'Duplicate question_id values must be fixed before import.',
+          errors: collisionAssessment.errors.slice(0, 20),
         },
         { status: 409 },
       )
     }
+
+    const replaceDatabaseIds = collisionAssessment.replaceDatabaseIds
 
     let existingMock:
       | {
@@ -248,6 +292,27 @@ export async function POST(req: Request) {
       let examStatus: 'PUBLISHED' | null = null
       let targetMock = existingMock
       let createdMock = false
+
+      if (replaceDatabaseIds.length > 0) {
+        // Re-check every safety condition inside the same transaction. If
+        // another process assigned/bookmarked/answered a question after the
+        // preflight, the delete count will differ and the entire import rolls
+        // back instead of deleting history.
+        const deleted = await tx.question.deleteMany({
+          where: {
+            id: { in: replaceDatabaseIds },
+            certificationId: certification.id,
+            contentType: 'MOCK_EXAM',
+            mockExamQuestions: { none: {} },
+            examAnswers: { none: {} },
+            bookmarks: { none: {} },
+          },
+        })
+
+        if (deleted.count !== replaceDatabaseIds.length) {
+          throw new Error('ORPHAN_REPLACEMENT_CONFLICT')
+        }
+      }
 
       if (body.contentType === 'MOCK_EXAM' && !targetMock) {
         const config = body.newMock!
@@ -402,6 +467,7 @@ export async function POST(req: Request) {
         examId: targetMock?.id ?? null,
         examTitle: targetMock?.title ?? null,
         createdMock,
+        replacedQuestionCount: replaceDatabaseIds.length,
       }
     })
 
@@ -411,11 +477,22 @@ export async function POST(req: Request) {
       examId: created.examId,
       examTitle: created.examTitle,
       createdMock: created.createdMock,
+      replacedQuestionCount: created.replacedQuestionCount,
       examStatus: created.examStatus,
       errors: [],
     })
   } catch (err) {
     console.error('[ImportQuestions]', err)
+
+    if (err instanceof Error && err.message === 'ORPHAN_REPLACEMENT_CONFLICT') {
+      return NextResponse.json(
+        {
+          error:
+            'An old Mock question became ineligible for safe replacement while the import was running. Nothing was changed; refresh and retry.',
+        },
+        { status: 409 },
+      )
+    }
 
     if (
       err instanceof Prisma.PrismaClientKnownRequestError &&

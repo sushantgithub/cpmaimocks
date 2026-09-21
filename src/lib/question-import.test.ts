@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assessExistingMockQuestionCollisions,
   explicitImportQuestionIds,
   questionIdImportErrors,
   validateNewMockImportConfig,
@@ -45,6 +46,123 @@ describe('question import ID validation', () => {
       'Row 3: question_id "SHARED" is duplicated in this CSV (first used on row 2).',
       'Row 3: question_id "SHARED" already exists in the Question Bank.',
     ])
+  })
+})
+
+describe('orphaned Mock question replacement', () => {
+  const rows = [
+    { question_id: 'M5-001' },
+    { question_id: 'M5-002' },
+  ]
+
+  it('allows replacing only safe orphaned MOCK_EXAM questions', () => {
+    expect(assessExistingMockQuestionCollisions({
+      rows,
+      certificationId: 'cpmai',
+      allowReplaceOrphans: true,
+      existingQuestions: [
+        {
+          id: 'db-1',
+          questionId: 'M5-001',
+          certificationId: 'cpmai',
+          contentType: 'MOCK_EXAM',
+          mockExamCount: 0,
+          examAnswerCount: 0,
+          bookmarkCount: 0,
+        },
+      ],
+    })).toEqual({
+      errors: [],
+      replaceDatabaseIds: ['db-1'],
+    })
+  })
+
+  it('does not replace an orphan unless the admin explicitly opted in', () => {
+    expect(assessExistingMockQuestionCollisions({
+      rows,
+      certificationId: 'cpmai',
+      allowReplaceOrphans: false,
+      existingQuestions: [
+        {
+          id: 'db-1',
+          questionId: 'M5-001',
+          certificationId: 'cpmai',
+          contentType: 'MOCK_EXAM',
+          mockExamCount: 0,
+          examAnswerCount: 0,
+          bookmarkCount: 0,
+        },
+      ],
+    })).toEqual({
+      errors: ['Row 2: question_id "M5-001" already exists in the Question Bank.'],
+      replaceDatabaseIds: [],
+    })
+  })
+
+  it('blocks replacement when the old question is still assigned to a mock', () => {
+    const result = assessExistingMockQuestionCollisions({
+      rows,
+      certificationId: 'cpmai',
+      allowReplaceOrphans: true,
+      existingQuestions: [
+        {
+          id: 'db-1',
+          questionId: 'M5-001',
+          certificationId: 'cpmai',
+          contentType: 'MOCK_EXAM',
+          mockExamCount: 1,
+          examAnswerCount: 0,
+          bookmarkCount: 0,
+        },
+      ],
+    })
+
+    expect(result.replaceDatabaseIds).toEqual([])
+    expect(result.errors[0]).toContain('still assigned to another Mock Exam')
+  })
+
+  it('blocks replacement when the old question has learner history', () => {
+    const result = assessExistingMockQuestionCollisions({
+      rows,
+      certificationId: 'cpmai',
+      allowReplaceOrphans: true,
+      existingQuestions: [
+        {
+          id: 'db-1',
+          questionId: 'M5-001',
+          certificationId: 'cpmai',
+          contentType: 'MOCK_EXAM',
+          mockExamCount: 0,
+          examAnswerCount: 2,
+          bookmarkCount: 0,
+        },
+      ],
+    })
+
+    expect(result.replaceDatabaseIds).toEqual([])
+    expect(result.errors[0]).toContain('learner history or bookmarks')
+  })
+
+  it('never replaces Quiz or Practice content just because IDs collide', () => {
+    const result = assessExistingMockQuestionCollisions({
+      rows,
+      certificationId: 'cpmai',
+      allowReplaceOrphans: true,
+      existingQuestions: [
+        {
+          id: 'db-1',
+          questionId: 'M5-001',
+          certificationId: 'cpmai',
+          contentType: 'QUIZ',
+          mockExamCount: 0,
+          examAnswerCount: 0,
+          bookmarkCount: 0,
+        },
+      ],
+    })
+
+    expect(result.replaceDatabaseIds).toEqual([])
+    expect(result.errors[0]).toContain('not an orphaned Mock question')
   })
 })
 

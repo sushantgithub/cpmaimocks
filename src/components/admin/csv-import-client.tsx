@@ -114,6 +114,7 @@ export function CsvImportClient() {
   const [importResult, setImportResult] = useState<{ count: number; examTitle?: string } | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [publishNow, setPublishNow] = useState(true)
+  const [replaceOrphanedMockQuestions, setReplaceOrphanedMockQuestions] = useState(false)
 
   const [certifications, setCertifications] = useState<Certification[]>([])
   const [certificationId, setCertificationId] = useState('')
@@ -164,12 +165,14 @@ export function CsvImportClient() {
   function chooseCertification(value: string) {
     setCertificationId(value)
     setExamId('')
+    setReplaceOrphanedMockQuestions(false)
     clearFileState()
   }
 
   function chooseContentType(value: ContentType | '') {
     setContentType(value)
     setExamId('')
+    setReplaceOrphanedMockQuestions(false)
     clearFileState()
   }
 
@@ -306,6 +309,8 @@ export function CsvImportClient() {
                 }
               : undefined,
           publishMock: contentType === 'MOCK_EXAM' ? publishNow : undefined,
+          replaceOrphanedMockQuestions:
+            contentType === 'MOCK_EXAM' ? replaceOrphanedMockQuestions : undefined,
           questions: preview.valid.map((question) => ({
             ...question,
             status: publishNow ? 'PUBLISHED' : 'DRAFT',
@@ -323,11 +328,13 @@ export function CsvImportClient() {
       toast({
         title: `${data.imported} questions imported successfully`,
         description:
-          contentType === 'MOCK_EXAM' && publishNow
-            ? data.examStatus === 'PUBLISHED'
-              ? 'Mock Exam published successfully.'
-              : 'Questions were published, but the Mock Exam stayed in Draft because not all assigned questions are published.'
-            : undefined,
+          data.replacedQuestionCount > 0
+            ? `${data.replacedQuestionCount} orphaned Mock question${data.replacedQuestionCount === 1 ? '' : 's'} were safely replaced before import.`
+            : contentType === 'MOCK_EXAM' && publishNow
+              ? data.examStatus === 'PUBLISHED'
+                ? 'Mock Exam published successfully.'
+                : 'Questions were published, but the Mock Exam stayed in Draft because not all assigned questions are published.'
+              : undefined,
         variant: 'success',
       })
       setImportResult({
@@ -336,6 +343,7 @@ export function CsvImportClient() {
       })
       setImported(true)
       setPreview(null)
+      setReplaceOrphanedMockQuestions(false)
 
       if (contentType === 'MOCK_EXAM') {
         fetch('/api/admin/exams')
@@ -732,6 +740,25 @@ export function CsvImportClient() {
             </Card>
           )}
 
+          {contentType === 'MOCK_EXAM' && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <label className="flex items-start gap-2 text-sm text-amber-900">
+                <input
+                  type="checkbox"
+                  checked={replaceOrphanedMockQuestions}
+                  onChange={(event) => setReplaceOrphanedMockQuestions(event.target.checked)}
+                  className="h-4 w-4 rounded border-amber-300 mt-0.5"
+                />
+                <span>
+                  <strong>Re-import a deleted Mock using the same question IDs</strong>
+                  <span className="block text-xs font-normal mt-1">
+                    Replace only matching orphaned MOCK_EXAM questions that are no longer assigned to any Mock and have no learner answers or bookmarks. Anything with history or another assignment is blocked and will not be deleted.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
+
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"
@@ -786,6 +813,7 @@ export function CsvImportClient() {
                 setImportResult(null)
                 setExamId('')
                 setNewMock(NEW_MOCK_DEFAULTS)
+                setReplaceOrphanedMockQuestions(false)
               }}
             >
               Import More
