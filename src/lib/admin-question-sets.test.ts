@@ -32,6 +32,32 @@ describe('admin question set filters', () => {
     })
   })
 
+  it('does not expose legacy MockExam containers with zero MOCK_EXAM questions', () => {
+    const options = buildMockQuestionSetOptions([
+      {
+        id: 'legacy-domain-container',
+        title: 'Support Responsible and Trustworthy AI Efforts',
+        certificationId: 'cert-1',
+        certificationName: 'CPMAI',
+        questionCount: 0,
+      },
+      {
+        id: 'practice-exam-1',
+        title: 'PMI-CPMAI Practice Exam 1',
+        certificationId: 'cert-1',
+        certificationName: 'CPMAI',
+        questionCount: 40,
+      },
+    ])
+
+    expect(options).toHaveLength(1)
+    expect(options[0]).toMatchObject({
+      value: 'mock:practice-exam-1',
+      count: 40,
+    })
+    expect(options.some((option) => option.value === 'mock:legacy-domain-container')).toBe(false)
+  })
+
   it('builds deterministic domain quiz slots and excludes active tag-quiz questions', () => {
     const questions = Array.from({ length: 12 }, (_, index) => ({
       id: `q${index + 1}`,
