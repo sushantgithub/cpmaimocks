@@ -14,7 +14,7 @@ const safe = {
   DATABASE_URL: 'postgresql://postgres.stageproject123:secret@pooler.supabase.com:6543/postgres',
   DIRECT_URL: 'postgresql://postgres.stageproject123:secret@pooler.supabase.com:5432/postgres',
   VERCEL_BRANCH_URL: 'cpmaimocks-git-staging-cpmaiprep.vercel.app',
-  STAGING_NEXTAUTH_SECRET: 'staging-secret-only',
+  NEXTAUTH_SECRET: 'staging-secret-only',
 }
 
 describe('staging environment safety', () => {
@@ -61,25 +61,20 @@ describe('staging environment safety', () => {
     )
   })
 
-  it('requires a staging-specific auth secret rather than inheriting production', () => {
+  it('requires the branch-scoped NextAuth secret in staging', () => {
     const problems = stagingEnvironmentProblems({
       ...safe,
-      STAGING_NEXTAUTH_SECRET: undefined,
-      NEXTAUTH_SECRET: 'production-secret',
+      NEXTAUTH_SECRET: undefined,
     })
-    expect(problems).toContain('STAGING_NEXTAUTH_SECRET is required in staging')
+    expect(problems).toContain('NEXTAUTH_SECRET (or AUTH_SECRET) is required in staging')
     expect(authSecretForEnvironment({
       ...safe,
-      STAGING_NEXTAUTH_SECRET: undefined,
-      NEXTAUTH_SECRET: 'production-secret',
+      NEXTAUTH_SECRET: undefined,
     })).toBeUndefined()
   })
 
-  it('uses the staging auth secret only on staging', () => {
-    expect(authSecretForEnvironment({
-      ...safe,
-      NEXTAUTH_SECRET: 'production-secret',
-    })).toBe('staging-secret-only')
+  it('uses the branch-scoped auth secret in staging and production', () => {
+    expect(authSecretForEnvironment(safe)).toBe('staging-secret-only')
     expect(authSecretForEnvironment({
       APP_ENV: 'production',
       NEXTAUTH_SECRET: 'production-secret',
