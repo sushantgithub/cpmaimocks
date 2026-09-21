@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
 import { normalizeAnswer, OPTION_KEYS } from '@/lib/answers'
+import {
+  explicitImportQuestionIds,
+  questionIdImportErrors,
+  validateNewMockImportConfig,
+  type NewMockImportConfig,
+} from '@/lib/question-import'
 
 interface ImportRow {
   question_id?: string
@@ -111,6 +118,7 @@ export async function POST(req: Request) {
       certificationId?: string
       contentType?: ContentType
       examId?: string
+      newMock?: NewMockImportConfig
       publishMock?: boolean
     }
 
@@ -143,59 +151,136 @@ export async function POST(req: Request) {
       )
     }
 
-    let mockExam:
-      | { id: string; questionCount: number; assignedCount: number }
+    // Preflight all explicit CSV question IDs before creating any questions or
+    // any new Mock Exam. This turns Prisma unique failures into actionable row
+    // errors and prevents an empty draft mock being left behind.
+    const explicitIds = explicitImportQuestionIds(questions)
+    const uniqueExplicitIds = Array.from(new Set(explicitIds.map((item) => item.questionId)))
+    const existingQuestions = uniqueExplicitIds.length > 0
+      ? await prisma.question.findMany({
+          where: { questionId: { in: uniqueExplicitIds } },
+          select: { questionId: true },
+        })
+      : []
+    const idErrors = questionIdImportErrors(
+      questions,
+      existingQuestions.map((question) => question.questionId),
+    )
+    if (idErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Duplicate question_id values must be fixed before import.',
+          errors: idErrors.slice(0, 20),
+        },
+        { status: 409 },
+      )
+    }
+
+    let existingMock:
+      | {
+          id: string
+          title: string
+          questionCount: number
+          assignedCount: number
+        }
       | null = null
 
     if (body.contentType === 'MOCK_EXAM') {
-      if (!body.examId) {
+      if (body.examId && body.newMock) {
         return NextResponse.json(
-          { error: 'Choose or create a Mock Exam before importing mock questions' },
-          { status: 400 }
+          { error: 'Choose either an existing Mock Exam or create a new one, not both.' },
+          { status: 400 },
         )
       }
 
-      const exam = await prisma.mockExam.findFirst({
-        where: { id: body.examId, certificationId: certification.id },
-        select: {
-          id: true,
-          questionCount: true,
-          _count: { select: { questions: true } },
-        },
-      })
-      if (!exam) {
-        return NextResponse.json(
-          { error: 'Mock Exam not found for the selected certification' },
-          { status: 404 }
-        )
-      }
-
-      const missing = exam.questionCount - exam._count.questions
-      if (missing <= 0) {
-        return NextResponse.json(
-          { error: 'This Mock Exam already has its configured number of questions' },
-          { status: 409 }
-        )
-      }
-      if (questions.length !== missing) {
-        return NextResponse.json(
-          {
-            error: `This Mock Exam needs exactly ${missing} more question${missing === 1 ? '' : 's'}. The import contains ${questions.length}.`,
+      if (body.examId) {
+        const exam = await prisma.mockExam.findFirst({
+          where: { id: body.examId, certificationId: certification.id },
+          select: {
+            id: true,
+            title: true,
+            questionCount: true,
+            _count: { select: { questions: true } },
           },
-          { status: 400 }
-        )
-      }
+        })
+        if (!exam) {
+          return NextResponse.json(
+            { error: 'Mock Exam not found for the selected certification' },
+            { status: 404 }
+          )
+        }
 
-      mockExam = {
-        id: exam.id,
-        questionCount: exam.questionCount,
-        assignedCount: exam._count.questions,
+        const missing = exam.questionCount - exam._count.questions
+        if (missing <= 0) {
+          return NextResponse.json(
+            { error: 'This Mock Exam already has its configured number of questions' },
+            { status: 409 }
+          )
+        }
+        if (questions.length !== missing) {
+          return NextResponse.json(
+            {
+              error: `This Mock Exam needs exactly ${missing} more question${missing === 1 ? '' : 's'}. The import contains ${questions.length}.`,
+            },
+            { status: 400 }
+          )
+        }
+
+        existingMock = {
+          id: exam.id,
+          title: exam.title,
+          questionCount: exam.questionCount,
+          assignedCount: exam._count.questions,
+        }
+      } else {
+        const newMockErrors = validateNewMockImportConfig(body.newMock, questions.length)
+        if (newMockErrors.length > 0) {
+          return NextResponse.json(
+            { error: 'New Mock Exam validation failed', errors: newMockErrors },
+            { status: 400 },
+          )
+        }
       }
     }
 
     const created = await prisma.$transaction(async (tx) => {
       const questionIds: string[] = []
       let examStatus: 'PUBLISHED' | null = null
+      let targetMock = existingMock
+      let createdMock = false
+
+      if (body.contentType === 'MOCK_EXAM' && !targetMock) {
+        const config = body.newMock!
+        const exam = await tx.mockExam.create({
+          data: {
+            title: config.title!.trim(),
+            slug: `${slugify(config.title!.trim())}-${Date.now()}`,
+            certificationId: certification.id,
+            description: null,
+            questionCount: Number(config.questionCount),
+            timeLimitMinutes: Number(config.timeLimitMinutes),
+            passingScore: Number(config.passingScore),
+            questionsPerAttempt: null,
+            requireSubscription: config.requireSubscription ?? true,
+            randomizeQuestions: true,
+            showExplanations: false,
+            status: 'DRAFT',
+          },
+          select: {
+            id: true,
+            title: true,
+            questionCount: true,
+          },
+        })
+
+        targetMock = {
+          id: exam.id,
+          title: exam.title,
+          questionCount: exam.questionCount,
+          assignedCount: 0,
+        }
+        createdMock = true
+      }
 
       for (let index = 0; index < questions.length; index++) {
         const row = questions[index]
@@ -277,52 +362,74 @@ export async function POST(req: Request) {
 
         questionIds.push(question.id)
 
-        if (mockExam) {
+        if (targetMock) {
           await tx.mockExamQuestion.create({
             data: {
-              examId: mockExam.id,
+              examId: targetMock.id,
               questionId: question.id,
-              sortOrder: mockExam.assignedCount + index,
+              sortOrder: targetMock.assignedCount + index,
             },
           })
         }
       }
 
-      if (mockExam && body.publishMock) {
+      if (targetMock && body.publishMock) {
         const [assignedCount, publishedAssignedCount] = await Promise.all([
-          tx.mockExamQuestion.count({ where: { examId: mockExam.id } }),
+          tx.mockExamQuestion.count({ where: { examId: targetMock.id } }),
           tx.mockExamQuestion.count({
             where: {
-              examId: mockExam.id,
+              examId: targetMock.id,
               question: { status: 'PUBLISHED' },
             },
           }),
         ])
 
         if (
-          assignedCount === mockExam.questionCount &&
-          publishedAssignedCount === mockExam.questionCount
+          assignedCount === targetMock.questionCount &&
+          publishedAssignedCount === targetMock.questionCount
         ) {
           await tx.mockExam.update({
-            where: { id: mockExam.id },
+            where: { id: targetMock.id },
             data: { status: 'PUBLISHED' },
           })
           examStatus = 'PUBLISHED'
         }
       }
 
-      return { questionIds, examStatus }
+      return {
+        questionIds,
+        examStatus,
+        examId: targetMock?.id ?? null,
+        examTitle: targetMock?.title ?? null,
+        createdMock,
+      }
     })
 
     return NextResponse.json({
       imported: created.questionIds.length,
       contentType: body.contentType,
-      examId: mockExam?.id ?? null,
+      examId: created.examId,
+      examTitle: created.examTitle,
+      createdMock: created.createdMock,
       examStatus: created.examStatus,
       errors: [],
     })
   } catch (err) {
     console.error('[ImportQuestions]', err)
+
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'A question_id became duplicated while the import was running. Nothing was imported; update the duplicate ID and retry.',
+        },
+        { status: 409 },
+      )
+    }
+
     const message = err instanceof Error ? err.message : 'Import failed'
     return NextResponse.json({ error: message }, { status: 500 })
   }
