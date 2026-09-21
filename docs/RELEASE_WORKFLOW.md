@@ -15,6 +15,8 @@
 
 ## Vercel build budget
 
-The repository's `vercel.json` ignores ordinary commits. A Vercel build is requested only when the latest commit message contains either `[staging]` or `[deploy]`.
+Vercel Git deployments are disabled for feature branches entirely. Only the permanent `staging` branch and the production branch may create Vercel deployments.
 
-This prevents every small implementation commit from consuming a Preview build.
+On those two branches, the `ignoreCommand` adds a second gate: a build is requested only when the latest commit message contains `[staging]` or `[deploy]`.
+
+This means normal feature-branch pushes use GitHub CI only and do not create Vercel Preview deployment attempts.
