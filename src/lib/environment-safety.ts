@@ -24,7 +24,7 @@ export function isStagingEnvironment(env: EnvLike = process.env) {
 
 export function authSecretForEnvironment(env: EnvLike = process.env) {
   if (isStagingEnvironment(env)) {
-    return env.STAGING_NEXTAUTH_SECRET?.trim() || undefined
+    return env.NEXTAUTH_SECRET?.trim() || env.AUTH_SECRET?.trim() || undefined
   }
   return env.AUTH_SECRET?.trim() || env.NEXTAUTH_SECRET?.trim() || undefined
 }
@@ -82,8 +82,8 @@ export function stagingEnvironmentProblems(env: EnvLike): string[] {
     problems.push('Authentication URL must not point to the production CertMocks domain')
   }
 
-  if (!env.STAGING_NEXTAUTH_SECRET?.trim()) {
-    problems.push('STAGING_NEXTAUTH_SECRET is required in staging')
+  if (!env.NEXTAUTH_SECRET?.trim() && !env.AUTH_SECRET?.trim()) {
+    problems.push('NEXTAUTH_SECRET (or AUTH_SECRET) is required in staging')
   }
 
   return problems
