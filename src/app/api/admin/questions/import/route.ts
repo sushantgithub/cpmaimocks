@@ -5,6 +5,12 @@ import { prisma } from '@/lib/db'
 import { slugify } from '@/lib/utils'
 import { normalizeAnswer, OPTION_KEYS } from '@/lib/answers'
 import {
+  chooseMockSortOrder,
+  hasDuplicateMockExamTitle,
+  isFullMockExam,
+  mockExamDisplayGroup,
+} from '@/lib/mock-exams'
+import {
   assessExistingMockQuestionCollisions,
   explicitImportQuestionIds,
   questionIdImportErrors,
@@ -284,6 +290,29 @@ export async function POST(req: Request) {
             { status: 400 },
           )
         }
+
+        const requestedTitle = body.newMock!.title!.trim().replace(/\s+/g, ' ')
+        const siblings = await prisma.mockExam.findMany({
+          where: { certificationId: certification.id },
+          select: {
+            id: true,
+            title: true,
+            sortOrder: true,
+            questionCount: true,
+            questionsPerAttempt: true,
+            timeLimitMinutes: true,
+          },
+        })
+
+        if (hasDuplicateMockExamTitle(requestedTitle, siblings)) {
+          return NextResponse.json(
+            {
+              error: `A Mock Exam named "${requestedTitle}" already exists for ${certification.name}. Choose a different name.`,
+              code: 'DUPLICATE_MOCK_NAME',
+            },
+            { status: 409 },
+          )
+        }
       }
     }
 
@@ -316,19 +345,48 @@ export async function POST(req: Request) {
 
       if (body.contentType === 'MOCK_EXAM' && !targetMock) {
         const config = body.newMock!
+        const title = config.title!.trim().replace(/\s+/g, ' ')
+        const questionCount = Number(config.questionCount)
+
+        // Re-check name uniqueness inside the transaction as well as during
+        // preflight, then give the new mock a persistent display slot.
+        const siblings = await tx.mockExam.findMany({
+          where: { certificationId: certification.id },
+          select: {
+            id: true,
+            title: true,
+            sortOrder: true,
+            questionCount: true,
+            questionsPerAttempt: true,
+            timeLimitMinutes: true,
+          },
+        })
+        if (hasDuplicateMockExamTitle(title, siblings)) {
+          throw new Error('DUPLICATE_MOCK_NAME')
+        }
+
+        const incomingGroup = mockExamDisplayGroup(questionCount)
+        const sameGroup = siblings.filter(
+          (candidate) =>
+            isFullMockExam(candidate) &&
+            mockExamDisplayGroup(candidate.questionCount) === incomingGroup,
+        )
+        const sortOrder = chooseMockSortOrder(title, sameGroup)
+
         const exam = await tx.mockExam.create({
           data: {
-            title: config.title!.trim(),
-            slug: `${slugify(config.title!.trim())}-${Date.now()}`,
+            title,
+            slug: `${slugify(title)}-${Date.now()}`,
             certificationId: certification.id,
             description: null,
-            questionCount: Number(config.questionCount),
+            questionCount,
             timeLimitMinutes: Number(config.timeLimitMinutes),
             passingScore: Number(config.passingScore),
             questionsPerAttempt: null,
             requireSubscription: config.requireSubscription ?? true,
             randomizeQuestions: true,
             showExplanations: false,
+            sortOrder,
             status: 'DRAFT',
           },
           select: {
@@ -483,6 +541,16 @@ export async function POST(req: Request) {
     })
   } catch (err) {
     console.error('[ImportQuestions]', err)
+
+    if (err instanceof Error && err.message === 'DUPLICATE_MOCK_NAME') {
+      return NextResponse.json(
+        {
+          error: 'A Mock Exam with this name already exists for the selected certification. Choose a different name.',
+          code: 'DUPLICATE_MOCK_NAME',
+        },
+        { status: 409 },
+      )
+    }
 
     if (err instanceof Error && err.message === 'ORPHAN_REPLACEMENT_CONFLICT') {
       return NextResponse.json(
