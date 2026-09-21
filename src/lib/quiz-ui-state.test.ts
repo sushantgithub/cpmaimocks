@@ -3,6 +3,8 @@ import {
   initialExpandedQuizSlotKeys,
   quizSlotExpansionKey,
   quizSlotStatusLabel,
+  needsMultiAnswerCheck,
+  showQuizHistorySummary,
 } from './quiz-ui-state'
 
 describe('quiz slot status labels', () => {
@@ -134,5 +136,48 @@ describe('quiz slot expansion state', () => {
         ],
       },
     ])).toEqual([quizSlotExpansionKey('domain:ai', 1)])
+  })
+})
+
+
+describe('quiz question primary action state', () => {
+  it('requires Check Answer only for unrevealed multiple-answer questions', () => {
+    expect(needsMultiAnswerCheck({ isMultiAnswer: true, revealed: false })).toBe(true)
+    expect(needsMultiAnswerCheck({ isMultiAnswer: true, revealed: true })).toBe(false)
+    expect(needsMultiAnswerCheck({ isMultiAnswer: false, revealed: false })).toBe(false)
+  })
+})
+
+describe('quiz history visibility while a session is active', () => {
+  it('hides completed-attempt summary while a full quiz is in progress', () => {
+    expect(showQuizHistorySummary({
+      attemptCount: 4,
+      activeAttemptId: 'active-quiz',
+      activeRetryAttemptId: null,
+    })).toBe(false)
+  })
+
+  it('hides completed-attempt summary while focused practice is active', () => {
+    expect(showQuizHistorySummary({
+      attemptCount: 4,
+      activeAttemptId: null,
+      activeRetryAttemptId: 'active-retry',
+    })).toBe(false)
+  })
+
+  it('shows history again after the active session is gone', () => {
+    expect(showQuizHistorySummary({
+      attemptCount: 4,
+      activeAttemptId: null,
+      activeRetryAttemptId: null,
+    })).toBe(true)
+  })
+
+  it('does not render an empty history summary', () => {
+    expect(showQuizHistorySummary({
+      attemptCount: 0,
+      activeAttemptId: null,
+      activeRetryAttemptId: null,
+    })).toBe(false)
   })
 })

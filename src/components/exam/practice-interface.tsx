@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '@/lib/answers'
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import { buildUnansweredQueue, finishNeedsConfirmation, reviewQueueTarget } from '@/lib/review-unanswered'
+import { needsMultiAnswerCheck } from '@/lib/quiz-ui-state'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle, Lock
@@ -121,8 +122,11 @@ export function PracticeInterface({
   const reviewMode = reviewQueue !== null
   const correctLetters = answerLetters(q.correctAnswer)
   const chosenLetters = revealed ? answerLetters(selectedAnswer) : pending
-  const hasPendingSelection = !revealed && pending.length > 0
   const pendingReady = multi ? pending.length === selectCount : pending.length === 1
+  const multiNeedsCheck = needsMultiAnswerCheck({
+    isMultiAnswer: multi,
+    revealed,
+  })
 
   async function commitAnswer(selection: string[]) {
     if (answers[q.id] || answerSaving === q.id) return
@@ -318,11 +322,11 @@ export function PracticeInterface({
 
         <Button
           size="sm"
-          onClick={() => hasPendingSelection ? submitAnswer() : finishAttempt()}
-          disabled={submitting || answerSaving === q.id || (hasPendingSelection && !pendingReady)}
+          onClick={finishAttempt}
+          disabled={submitting || answerSaving === q.id}
         >
           <Send className="h-3.5 w-3.5 mr-1.5" />
-          {hasPendingSelection ? 'Check Answer' : unansweredCount === 0 ? 'See Results' : 'Finish'}
+          {unansweredCount === 0 ? 'See Results' : 'Finish'}
         </Button>
       </header>
 
@@ -403,19 +407,6 @@ export function PracticeInterface({
               })}
             </div>
 
-            {!revealed && multi && (
-              <div className="mt-4">
-                <Button
-                  className="w-full"
-                  onClick={submitAnswer}
-                  disabled={!pendingReady || answerSaving === q.id}
-                  loading={answerSaving === q.id}
-                >
-                  Check Answer
-                </Button>
-              </div>
-            )}
-
             {/* Result + Explanation (shown after answering) */}
             {revealed && (
               <div id={`feedback-${q.id}`} tabIndex={-1} className={cn(
@@ -474,8 +465,13 @@ export function PracticeInterface({
                 }
               </button>}
 
-              {hasPendingSelection ? (
-                <Button size="sm" onClick={submitAnswer} disabled={!pendingReady || answerSaving === q.id} loading={answerSaving === q.id}>
+              {multiNeedsCheck ? (
+                <Button
+                  size="sm"
+                  onClick={submitAnswer}
+                  disabled={!pendingReady || answerSaving === q.id}
+                  loading={answerSaving === q.id}
+                >
                   Check Answer<ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               ) : reviewMode && reviewQueue ? (
