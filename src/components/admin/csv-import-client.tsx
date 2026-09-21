@@ -273,25 +273,6 @@ export function CsvImportClient() {
     return null
   }
 
-  async function createMockExam() {
-    const response = await fetch('/api/admin/exams', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        certificationId,
-        title: newMock.title.trim(),
-        questionCount: Number(newMock.questionCount),
-        timeLimitMinutes: Number(newMock.timeLimitMinutes),
-        passingScore: Number(newMock.passingScore),
-        requireSubscription: newMock.requireSubscription,
-        randomizeQuestions: true,
-        questionsPerAttempt: null,
-      }),
-    })
-    const data = await response.json()
-    if (!response.ok) throw new Error(data.error ?? 'Failed to create Mock Exam')
-    return data as { id: string; title: string }
-  }
 
   async function importQuestions() {
     if (!preview?.valid.length || !certificationId || !contentType) return
@@ -303,16 +284,10 @@ export function CsvImportClient() {
     }
 
     setImporting(true)
-    let targetExamId = contentType === 'MOCK_EXAM' && mockMode === 'EXISTING' ? examId : undefined
-    let createdExamTitle: string | undefined
+    const targetExamId =
+      contentType === 'MOCK_EXAM' && mockMode === 'EXISTING' ? examId : undefined
 
     try {
-      if (contentType === 'MOCK_EXAM' && mockMode === 'NEW') {
-        const exam = await createMockExam()
-        targetExamId = exam.id
-        createdExamTitle = exam.title
-      }
-
       const response = await fetch('/api/admin/questions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -320,6 +295,16 @@ export function CsvImportClient() {
           certificationId,
           contentType,
           examId: targetExamId,
+          newMock:
+            contentType === 'MOCK_EXAM' && mockMode === 'NEW'
+              ? {
+                  title: newMock.title.trim(),
+                  questionCount: Number(newMock.questionCount),
+                  timeLimitMinutes: Number(newMock.timeLimitMinutes),
+                  passingScore: Number(newMock.passingScore),
+                  requireSubscription: newMock.requireSubscription,
+                }
+              : undefined,
           publishMock: contentType === 'MOCK_EXAM' ? publishNow : undefined,
           questions: preview.valid.map((question) => ({
             ...question,
@@ -347,7 +332,7 @@ export function CsvImportClient() {
       })
       setImportResult({
         count: data.imported,
-        examTitle: createdExamTitle ?? selectedExam?.title,
+        examTitle: data.examTitle ?? selectedExam?.title,
       })
       setImported(true)
       setPreview(null)
@@ -362,9 +347,8 @@ export function CsvImportClient() {
       const err = error instanceof Error ? error : new Error('Import failed')
       toast({
         title: err.message,
-        description: createdExamTitle
-          ? `${createdExamTitle} was created as a draft. You can retry the import into that existing mock.`
-          : undefined,
+        description:
+          'No new Mock Exam or questions were created by the failed import. Fix the reported row/ID and retry.',
         variant: 'destructive',
       })
     } finally {
