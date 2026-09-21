@@ -51,14 +51,16 @@ function labelWithCertification(certificationName: string | null | undefined, la
 export function buildMockQuestionSetOptions(
   exams: MockQuestionSetSource[],
 ): AdminQuestionSetOption[] {
-  return exams.map((exam) => ({
-    value: `mock:${exam.id}`,
-    label: labelWithCertification(exam.certificationName, exam.title),
-    count: exam.questionCount,
-    contentType: 'MOCK_EXAM',
-    kind: 'MOCK',
-    entityId: exam.id,
-  }))
+  return exams
+    .filter((exam) => exam.questionCount > 0)
+    .map((exam) => ({
+      value: `mock:${exam.id}`,
+      label: labelWithCertification(exam.certificationName, exam.title),
+      count: exam.questionCount,
+      contentType: 'MOCK_EXAM',
+      kind: 'MOCK',
+      entityId: exam.id,
+    }))
 }
 
 function chunkQuestionIds(ids: string[], size: number) {
