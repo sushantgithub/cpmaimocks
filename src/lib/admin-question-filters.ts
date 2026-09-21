@@ -10,6 +10,7 @@ export interface QuestionBankSearchParams {
   certification?: string
   isTest?: string
   contentType?: string
+  contentSet?: string
 }
 
 export function normalizeQuestionContentType(value?: string): QuestionContentTypeFilter | undefined {
@@ -50,7 +51,15 @@ export function buildQuestionBankPageHref(
 ) {
   const params = new URLSearchParams()
 
-  for (const key of ['search', 'status', 'difficulty', 'certification', 'isTest', 'contentType'] as const) {
+  for (const key of [
+    'search',
+    'status',
+    'difficulty',
+    'certification',
+    'isTest',
+    'contentType',
+    'contentSet',
+  ] as const) {
     const value = searchParams[key]
     if (value) params.set(key, value)
   }
