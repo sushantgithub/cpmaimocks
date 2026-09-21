@@ -136,3 +136,5 @@ Upload at: Admin → Questions → Import CSV
 - [ ] Set up webhook signature verification (already in code)
 
 <!-- deploy trigger: quiz refresh and availability badge fixes -->
+
+<!-- deploy trigger: completed quiz status precedence regression fix -->
