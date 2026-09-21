@@ -138,3 +138,5 @@ Upload at: Admin → Questions → Import CSV
 <!-- deploy trigger: quiz refresh and availability badge fixes -->
 
 <!-- deploy trigger: completed quiz status precedence regression fix -->
+
+<!-- deploy trigger: grouped 40-question and full-length mock exam UI -->
