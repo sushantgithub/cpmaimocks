@@ -49,6 +49,78 @@ export function questionIdImportErrors(
   return errors
 }
 
+export interface ExistingImportQuestion {
+  id: string
+  questionId: string
+  certificationId: string
+  contentType: string
+  mockExamCount: number
+  examAnswerCount: number
+  bookmarkCount: number
+}
+
+export function assessExistingMockQuestionCollisions({
+  rows,
+  existingQuestions,
+  certificationId,
+  allowReplaceOrphans,
+}: {
+  rows: ImportQuestionIdRow[]
+  existingQuestions: ExistingImportQuestion[]
+  certificationId: string
+  allowReplaceOrphans: boolean
+}): { errors: string[]; replaceDatabaseIds: string[] } {
+  const rowByQuestionId = new Map(
+    explicitImportQuestionIds(rows).map((item) => [item.questionId, item.row]),
+  )
+  const errors: string[] = []
+  const replaceDatabaseIds: string[] = []
+
+  for (const existing of existingQuestions) {
+    const row = rowByQuestionId.get(existing.questionId)
+    if (row === undefined) continue
+
+    const safeOrphan =
+      existing.certificationId === certificationId &&
+      existing.contentType === 'MOCK_EXAM' &&
+      existing.mockExamCount === 0 &&
+      existing.examAnswerCount === 0 &&
+      existing.bookmarkCount === 0
+
+    if (allowReplaceOrphans && safeOrphan) {
+      replaceDatabaseIds.push(existing.id)
+      continue
+    }
+
+    if (!allowReplaceOrphans) {
+      errors.push(
+        `Row ${row}: question_id "${existing.questionId}" already exists in the Question Bank.`,
+      )
+      continue
+    }
+
+    if (existing.certificationId !== certificationId) {
+      errors.push(
+        `Row ${row}: question_id "${existing.questionId}" belongs to a different certification and cannot be replaced.`,
+      )
+    } else if (existing.contentType !== 'MOCK_EXAM') {
+      errors.push(
+        `Row ${row}: question_id "${existing.questionId}" is ${existing.contentType} content, not an orphaned Mock question, so it cannot be replaced.`,
+      )
+    } else if (existing.mockExamCount > 0) {
+      errors.push(
+        `Row ${row}: question_id "${existing.questionId}" is still assigned to another Mock Exam and cannot be replaced.`,
+      )
+    } else {
+      errors.push(
+        `Row ${row}: question_id "${existing.questionId}" has learner history or bookmarks and cannot be deleted safely.`,
+      )
+    }
+  }
+
+  return { errors, replaceDatabaseIds }
+}
+
 export interface NewMockImportConfig {
   title?: string
   questionCount?: number
