@@ -43,13 +43,25 @@ export default async function QuestionsPage({
 
   if (selectedContentType === 'MOCK_EXAM') {
     const exams = await prisma.mockExam.findMany({
-      where: certificationId ? { certificationId } : undefined,
+      where: {
+        ...(certificationId ? { certificationId } : {}),
+        questions: {
+          some: {
+            question: { contentType: 'MOCK_EXAM' },
+          },
+        },
+      },
       select: {
         id: true,
         title: true,
         certificationId: true,
         certification: { select: { name: true } },
-        _count: { select: { questions: true } },
+        questions: {
+          where: {
+            question: { contentType: 'MOCK_EXAM' },
+          },
+          select: { id: true },
+        },
       },
       orderBy: [
         { certification: { sortOrder: 'asc' } },
@@ -64,7 +76,7 @@ export default async function QuestionsPage({
         title: exam.title,
         certificationId: exam.certificationId,
         certificationName: exam.certification.name,
-        questionCount: exam._count.questions,
+        questionCount: exam.questions.length,
       })),
     )
   } else if (selectedContentType === 'QUIZ') {
