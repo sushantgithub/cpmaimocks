@@ -6,6 +6,7 @@ import { SessionProvider } from '@/components/shared/session-provider'
 import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ['latin'] })
+const isStaging = process.env.NEXT_PUBLIC_APP_ENV === 'staging' || process.env.APP_ENV === 'staging'
 
 export const metadata: Metadata = {
   title: {
@@ -20,13 +21,18 @@ export const metadata: Metadata = {
     description: 'Realistic mock exams and practice questions for PMI CPMAI certification.',
     type: 'website',
   },
-  robots: { index: true, follow: true },
+  robots: isStaging ? { index: false, follow: false } : { index: true, follow: true },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={inter.className}>
+        {isStaging && (
+          <div className="bg-amber-400 px-3 py-1.5 text-center text-xs font-bold text-amber-950">
+            STAGING — Test environment. No production data or live payments.
+          </div>
+        )}
         <SessionProvider>
           {children}
           <Toaster />
