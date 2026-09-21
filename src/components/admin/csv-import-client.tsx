@@ -320,6 +320,7 @@ export function CsvImportClient() {
           certificationId,
           contentType,
           examId: targetExamId,
+          publishMock: contentType === 'MOCK_EXAM' ? publishNow : undefined,
           questions: preview.valid.map((question) => ({
             ...question,
             status: publishNow ? 'PUBLISHED' : 'DRAFT',
@@ -334,7 +335,16 @@ export function CsvImportClient() {
         throw new Error((data.error ?? 'Import failed') + details)
       }
 
-      toast({ title: `${data.imported} questions imported successfully`, variant: 'success' })
+      toast({
+        title: `${data.imported} questions imported successfully`,
+        description:
+          contentType === 'MOCK_EXAM' && publishNow
+            ? data.examStatus === 'PUBLISHED'
+              ? 'Mock Exam published successfully.'
+              : 'Questions were published, but the Mock Exam stayed in Draft because not all assigned questions are published.'
+            : undefined,
+        variant: 'success',
+      })
       setImportResult({
         count: data.imported,
         examTitle: createdExamTitle ?? selectedExam?.title,
@@ -745,10 +755,14 @@ export function CsvImportClient() {
               onChange={(event) => setPublishNow(event.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
-            Publish questions immediately
+            {contentType === 'MOCK_EXAM'
+              ? 'Publish questions and Mock Exam after successful import'
+              : 'Publish questions immediately'}
           </label>
           <p className="text-xs text-muted-foreground -mt-2">
-            Published questions are immediately eligible for Practice. A newly created Mock Exam itself remains Draft until you publish it.
+            {contentType === 'MOCK_EXAM'
+              ? 'The Mock Exam is published automatically only when its full configured question set is assigned and every assigned question is published.'
+              : 'Published questions are immediately eligible for Practice.'}
           </p>
 
           <div className="flex gap-3">
