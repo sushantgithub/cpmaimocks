@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import {
+  hasDuplicateMockExamTitle,
+  mockNumberFromTitle,
+} from '@/lib/mock-exams'
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -52,6 +56,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     where: { id: params.id },
     select: {
       id: true,
+      title: true,
+      sortOrder: true,
       certificationId: true,
       questionCount: true,
       timeLimitMinutes: true,
@@ -126,7 +132,43 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const data: Record<string, unknown> = {}
-  if (typeof body.title === 'string' && body.title.trim()) data.title = body.title.trim()
+  if (body.title !== undefined) {
+    if (typeof body.title !== 'string' || !body.title.trim()) {
+      return NextResponse.json(
+        { error: 'Mock Exam name is required' },
+        { status: 400 },
+      )
+    }
+
+    const title = body.title.trim().replace(/\s+/g, ' ')
+    const siblings = await prisma.mockExam.findMany({
+      where: { certificationId },
+      select: { id: true, title: true },
+    })
+
+    if (hasDuplicateMockExamTitle(title, siblings, current.id)) {
+      const certification = await prisma.certification.findUnique({
+        where: { id: certificationId },
+        select: { name: true },
+      })
+      return NextResponse.json(
+        {
+          error: `A Mock Exam named "${title}" already exists for ${certification?.name ?? 'this certification'}. Choose a different name.`,
+          code: 'DUPLICATE_MOCK_NAME',
+        },
+        { status: 409 },
+      )
+    }
+
+    data.title = title
+
+    // Old Mock rows used sortOrder=0. Freeze their current title-derived
+    // position before a rename so changing the title never moves the card.
+    if (body.sortOrder === undefined && current.sortOrder <= 0) {
+      const recoveredOrder = mockNumberFromTitle(current.title)
+      if (recoveredOrder !== null) data.sortOrder = recoveredOrder
+    }
+  }
   if (body.description === null || typeof body.description === 'string') {
     data.description = body.description?.trim() || null
   }

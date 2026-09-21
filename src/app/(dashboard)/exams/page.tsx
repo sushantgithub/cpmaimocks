@@ -10,6 +10,7 @@ import {
   isFullMockExam,
   mockExamDisplayGroup,
   mockExamDisplayLabel,
+  sortMockExamsForDisplay,
 } from '@/lib/mock-exams'
 import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
 
@@ -21,8 +22,9 @@ export default async function ExamsPage() {
     getAccessibleCertificationIds(userId),
     prisma.mockExam.findMany({
       where: { status: 'PUBLISHED', timeLimitMinutes: { gt: 0 } },
-      orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-      include: { certification: { select: { id: true, name: true } } },
+      include: {
+        certification: { select: { id: true, name: true, sortOrder: true } },
+      },
     }),
     prisma.examAttempt.findMany({
       where: {
@@ -43,7 +45,7 @@ export default async function ExamsPage() {
     }),
   ])
 
-  const exams = publishedExams.filter(isFullMockExam)
+  const exams = sortMockExamsForDisplay(publishedExams.filter(isFullMockExam))
   const fortyQuestionExams = exams.filter(
     (exam) => mockExamDisplayGroup(exam.questionCount) === 'FORTY_QUESTION'
   )
