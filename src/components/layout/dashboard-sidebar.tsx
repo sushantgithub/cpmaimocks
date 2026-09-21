@@ -1,7 +1,8 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, PenSquare, Bookmark, User, CreditCard, Trophy, ListChecks
@@ -23,6 +24,21 @@ const mobileNavItems = navItems.filter((i) => i.label !== 'Bookmarks').slice(0, 
 
 export function DashboardSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const previousPathname = useRef(pathname)
+
+  useEffect(() => {
+    const previous = previousPathname.current
+    previousPathname.current = pathname
+
+    // Quiz completion changes server-derived progress immediately, but the
+    // App Router can still hold the previously visited quiz page in its
+    // client cache. Refresh after navigating back to Quizzes so completion,
+    // unlocks, and badges always reflect the just-finished attempt.
+    if (pathname === '/quizzes' && previous !== '/quizzes') {
+      router.refresh()
+    }
+  }, [pathname, router])
 
   return (
     <>
