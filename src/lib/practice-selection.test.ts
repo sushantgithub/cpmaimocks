@@ -18,6 +18,22 @@ describe('Random Practice question selection', () => {
     expect(selected).toEqual(['q3', 'q4', 'q5'])
   })
 
+  it('gives the next session different questions while unseen questions remain', () => {
+    const pool = Array.from({ length: 10 }, (_, index) => `q${index + 1}`)
+    const first = selectRandomPracticeQuestionIds(pool, [], 5, noShuffle)
+
+    const second = selectRandomPracticeQuestionIds(
+      pool,
+      first.map((questionId) => ({ questionId, isCorrect: null })),
+      5,
+      noShuffle,
+    )
+
+    expect(first).toEqual(['q1', 'q2', 'q3', 'q4', 'q5'])
+    expect(second).toEqual(['q6', 'q7', 'q8', 'q9', 'q10'])
+    expect(second.some((id) => first.includes(id))).toBe(false)
+  })
+
   it('fills from missed questions before previously correct questions when unseen runs out', () => {
     const selected = selectRandomPracticeQuestionIds(
       ['new', 'wrong', 'unanswered', 'right'],
