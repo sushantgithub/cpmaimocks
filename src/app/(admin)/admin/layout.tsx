@@ -1,9 +1,15 @@
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from 'next'
 import { requireAdminSession } from '@/lib/require-auth'
 import Link from 'next/link'
 import { signOut } from '@/lib/auth'
 import { BookOpen, LayoutDashboard, Users, HelpCircle, Trophy, CreditCard, Tag, BarChart3, Settings, LogOut, Upload, Award, ListTree, ListChecks } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Admin',
+  robots: { index: false, follow: false },
+}
 
 const adminNav = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
