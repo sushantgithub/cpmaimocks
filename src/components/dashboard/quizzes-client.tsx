@@ -331,6 +331,10 @@ export function QuizzesClient({
 
                                 {statusLabel === 'Completed' ? (
                                   <Badge variant="success" className="text-xs">Completed</Badge>
+                                ) : statusLabel === 'Available' ? (
+                                  <Badge className="border-blue-200 bg-blue-50 text-blue-700 text-xs">
+                                    Available
+                                  </Badge>
                                 ) : statusLabel ? (
                                   <Badge variant="secondary" className="text-xs">{statusLabel}</Badge>
                                 ) : slot.lockReason ? (
