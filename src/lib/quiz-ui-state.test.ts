@@ -20,13 +20,28 @@ describe('quiz slot status labels', () => {
     expect(quizSlotStatusLabel({ ...base, attemptCount: 4 })).toBe('Keep Practicing')
   })
 
-  it('does not show a redundant status badge for active sessions', () => {
+  it('does not show a redundant status badge for active incomplete sessions', () => {
     expect(quizSlotStatusLabel({ ...base, activeAttemptId: 'attempt-1' })).toBeNull()
     expect(quizSlotStatusLabel({
       ...base,
       attemptCount: 2,
       activeRetryAttemptId: 'retry-1',
     })).toBeNull()
+  })
+
+  it('keeps Completed authoritative even if a stale or later attempt is active', () => {
+    expect(quizSlotStatusLabel({
+      ...base,
+      completed: true,
+      attemptCount: 3,
+      activeAttemptId: 'retake-1',
+    })).toBe('Completed')
+    expect(quizSlotStatusLabel({
+      ...base,
+      completed: true,
+      attemptCount: 3,
+      activeRetryAttemptId: 'legacy-retry-1',
+    })).toBe('Completed')
   })
 
   it('keeps completed, free and available states distinct', () => {
@@ -92,7 +107,7 @@ describe('quiz slot expansion state', () => {
     ])).toEqual([quizSlotExpansionKey('domain:ai', 1)])
   })
 
-  it('expands active mistake practice but leaves fully locked domains collapsed', () => {
+  it('ignores stale active retry state on completed quizzes and expands the next actionable quiz', () => {
     expect(initialExpandedQuizSlotKeys([
       {
         key: 'domain:ai',
@@ -102,7 +117,14 @@ describe('quiz slot expansion state', () => {
             completed: true,
             lockReason: null,
             activeAttemptId: null,
-            activeRetryAttemptId: 'retry-1',
+            activeRetryAttemptId: 'legacy-retry-1',
+          },
+          {
+            number: 2,
+            completed: false,
+            lockReason: null,
+            activeAttemptId: null,
+            activeRetryAttemptId: null,
           },
         ],
       },
@@ -118,6 +140,6 @@ describe('quiz slot expansion state', () => {
           },
         ],
       },
-    ])).toEqual([quizSlotExpansionKey('domain:ai', 1)])
+    ])).toEqual([quizSlotExpansionKey('domain:ai', 2)])
   })
 })
