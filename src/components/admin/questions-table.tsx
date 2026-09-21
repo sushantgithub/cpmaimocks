@@ -16,6 +16,7 @@ interface Question {
   correctAnswer: string
   difficulty: string
   status: string
+  contentType?: 'QUIZ' | 'MOCK_EXAM' | 'PRACTICE_ONLY'
   isTest?: boolean
   category?: { name: string } | null
 }
@@ -110,6 +111,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Question</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Category</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Difficulty</th>
+              <th className="text-left px-4 py-3 font-medium text-gray-600">Content</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
             </tr>
@@ -117,7 +119,7 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
           <tbody className="divide-y">
             {questions.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No questions found.{' '}
                   <Link href="/admin/questions/import" className="text-primary hover:underline">Import some →</Link>
                 </td>
@@ -143,6 +145,15 @@ export function QuestionsTable({ questions }: { questions: Question[] }) {
                 <td className="px-4 py-3">
                   <Badge variant={q.difficulty === 'HARD' ? 'destructive' : q.difficulty === 'MEDIUM' ? 'warning' : 'success'} className="text-xs capitalize">
                     {q.difficulty.toLowerCase()}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3">
+                  <Badge variant="outline" className="text-xs">
+                    {q.contentType === 'PRACTICE_ONLY'
+                      ? 'Practice'
+                      : q.contentType === 'MOCK_EXAM'
+                        ? 'Mock'
+                        : 'Quiz'}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
