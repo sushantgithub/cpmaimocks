@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { auth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+import { requireAdminSession } from '@/lib/require-auth'
 import Link from 'next/link'
 import { signOut } from '@/lib/auth'
 import { BookOpen, LayoutDashboard, Users, HelpCircle, Trophy, CreditCard, Tag, BarChart3, Settings, LogOut, Upload, Award, ListTree, ListChecks } from 'lucide-react'
@@ -23,8 +22,7 @@ const adminNav = [
 ]
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session || session.user.role !== 'ADMIN') redirect('/dashboard')
+  const session = await requireAdminSession()
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
