@@ -134,3 +134,5 @@ Upload at: Admin → Questions → Import CSV
 - [ ] Switch Razorpay to LIVE keys when ready to go live
 - [ ] Enable HTTPS (automatic on Vercel)
 - [ ] Set up webhook signature verification (already in code)
+
+<!-- deploy trigger: quiz refresh and availability badge fixes -->
