@@ -140,3 +140,5 @@ Upload at: Admin → Questions → Import CSV
 <!-- deploy trigger: completed quiz status precedence regression fix -->
 
 <!-- deploy trigger: grouped 40-question and full-length mock exam UI -->
+
+<!-- deploy trigger: mock publish import and practice question visibility -->
