@@ -16,6 +16,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import Link from 'next/link'
+import { mockExamDisplayLabel } from '@/lib/mock-exams'
 
 interface Certification {
   id: string
@@ -285,6 +286,9 @@ export default function AdminExamsPage() {
                     }))
                   }
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Learner view: {mockExamDisplayLabel(Number(form.questionCount) || 0)}
+                </p>
               </div>
 
               <div>
@@ -393,6 +397,9 @@ export default function AdminExamsPage() {
                             className="text-xs"
                           >
                             {exam.status}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {mockExamDisplayLabel(exam.questionCount)}
                           </Badge>
                           <Badge variant="outline" className="text-xs">
                             {exam.requireSubscription ? 'Paid' : 'Free'}
