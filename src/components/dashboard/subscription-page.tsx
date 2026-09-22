@@ -240,7 +240,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
           return (
             <Card
               key={plan.id}
-              className={`transition-all ${isOwned || freeIsCurrent ? 'border-green-300 bg-green-50/40' : isFree ? '' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''} ${plan.isFeatured ? 'relative' : ''}`}
+              className={`relative transition-all ${isOwned || freeIsCurrent ? 'border-green-300 bg-green-50/40' : isFree ? '' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
               onClick={() => {
                 if (!isFree && !isOwned) {
                   setSelectedPlan(isSelected ? null : plan)
@@ -253,6 +253,11 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                   <Badge className="bg-primary text-white text-xs px-3">Most Popular</Badge>
                 </div>
               )}
+              {!isFree && approxUsd(plan.price) && (
+                <span className="absolute top-3 -right-px inline-flex items-baseline gap-0.5 bg-primary text-white text-xs font-bold pl-3 pr-3 py-1 rounded-l-full shadow-sm">
+                  <span className="opacity-70 font-semibold">≈</span>{approxUsd(plan.price)} USD
+                </span>
+              )}
               <CardContent className="p-5">
                 <div className="flex items-center justify-between gap-2">
                   <h3 className="font-bold text-lg">{plan.name}</h3>
@@ -263,11 +268,6 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                 <div className="my-2">
                   <span className="text-3xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
                   <span className="text-muted-foreground text-sm"> {isLifetime(plan.durationDays) ? 'one-time · lifetime access' : `/ ${planPeriodLabel(plan.durationDays)}`}</span>
-                  {approxUsd(plan.price) && (
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      approx. {approxUsd(plan.price)} USD · billed in INR
-                    </p>
-                  )}
                 </div>
                 <Badge variant={plan.certificationId ? 'secondary' : 'success'} className="text-xs mb-2">
                   {plan.certificationName ? `${plan.certificationName} only` : 'All certifications'}
