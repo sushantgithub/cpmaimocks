@@ -146,3 +146,5 @@ Upload at: Admin → Questions → Import CSV
 <!-- staging deploy trigger: signup session isolation -->
 
 <!-- staging deploy trigger: auth cookie stability -->
+
+<!-- staging deploy trigger: Android Chrome PKCE replay recovery -->
