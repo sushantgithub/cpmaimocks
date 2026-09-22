@@ -61,6 +61,9 @@ export const authConfig = {
         session.user.id = token.id as string
         session.user.role = token.role as string
       }
+      if (typeof token.iat === 'number') {
+        session.issuedAt = token.iat
+      }
       return session
     },
   },
