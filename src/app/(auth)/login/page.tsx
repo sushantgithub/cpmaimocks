@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn, signOut, getProviders } from 'next-auth/react'
@@ -22,6 +22,7 @@ function LoginForm() {
   const router = useRouter()
   const params = useSearchParams()
   const [loading, setLoading] = useState(false)
+  const googleInFlight = useRef(false)
   const [form, setForm] = useState({ email: '', password: '' })
   const [googleEnabled, setGoogleEnabled] = useState(false)
   // Only a path on this site: anything absolute or protocol-relative is ignored
@@ -35,6 +36,10 @@ function LoginForm() {
   }, [])
 
   async function handleGoogleSignIn() {
+    // useRef guard is synchronous — prevents a second OAuth request from
+    // starting even if two taps fire before the loading state re-render.
+    if (googleInFlight.current) return
+    googleInFlight.current = true
     setLoading(true)
     try {
       // Sign-in is an account-switch boundary, same as registration. Clear any
@@ -44,6 +49,8 @@ function LoginForm() {
     } catch {
       toast({ title: 'Could not start Google sign-in', variant: 'destructive' })
       setLoading(false)
+    } finally {
+      googleInFlight.current = false
     }
   }
 

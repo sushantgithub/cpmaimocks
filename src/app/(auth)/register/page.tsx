@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getProviders, signIn, signOut } from 'next-auth/react'
@@ -13,6 +13,7 @@ import { toast } from '@/hooks/use-toast'
 export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const googleInFlight = useRef(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
 
@@ -63,6 +64,8 @@ export default function RegisterPage() {
   }
 
   async function handleGoogleSignup() {
+    if (googleInFlight.current) return
+    googleInFlight.current = true
     setLoading(true)
     try {
       // Google signup may be started while another CertMocks account is signed
@@ -72,6 +75,8 @@ export default function RegisterPage() {
     } catch {
       toast({ title: 'Could not start Google sign-up', variant: 'destructive' })
       setLoading(false)
+    } finally {
+      googleInFlight.current = false
     }
   }
 
