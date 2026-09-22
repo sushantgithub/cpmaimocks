@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +41,17 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
   const [discount, setDiscount] = useState<{ valid: boolean; amount: number; couponId: string } | null>(null)
   const [checkingCoupon, setCheckingCoupon] = useState(false)
   const [paying, setPaying] = useState(false)
+  const purchaseCardRef = useRef<HTMLDivElement>(null)
+
+  // On mobile, the plan grid is a single column, so the purchase card can
+  // land well below the fold once several plans are stacked above it.
+  // Scroll it into view automatically so picking a plan doesn't leave the
+  // user hunting for the pay button.
+  useEffect(() => {
+    if (selectedPlan) {
+      purchaseCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [selectedPlan])
 
   // An all-access plan is relevant whichever certification you picked
   const visiblePlans = plans.filter(
@@ -321,7 +332,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
 
       {/* Coupon + Pay */}
       {selectedPlan && (
-        <Card>
+        <Card ref={purchaseCardRef}>
           <CardContent className="p-5 space-y-4">
             <div>
               <h3 className="font-semibold">Complete Purchase</h3>
