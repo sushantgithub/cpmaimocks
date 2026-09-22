@@ -144,3 +144,5 @@ Upload at: Admin → Questions → Import CSV
 <!-- deploy trigger: mock publish import and practice question visibility -->
 
 <!-- staging deploy trigger: signup session isolation -->
+
+<!-- staging deploy trigger: auth cookie stability -->
