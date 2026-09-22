@@ -6,10 +6,6 @@ declare module 'next-auth' {
       id: string
       role: string
     } & DefaultSession['user']
-    // Seconds-since-epoch the underlying JWT was issued. Lets callers tell a
-    // session that was just minted by the current request apart from one that
-    // has simply been sitting in the browser since an earlier sign-in.
-    issuedAt?: number
   }
 }
 
