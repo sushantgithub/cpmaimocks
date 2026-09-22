@@ -116,10 +116,10 @@ export default async function DashboardPage() {
                 help: 'Questions currently mastered. Once a quiz is completed, its mastered questions stay credited even if you retake it later.',
               },
               {
-                label: 'Current Accuracy',
+                label: 'Mastery Rate',
                 value: `${quizAccuracy}%`,
                 icon: Target,
-                help: 'Mastered quiz progress divided by unique quiz questions attempted. Completed quizzes keep their mastery credit after optional retakes.',
+                help: 'How many of the questions you’ve tried you currently get right — including ones you got wrong the first time but later fixed.',
               },
             ].map((item) => (
               <div key={item.label} className="rounded-xl border bg-gray-50/50 p-3">
