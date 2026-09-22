@@ -264,7 +264,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                   <span className="text-3xl font-bold">{formatCurrency(plan.price, plan.currency)}</span>
                   <span className="text-muted-foreground text-sm"> {isLifetime(plan.durationDays) ? 'one-time · lifetime access' : `/ ${planPeriodLabel(plan.durationDays)}`}</span>
                   {approxUsd(plan.price) && (
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       approx. {approxUsd(plan.price)} USD · billed in INR
                     </p>
                   )}
