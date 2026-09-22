@@ -1,7 +1,8 @@
+import { NextRequest } from 'next/server'
 import { auth, handlers } from '@/lib/auth'
 import { shouldBypassGoogleCallback } from '@/lib/auth-callback'
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const url = new URL(request.url)
 
   // Chrome on Android can replay the OAuth callback when "Desktop site" is
