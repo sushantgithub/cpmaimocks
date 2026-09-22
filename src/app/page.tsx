@@ -10,6 +10,7 @@ import {
 import { PublicNav } from '@/components/layout/public-nav'
 import { PublicFooter } from '@/components/layout/public-footer'
 import { prisma } from '@/lib/db'
+import { auth } from '@/lib/auth'
 import { formatCurrency, planPeriodLabel, isLifetime } from '@/lib/utils'
 
 // Counts and prices come from the database; refresh them hourly
@@ -62,8 +63,9 @@ async function loadHomeData() {
 }
 
 export default async function HomePage() {
-  const data = await loadHomeData()
+  const [data, session] = await Promise.all([loadHomeData(), auth()])
   const plans = data?.plans ?? []
+  const ctaHref = session ? '/dashboard' : '/register'
   const certifications = (data?.certifications ?? []).filter((cert) => cert.categories.length > 0)
 
   const stats = data
@@ -100,8 +102,8 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="xl" className="bg-white text-blue-900 hover:bg-blue-50" asChild>
-              <Link href="/register">
-                Start Free Today <ArrowRight className="h-5 w-5" />
+              <Link href={ctaHref}>
+                {session ? 'Go to Dashboard' : 'Start Free Today'} <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
             <Button size="xl" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 hover:text-white" asChild>
@@ -186,7 +188,7 @@ export default async function HomePage() {
                 ))}
               </ul>
               <Button className="mt-8" asChild>
-                <Link href="/register">Start Free CPMAI Practice</Link>
+                <Link href={ctaHref}>{session ? 'Go to Dashboard' : 'Start Free CPMAI Practice'}</Link>
               </Button>
             </div>
 
@@ -266,7 +268,7 @@ export default async function HomePage() {
               period: isLifetime(dbPlan.durationDays) ? (dbPlan.price === 0 ? 'forever' : 'one-time, lifetime') : `/${planPeriodLabel(dbPlan.durationDays)}`,
               features: (dbPlan.features as string[]).slice(0, 5),
               cta: dbPlan.price === 0 ? 'Get Started' : dbPlan.isFeatured ? 'Most Popular' : `Start ${dbPlan.name}`,
-              href: '/register',
+              href: ctaHref,
               highlight: dbPlan.isFeatured,
             })).map((plan) => (
               <Card key={plan.name} className={`${plan.highlight ? 'border-primary ring-2 ring-primary' : ''}`}>
@@ -330,7 +332,7 @@ export default async function HomePage() {
             Start with a free account today.
           </p>
           <Button size="xl" className="bg-white text-primary hover:bg-blue-50" asChild>
-            <Link href="/register">Create Free Account</Link>
+            <Link href={ctaHref}>{session ? 'Go to Dashboard' : 'Create Free Account'}</Link>
           </Button>
         </div>
       </section>
