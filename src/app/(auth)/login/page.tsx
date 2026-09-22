@@ -45,7 +45,10 @@ function LoginForm() {
       // Sign-in is an account-switch boundary, same as registration. Clear any
       // existing session so the old JWT cannot persist through the OAuth flow.
       await signOut({ redirect: false })
-      await signIn('google', { callbackUrl })
+      // prompt=select_account forces Google to show the account picker even
+      // when a Google session is still cached in the browser, so switching to
+      // a different account actually works.
+      await signIn('google', { callbackUrl }, { prompt: 'select_account' })
     } catch {
       toast({ title: 'Could not start Google sign-in', variant: 'destructive' })
       setLoading(false)

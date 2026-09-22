@@ -71,7 +71,7 @@ export default function RegisterPage() {
       // Google signup may be started while another CertMocks account is signed
       // in. Clear that application session before OAuth chooses the new account.
       await clearExistingSession()
-      await signIn('google', { callbackUrl: '/dashboard' })
+      await signIn('google', { callbackUrl: '/dashboard' }, { prompt: 'select_account' })
     } catch {
       toast({ title: 'Could not start Google sign-up', variant: 'destructive' })
       setLoading(false)
