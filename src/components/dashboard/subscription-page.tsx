@@ -367,9 +367,8 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                 <span>{formatCurrency(discount ? selectedPlan.price - discount.amount : selectedPlan.price, selectedPlan.currency)}</span>
               </div>
               {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price) && (
-                <p className="text-xs text-muted-foreground text-right">
-                  approx. {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price)} USD —
-                  charged in INR, your bank sets the final rate
+                <p className="text-sm text-muted-foreground pt-1">
+                  approx. {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price)} USD — charged in INR, your bank sets the final rate
                 </p>
               )}
             </div>
