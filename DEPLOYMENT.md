@@ -142,3 +142,5 @@ Upload at: Admin → Questions → Import CSV
 <!-- deploy trigger: grouped 40-question and full-length mock exam UI -->
 
 <!-- deploy trigger: mock publish import and practice question visibility -->
+
+<!-- staging deploy trigger: signup session isolation -->
