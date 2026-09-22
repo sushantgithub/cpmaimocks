@@ -90,6 +90,8 @@ function LoginForm() {
           ) : params.get('error') === 'expired-token' ? (
             <>That verification link has expired or was already used.{' '}
               <Link href="/resend-verification" className="text-primary hover:underline">Request a new one</Link>.</>
+          ) : params.get('error') ? (
+            'Google sign-in did not complete. Please try again.'
           ) : (
             'Sign in to your account'
           )}
