@@ -41,6 +41,11 @@ export default async function PricingPage() {
                   <Badge className="bg-primary text-white px-4">Most Popular</Badge>
                 </div>
               )}
+              {approxUsd(plan.price) && (
+                <span className="absolute top-3 -right-px inline-flex items-baseline gap-0.5 bg-primary text-white text-xs font-bold pl-3 pr-3 py-1 rounded-l-full shadow-sm">
+                  <span className="opacity-70 font-semibold">≈</span>{approxUsd(plan.price)} USD
+                </span>
+              )}
               <CardContent className="p-6">
                 <h2 className="font-bold text-xl">{plan.name}</h2>
                 <Badge variant={plan.certificationId ? 'secondary' : 'success'} className="text-xs mt-1">
@@ -52,11 +57,6 @@ export default async function PricingPage() {
                   <span className="text-muted-foreground text-sm ml-1">
                     {isLifetime(plan.durationDays) ? 'one-time, lifetime access' : `/ ${planPeriodLabel(plan.durationDays)}`}
                   </span>
-                  {approxUsd(plan.price) && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      approx. {approxUsd(plan.price)} USD · billed in INR
-                    </p>
-                  )}
                 </div>
                 <ul className="space-y-2 mb-6">
                   {(plan.features as string[]).map((f) => (

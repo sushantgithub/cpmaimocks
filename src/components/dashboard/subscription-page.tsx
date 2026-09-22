@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +41,17 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
   const [discount, setDiscount] = useState<{ valid: boolean; amount: number; couponId: string } | null>(null)
   const [checkingCoupon, setCheckingCoupon] = useState(false)
   const [paying, setPaying] = useState(false)
+  const purchaseCardRef = useRef<HTMLDivElement>(null)
+
+  // On mobile, the plan grid is a single column, so the purchase card can
+  // land well below the fold once several plans are stacked above it.
+  // Scroll it into view automatically so picking a plan doesn't leave the
+  // user hunting for the pay button.
+  useEffect(() => {
+    if (selectedPlan) {
+      purchaseCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [selectedPlan])
 
   // An all-access plan is relevant whichever certification you picked
   const visiblePlans = plans.filter(
@@ -229,7 +240,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
           return (
             <Card
               key={plan.id}
-              className={`transition-all ${isOwned || freeIsCurrent ? 'border-green-300 bg-green-50/40' : isFree ? '' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''} ${plan.isFeatured ? 'relative' : ''}`}
+              className={`relative transition-all ${isOwned || freeIsCurrent ? 'border-green-300 bg-green-50/40' : isFree ? '' : 'cursor-pointer hover:border-gray-300'} ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
               onClick={() => {
                 if (!isFree && !isOwned) {
                   setSelectedPlan(isSelected ? null : plan)
@@ -241,6 +252,11 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-primary text-white text-xs px-3">Most Popular</Badge>
                 </div>
+              )}
+              {!isFree && approxUsd(plan.price) && (
+                <span className="absolute top-3 -right-px inline-flex items-baseline gap-0.5 bg-primary text-white text-xs font-bold pl-3 pr-3 py-1 rounded-l-full shadow-sm">
+                  <span className="opacity-70 font-semibold">≈</span>{approxUsd(plan.price)} USD
+                </span>
               )}
               <CardContent className="p-5">
                 <div className="flex items-center justify-between gap-2">
@@ -321,7 +337,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
 
       {/* Coupon + Pay */}
       {selectedPlan && (
-        <Card>
+        <Card ref={purchaseCardRef}>
           <CardContent className="p-5 space-y-4">
             <div>
               <h3 className="font-semibold">Complete Purchase</h3>
@@ -351,9 +367,8 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
                 <span>{formatCurrency(discount ? selectedPlan.price - discount.amount : selectedPlan.price, selectedPlan.currency)}</span>
               </div>
               {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price) && (
-                <p className="text-xs text-muted-foreground text-right">
-                  approx. {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price)} USD —
-                  charged in INR, your bank sets the final rate
+                <p className="text-sm text-muted-foreground pt-1">
+                  approx. {approxUsd(discount ? selectedPlan.price - discount.amount : selectedPlan.price)} USD — charged in INR, your bank sets the final rate
                 </p>
               )}
             </div>
