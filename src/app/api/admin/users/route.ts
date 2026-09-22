@@ -50,7 +50,10 @@ export async function GET(req: Request) {
         },
         _count: { select: { examAttempts: true } },
         payments: {
-          where: { status: 'SUCCESS' },
+          // A successful ₹0/free-plan transaction is historical provisioning,
+          // not a commercial payment. Only surface genuinely paid transactions
+          // in the admin "Paid" badge and paid-account deletion safeguard.
+          where: { status: 'SUCCESS', amount: { gt: 0 } },
           select: { amount: true, currency: true },
         },
       },
