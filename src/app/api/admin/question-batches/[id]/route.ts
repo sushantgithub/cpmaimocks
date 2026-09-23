@@ -36,11 +36,25 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
 
   const questionIds = batch.questions.map((q) => q.id)
   await prisma.$transaction(async (tx) => {
+    // Batch deletion is intentionally all-or-nothing and scoped by importBatchId.
+    // Never delete a partial mock's questions: doing so would silently damage
+    // an assessment. Delete the mock itself first (or archive questions) once
+    // product-level historical-attempt handling is defined.
+    const linkedToMock = batch.questions.filter((q) => q._count.mockExamQuestions > 0)
+    if (linkedToMock.length > 0) throw new Error('BATCH_HAS_MOCK_ASSIGNMENTS')
+
     if (questionIds.length > 0) {
-      await tx.mockExamQuestion.deleteMany({ where: { questionId: { in: questionIds } } })
-      await tx.question.deleteMany({ where: { id: { in: questionIds }, importBatchId: batch.id } })
+      const deleted = await tx.question.deleteMany({
+        where: { id: { in: questionIds }, importBatchId: batch.id },
+      })
+      if (deleted.count !== questionIds.length) throw new Error('BATCH_DELETE_CONFLICT')
     }
     await tx.questionImportBatch.delete({ where: { id: batch.id } })
+  }).catch((error) => {
+    if (error instanceof Error && error.message === 'BATCH_HAS_MOCK_ASSIGNMENTS') {
+      throw error
+    }
+    throw error
   })
 
   return NextResponse.json({ success: true, deleted: questionIds.length, name: batch.name })
