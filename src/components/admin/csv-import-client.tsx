@@ -787,7 +787,9 @@ export function CsvImportClient() {
           <p className="text-xs text-muted-foreground -mt-2">
             {contentType === 'MOCK_EXAM'
               ? 'The Mock Exam is published automatically only when its full configured question set is assigned and every assigned question is published.'
-              : contentType === 'QUIZ'\n                ? 'Published Quiz questions appear only in their persisted 10-question Quiz.'\n                : 'Published Practice questions appear only in Practice.'}
+              : contentType === 'QUIZ'
+                ? 'Published Quiz questions appear only in their persisted 10-question Quiz.'
+                : 'Published Practice questions appear only in Practice.'}
           </p>
 
           <div className="flex gap-3">
