@@ -339,9 +339,8 @@ model Question {
   topicId         String?
   difficulty      Difficulty          @default(MEDIUM)
   status          QuestionStatus      @default(DRAFT)
-  /// Controls where the question is surfaced. Every published question is
-  /// still eligible for Practice; this prevents mock/practice-only imports
-  /// from leaking into the automatically generated domain quizzes.
+  /// Controls where the question is surfaced. Content pools are exclusive:
+  /// QUIZ -> Quiz only, MOCK_EXAM -> Mock only, PRACTICE_ONLY -> Practice only.
   contentType     QuestionContentType @default(QUIZ)
   /// Marks throwaway content imported to try the platform out, so it can be
   /// found and removed later without guessing from names or domains.
