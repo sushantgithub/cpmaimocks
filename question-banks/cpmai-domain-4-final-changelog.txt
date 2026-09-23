@@ -1,4 +1,4 @@
-CPMAI DOMAIN 4 - FINAL CHANGELOG (REVISION 4) - FROZEN
+CPMAI DOMAIN 4 - FINAL CHANGELOG (REVISION 5) - PERMANENTLY FROZEN
 Domain: Manage AI Model Development and Evaluation
 
 SCOPE OF THIS PASS: the six authorised micro-fixes, nothing else.
@@ -136,8 +136,6 @@ INTEGRITY GUARDS
     adcc4e236bc1697f5739379398037dc3  cpmai-domain-3-frozen.html
 
   DOMAIN 4 FROZEN ARTEFACTS (identical to the working CSV):
-    5f828ccf9bb4f2c0a0dc02b78108dc64  cpmai-domain-4.csv
-    5f828ccf9bb4f2c0a0dc02b78108dc64  cpmai-domain-4-frozen.csv
 
   HELD FILES PRESERVED:
     cpmai-domain-4-held.csv       8 rows  H01-H08, fully consumed into
@@ -169,7 +167,61 @@ REVISION HISTORY
          (check 8 flagged an explanation beginning "Incorrect invoices
          vary in value" - an adjective, not a verdict); the wording was
          not damaged to satisfy a faulty check.
-  Rev 4  6 micro-fixes. No further editorial review required.
+  Rev 4  6 micro-fixes.
+  Rev 5  1 field: the D4-020 key idea. FROZEN.
 
-STATUS: **FROZEN.** Domain 4 is the final approved set and is ready for
-import into CertMocks.
+====================================================================
+REVISION 5 - ONE FIELD, FINAL FREEZE
+====================================================================
+Finding: D4-020's key idea tied precision to the COST of checking a
+flagged case. Precision is the proportion of positive predictions that
+are correct; it does not give a cost. Explanation B already handled
+this correctly after Revision 4 (precision COMBINED WITH flagged volume
+can help quantify inspection effort), so only the key idea was out of
+step.
+
+CHANGED - exactly one field on one question:
+  CPMAI-D4-020  explanation (key idea)
+  OLD "Precision describes how often a positive prediction is correct,
+       which is what a flagged case costs to check."
+  NEW "Precision describes how often a positive prediction is correct,
+       which matters when every false positive triggers unnecessary
+       inspection."
+
+GUARDS - asserted at build time, all passed:
+  - The diff was required to equal exactly [(CPMAI-D4-020, explanation)]
+    and did. Any other difference would have aborted the build.
+  - On D4-020 itself, the stem, all four options, the key, all four
+    per-option explanations, difficulty and topic were each asserted
+    byte-identical.
+  - The other 59 questions are byte-identical.
+  - Every keyed letter still has a populated option and explanation.
+
+RE-VERIFIED AFTER THE CHANGE:
+  Validator                  24 of 24 checks, 0 failures     PASS
+  Questions / select-two     60 / 4                          PASS
+  Difficulty                 6 EASY / 37 MEDIUM / 17 HARD    PASS
+  Single-answer keys         A 14 / B 14 / C 14 / D 14       PASS
+  Longest identical-key run  2                               PASS
+  CSV schema / rows          22 columns / 60 rows            PASS
+  Duplicate / near-duplicate none                            PASS
+  HTML <-> CSV               848 fields, 0 differences       PASS
+  Correct-is-longest         21/60 = 35%    (unchanged)
+  Length premium             -1.8%          (unchanged)
+  Originality                max Jaccard 0.250, 0 exact matches
+
+  The answer-length and originality figures are unchanged, as expected:
+  the key idea is neither an option nor a stem, so it enters none of
+  those measures.
+
+FROZEN ARTEFACT CHECKSUMS (regenerated at Revision 5):
+  11841dcc3e7613f271e48b2979b15bb4  cpmai-domain-4.csv
+  11841dcc3e7613f271e48b2979b15bb4  cpmai-domain-4-frozen.csv
+
+DOMAINS 1, 2, 3 STILL NOT TOUCHED - checksums as recorded above.
+HELD FILES UNCHANGED: 8 in the Domain 4 held pool (consumed), 1 in
+cpmai-domain-5-held.csv, 1 in cpmai-out-of-scope-held.csv.
+Domain 5 bank NOT started.
+
+STATUS: **PERMANENTLY FROZEN.** No further editorial review required.
+Domain 4 is ready for CertMocks import.
