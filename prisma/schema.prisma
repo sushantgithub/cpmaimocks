@@ -229,6 +229,7 @@ model Quiz {
   slug            String
   description     String?
   certificationId String
+  categoryId      String
   tag             String
   isActive        Boolean  @default(true)
   sortOrder       Int      @default(0)
@@ -236,8 +237,10 @@ model Quiz {
   updatedAt       DateTime @updatedAt
 
   certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([slug, certificationId])
+  @@index([categoryId, sortOrder])
 }
 
 /// Marks when someone restarted a mastered quiz. Answers given before this
@@ -287,6 +290,7 @@ model Category {
   certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
   questions     Question[]
   topics        Topic[]
+  quizzes       Quiz[]
 
   @@unique([name, certificationId])
   @@unique([slug, certificationId])
