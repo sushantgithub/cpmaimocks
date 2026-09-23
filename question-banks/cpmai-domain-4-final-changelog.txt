@@ -1,0 +1,175 @@
+CPMAI DOMAIN 4 - FINAL CHANGELOG (REVISION 4) - FROZEN
+Domain: Manage AI Model Development and Evaluation
+
+SCOPE OF THIS PASS: the six authorised micro-fixes, nothing else.
+7 fields changed across 6 questions. The other 54 questions are
+byte-identical to Revision 3.
+
+====================================================================
+THE SIX MICRO-FIXES
+====================================================================
+
+1. D4-012  option C broadened claim narrowed to match its explanation.
+   "That synthetic records reproduce the relationships present in the
+   real data"
+   ->
+   "That synthetic records preserve the relationships and variation
+   relevant to the prediction task"
+   Explanation C unchanged. Key C unchanged.
+
+2. D4-020  explanation B no longer claims precision determines
+   inspection effort, which also depends on flagged volume.
+   Now: precision directly answers how often a flagged part proves
+   faulty, and COMBINED WITH FLAGGED VOLUME can help quantify
+   inspection effort spent on sound parts.
+   Stem, options and key B unchanged.
+
+3. D4-021  explanation B no longer teaches the overbroad rule that
+   "data quality work happens before splitting and applies to the whole
+   dataset" - some preprocessing must be fitted on training data only.
+   Now: checking data quality is a separate purpose from the roles of
+   the validation and test sets; the validation set guides development
+   choices while the untouched test set provides the final independent
+   estimate. Key A unchanged.
+
+4. D4-027  keyed option C now states the temporal defect the stem
+   establishes, instead of assuming a prior risk judgement.
+   "The field may reflect churn risk already identified rather than
+   predicting it"
+   ->
+   "The field is created after the intended scoring point, so it will
+   not be available with the same meaning"
+   Key idea and explanation C already carried this principle and were
+   left as they were. Key C unchanged.
+
+5. D4-040  absolute wording removed from the keyed option and the key
+   idea, matching the explanation, which already said "may apply".
+   option A  "The model will be applied outside the conditions it was
+   evaluated for" -> "The model may be applied outside the conditions
+   it was evaluated for"
+   key idea  "a model gets applied" -> "a model may be applied"
+   Key A unchanged.
+
+6. D4-047  explanation A no longer depends on a class distribution the
+   stem does not establish.
+   Now: overall accuracy counts correct classifications rather than the
+   monetary value of missed incorrect invoices or the review workload
+   created by flagged invoices, so it does not directly measure either
+   stakeholder concern.
+   Nothing else in D4-047 was touched. Keys C,E unchanged.
+
+====================================================================
+BUILD GUARDS - asserted at build time, all passed
+====================================================================
+  1. This pass authorised NO change to stems, keys, topics or
+     difficulty. All four were asserted byte-identical, along with
+     domain, source, tags, is_test and question_id.
+  2. No field changed outside the authorised set: 7 changed,
+     7 authorised.
+  3. The 12 questions accepted in Revision 2 are byte-identical -
+     asserted both by exclusion from the edit set and by direct
+     comparison.
+  4. The 54 questions not named in this review are byte-identical.
+  5. Every keyed letter still has a populated option and explanation.
+  Edits applied to the RENDERED CSV by final letter (spec 6.2);
+  (option_X, explanation_X) moved only as pairs; no letter reassigned
+  (spec 6.1).
+
+====================================================================
+FINAL VERIFICATION - ALL REQUIRED CHECKS
+====================================================================
+  Questions                     60                          PASS
+  Select-two                    4                           PASS
+  Difficulty                    6 EASY / 37 MEDIUM / 17 HARD  PASS
+  Single-answer keys            A 14 / B 14 / C 14 / D 14   PASS
+  Select-two IDs and keys       D4-016 B,D | D4-031 A,C |
+                                D4-047 C,E | D4-058 B,E
+  Longest identical-key run     2                           PASS
+  Validator                     24 of 24 checks, 0 failures PASS
+  CSV schema                    22 columns, header byte-identical to
+                                the shipped Domain 1 file   PASS
+  CSV rows                      60 data rows                PASS
+  Duplicate / near-duplicate    none                        PASS
+  HTML <-> CSV comparison       848 fields, 0 differences   PASS
+
+  Topic distribution
+     8  Feature engineering and preparation
+     8  Model evaluation metrics
+     7  Training data strategy and validation design
+     7  Bias, fairness and evaluation transparency
+     7  Experiment management and iteration governance
+     6  Model approach and algorithm selection
+     6  Error cost and decision thresholds
+     6  Overfitting, generalisation and robustness
+     5  Data leakage
+
+  Answer-length report
+     Correct-is-longest          21/60 = 35%
+     Median correct option       81 chars
+     Median distractor           83 chars
+     Correct-option premium      -1.8%
+     Stem length                 median 296, range 214-451
+
+     NOTE ON THE 35%: this moved from 32% in Revision 3 to 35% here.
+     The cause is fixes 1 and 4, which lengthened two keyed options
+     (D4-012 C from 74 to 94 characters, D4-027 C from 70 to 103) in
+     order to state their claims precisely. The figure sits exactly at
+     the governing target of <= ~35% and is not over it. Reducing it
+     would require editing options this review did not authorise, and
+     the spec ranks correctness and defensibility above mechanical
+     distribution, so the wording was kept and the movement is reported
+     rather than engineered away. For reference, Domain 3 froze at 53%
+     and Domains 1 and 2 at 98% and 93%.
+
+  Originality vs 1,205 reference stems
+     max Jaccard 0.250 (target <= 0.40) | mean 0.151 | exact matches 0
+     nothing above 0.40
+
+====================================================================
+INTEGRITY GUARDS
+====================================================================
+  DOMAINS 1, 2, 3 NOT TOUCHED:
+    eeedf72cb1cbc7b2d1f8a78da058041e  cpmai-domain-1.csv
+    00a07fa452c4f5df9f932a906783a32c  cpmai-domain-2.csv
+    78b5dc5e760ec3677b1674f7c728ff55  cpmai-domain-3.csv
+    78b5dc5e760ec3677b1674f7c728ff55  cpmai-domain-3-frozen.csv
+    adcc4e236bc1697f5739379398037dc3  cpmai-domain-3-frozen.html
+
+  DOMAIN 4 FROZEN ARTEFACTS (identical to the working CSV):
+    5f828ccf9bb4f2c0a0dc02b78108dc64  cpmai-domain-4.csv
+    5f828ccf9bb4f2c0a0dc02b78108dc64  cpmai-domain-4-frozen.csv
+
+  HELD FILES PRESERVED:
+    cpmai-domain-4-held.csv       8 rows  H01-H08, fully consumed into
+                                  the Domain 4 bank
+    cpmai-domain-5-held.csv       1 row   CPMAI-D5-H01 (old D4-053,
+                                  production drift - Domain 5)
+    cpmai-out-of-scope-held.csv   1 row   OOS-001 (old D4-051, AI
+                                  suitability - Domain 2, FROZEN,
+                                  must not be reopened)
+
+  Old D4-051 was NOT returned to Domain 2 - verified by search: its
+  stem appears in the out-of-scope held file only (1 match), and in
+  neither cpmai-domain-4-frozen.csv (0) nor the Domain 2 CSV (0).
+  Domain 5 bank NOT started.
+
+====================================================================
+REVISION HISTORY
+====================================================================
+  Rev 1  60 questions authored. 8 held D4 questions inventoried and
+         consumed first (spec 9), 52 new written to fill the gaps.
+         3 defects found and fixed pre-review by the build itself:
+         an INVERTED answer-length tell (correct options 25% shorter
+         than distractors, 0% correct-is-longest), 3 unsupported
+         universals, and held-pool provenance leaking into `source`.
+  Rev 2  12 substantive findings, all accepted and applied.
+  Rev 3  21 findings: 19 targeted edits, 2 questions removed from the
+         domain and replaced, 1 substantive select-two rewrite, and the
+         HTML revision label. One VALIDATOR defect found and fixed
+         (check 8 flagged an explanation beginning "Incorrect invoices
+         vary in value" - an adjective, not a verdict); the wording was
+         not damaged to satisfy a faulty check.
+  Rev 4  6 micro-fixes. No further editorial review required.
+
+STATUS: **FROZEN.** Domain 4 is the final approved set and is ready for
+import into CertMocks.
