@@ -158,3 +158,42 @@ export function validateNewMockImportConfig(
 
   return errors
 }
+
+
+export interface QuizImportRow {
+  domain?: string
+}
+
+export function quizImportDomainErrors(
+  rows: QuizImportRow[],
+  usesDomains: boolean,
+  quizSize = 10,
+): string[] {
+  if (rows.length === 0) return ['Quiz import must contain at least one question.']
+  if (!Number.isInteger(quizSize) || quizSize <= 0) {
+    return ['Quiz size must be a positive whole number.']
+  }
+
+  if (!usesDomains) {
+    return rows.length % quizSize === 0
+      ? []
+      : [`Quiz imports must contain a multiple of ${quizSize} questions. This import has ${rows.length}.`]
+  }
+
+  const counts = new Map<string, { name: string; count: number }>()
+  for (const row of rows) {
+    const name = row.domain?.trim() ?? ''
+    if (!name) continue
+    const key = name.toLocaleLowerCase()
+    const current = counts.get(key)
+    if (current) current.count += 1
+    else counts.set(key, { name, count: 1 })
+  }
+
+  return Array.from(counts.values())
+    .filter(({ count }) => count % quizSize !== 0)
+    .map(
+      ({ name, count }) =>
+        `Domain "${name}" has ${count} Quiz questions. Each domain must contain a multiple of ${quizSize} so every persisted Quiz has exactly ${quizSize} questions.`,
+    )
+}
