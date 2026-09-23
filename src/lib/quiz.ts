@@ -20,7 +20,7 @@ export async function getExamQuestions(examId: string, userId?: string) {
         // A draft or archived question is not ready to be seen, so linking it
         // to an exam must not put it in front of a taker the way practice
         // already refuses to.
-        where: { question: { status: 'PUBLISHED' } },
+        where: { question: { status: 'PUBLISHED', contentType: 'MOCK_EXAM' } },
         include: {
           question: {
             select: {
