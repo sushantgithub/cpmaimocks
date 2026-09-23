@@ -1,12 +1,20 @@
 CPMAI DOMAIN 4 - FINAL CHANGELOG (REVISION 5) - PERMANENTLY FROZEN
 Domain: Manage AI Model Development and Evaluation
 
-SCOPE OF THIS PASS: the six authorised micro-fixes, nothing else.
-7 fields changed across 6 questions. The other 54 questions are
-byte-identical to Revision 3.
+REVISION HISTORY COVERED BY THIS FILE
+  Revision 4 applied the six authorised micro-fixes described below:
+  7 fields across 6 questions, with the other 54 questions
+  byte-identical to Revision 3.
+  Revision 5 subsequently changed exactly one further field - the
+  CPMAI-D4-020 key idea - with all 59 other questions byte-identical.
+  No other question-bank content changed in either pass.
+
+  Both passes are recorded in full below as historical records: the
+  six Revision 4 micro-fixes first, then the Revision 5 section, then
+  the metadata correction to the HTML revision label.
 
 ====================================================================
-THE SIX MICRO-FIXES
+REVISION 4 - THE SIX MICRO-FIXES
 ====================================================================
 
 1. D4-012  option C broadened claim narrowed to match its explanation.
