@@ -4,6 +4,7 @@ import {
   explicitImportQuestionIds,
   questionIdImportErrors,
   validateNewMockImportConfig,
+  quizImportDomainErrors,
 } from './question-import'
 
 describe('question import ID validation', () => {
@@ -189,5 +190,42 @@ describe('new Mock import settings', () => {
       'Time limit must be a positive whole number of minutes.',
       'Passing percentage must be between 1 and 100.',
     ])
+  })
+})
+
+
+describe('fixed-size Quiz imports', () => {
+  const rows = (domain: string, count: number) =>
+    Array.from({ length: count }, () => ({ domain }))
+
+  it.each([50, 60, 70])('accepts %i questions as complete 10-question quizzes', (count) => {
+    expect(quizImportDomainErrors(rows('Domain 1', count), true)).toEqual([])
+  })
+
+  it('rejects a partial quiz instead of silently creating an incomplete set', () => {
+    expect(quizImportDomainErrors(rows('Domain 1', 63), true)).toEqual([
+      'Domain "Domain 1" has 63 Quiz questions. Each domain must contain a multiple of 10 so every persisted Quiz has exactly 10 questions.',
+    ])
+  })
+
+  it('validates every domain independently', () => {
+    expect(quizImportDomainErrors([
+      ...rows('Domain 1', 20),
+      ...rows('Domain 2', 30),
+    ], true)).toEqual([])
+
+    expect(quizImportDomainErrors([
+      ...rows('Domain 1', 20),
+      ...rows('Domain 2', 25),
+    ], true)).toEqual([
+      'Domain "Domain 2" has 25 Quiz questions. Each domain must contain a multiple of 10 so every persisted Quiz has exactly 10 questions.',
+    ])
+  })
+
+  it('groups domain names case-insensitively', () => {
+    expect(quizImportDomainErrors([
+      ...rows('Domain 1', 5),
+      ...rows('domain 1', 5),
+    ], true)).toEqual([])
   })
 })
