@@ -121,11 +121,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: {
         id: { in: uniqueQuestionIds },
         certificationId,
+        contentType: 'MOCK_EXAM',
       },
     })
     if (eligibleCount !== uniqueQuestionIds.length) {
       return NextResponse.json(
-        { error: 'Every assigned question must belong to this certification.' },
+        { error: 'Every assigned question must belong to this certification and be a Mock Exam question.' },
         { status: 400 }
       )
     }
