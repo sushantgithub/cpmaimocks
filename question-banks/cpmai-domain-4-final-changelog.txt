@@ -225,3 +225,23 @@ Domain 5 bank NOT started.
 
 STATUS: **PERMANENTLY FROZEN.** No further editorial review required.
 Domain 4 is ready for CertMocks import.
+
+--------------------------------------------------------------------
+METADATA CORRECTION (no revision number change)
+--------------------------------------------------------------------
+The frozen HTML still displayed "Status: FROZEN - Revision 4, final"
+after the Revision 5 content fix. Corrected to "Revision 5, final".
+
+This touched one display string in the HTML builder. No question-bank
+content was involved: no CSV field, question, option, answer,
+explanation, key idea, topic, difficulty or distribution.
+
+Verified:
+  CSV byte-identical before and after
+    11841dcc3e7613f271e48b2979b15bb4  cpmai-domain-4-frozen.csv
+    11841dcc3e7613f271e48b2979b15bb4  cpmai-domain-4.csv
+  Validator            24 of 24 checks, 0 failures
+  HTML <-> CSV         848 fields, 0 differences
+  HTML now reads       FROZEN - Revision 5, final
+
+Domain 4 remains PERMANENTLY FROZEN.
