@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Upload } from 'lucide-react'
+import { History, Plus, Upload } from 'lucide-react'
 import { QuestionsTable } from '@/components/admin/questions-table'
 import { TestQuestionsBanner } from '@/components/admin/test-questions-banner'
 import { QuestionBankFilters } from '@/components/admin/question-bank-filters'
@@ -198,6 +198,9 @@ export default async function QuestionsPage({
           <p className="text-sm text-gray-500">{total} questions total</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href="/admin/questions/import-history"><History className="h-4 w-4 mr-1" />Import History</Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link href="/admin/questions/import"><Upload className="h-4 w-4 mr-1" />Import CSV</Link>
           </Button>

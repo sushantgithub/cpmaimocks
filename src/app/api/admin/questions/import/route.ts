@@ -140,6 +140,8 @@ export async function POST(req: Request) {
     if (!body.contentType || !CONTENT_TYPES.includes(body.contentType)) {
       return NextResponse.json({ error: 'Content type is required' }, { status: 400 })
     }
+    // Preserve the validated non-optional type across the transaction callback.
+    const contentType: ContentType = body.contentType
 
     const certification = await prisma.certification.findUnique({
       where: { id: body.certificationId },
@@ -198,7 +200,7 @@ export async function POST(req: Request) {
       rows: questions,
       certificationId: certification.id,
       allowReplaceOrphans:
-        body.contentType === 'MOCK_EXAM' &&
+        contentType === 'MOCK_EXAM' &&
         body.replaceOrphanedMockQuestions === true,
       existingQuestions: existingQuestions.map((question) => ({
         id: question.id,
@@ -215,7 +217,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            body.contentType === 'MOCK_EXAM' && body.replaceOrphanedMockQuestions
+            contentType === 'MOCK_EXAM' && body.replaceOrphanedMockQuestions
               ? 'Some existing questions cannot be replaced safely.'
               : 'Duplicate question_id values must be fixed before import.',
           errors: collisionAssessment.errors.slice(0, 20),
@@ -235,7 +237,7 @@ export async function POST(req: Request) {
         }
       | null = null
 
-    if (body.contentType === 'MOCK_EXAM') {
+    if (contentType === 'MOCK_EXAM') {
       if (body.examId && body.newMock) {
         return NextResponse.json(
           { error: 'Choose either an existing Mock Exam or create a new one, not both.' },
@@ -318,6 +320,18 @@ export async function POST(req: Request) {
 
     const created = await prisma.$transaction(async (tx) => {
       const questionIds: string[] = []
+      // One batch per successful import. Creating it inside this transaction
+      // means a failed row cannot leave an empty/partial batch behind.
+      const importBatch = await tx.questionImportBatch.create({
+        data: {
+          name: contentType === 'MOCK_EXAM'
+            ? (existingMock?.title ?? body.newMock?.title?.trim() ?? 'Mock import')
+            : `${contentType === 'PRACTICE_ONLY' ? 'Practice' : 'Quiz'} import ${new Date().toISOString()}`,
+          certificationId: certification.id,
+          contentType: contentType,
+        },
+        select: { id: true, name: true },
+      })
       let examStatus: 'PUBLISHED' | null = null
       let targetMock = existingMock
       let createdMock = false
@@ -343,7 +357,7 @@ export async function POST(req: Request) {
         }
       }
 
-      if (body.contentType === 'MOCK_EXAM' && !targetMock) {
+      if (contentType === 'MOCK_EXAM' && !targetMock) {
         const config = body.newMock!
         const title = config.title!.trim().replace(/\s+/g, ' ')
         const questionCount = Number(config.questionCount)
@@ -479,7 +493,8 @@ export async function POST(req: Request) {
             categoryId,
             topicId,
             status,
-            contentType: body.contentType,
+            contentType: contentType,
+            importBatchId: importBatch.id,
           },
         })
 
@@ -526,17 +541,21 @@ export async function POST(req: Request) {
         examTitle: targetMock?.title ?? null,
         createdMock,
         replacedQuestionCount: replaceDatabaseIds.length,
+        importBatchId: importBatch.id,
+        importBatchName: importBatch.name,
       }
     })
 
     return NextResponse.json({
       imported: created.questionIds.length,
-      contentType: body.contentType,
+      contentType: contentType,
       examId: created.examId,
       examTitle: created.examTitle,
       createdMock: created.createdMock,
       replacedQuestionCount: created.replacedQuestionCount,
       examStatus: created.examStatus,
+      importBatchId: created.importBatchId,
+      importBatchName: created.importBatchName,
       errors: [],
     })
   } catch (err) {

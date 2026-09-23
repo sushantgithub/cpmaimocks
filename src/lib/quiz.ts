@@ -138,8 +138,19 @@ const PRACTICE_QUESTION_SELECT = {
   topic: { select: { name: true } },
 } as const
 
+
+/** Base eligibility shared by every Practice mode. */
+export function buildPracticeQuestionWhere(): Record<string, unknown> {
+  return {
+    status: 'PUBLISHED' as const,
+    // Practice owns its own question bank. Quiz and Mock questions must never
+    // leak into Practice, otherwise learners can see exam content in advance.
+    contentType: 'PRACTICE_ONLY' as const,
+  }
+}
+
 export async function getPracticeQuestions(userId: string, config: PracticeConfig) {
-  const where: Record<string, unknown> = { status: 'PUBLISHED' }
+  const where = buildPracticeQuestionWhere()
 
   if (config.certificationId) {
     where.certificationId = config.certificationId
