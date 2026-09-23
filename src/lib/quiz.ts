@@ -140,7 +140,7 @@ const PRACTICE_QUESTION_SELECT = {
 
 
 /** Base eligibility shared by every Practice mode. */
-export function buildPracticeQuestionWhere() {
+export function buildPracticeQuestionWhere(): Record<string, unknown> {
   return {
     status: 'PUBLISHED' as const,
     // Practice owns its own question bank. Quiz and Mock questions must never
