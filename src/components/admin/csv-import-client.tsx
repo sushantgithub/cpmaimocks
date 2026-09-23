@@ -698,7 +698,9 @@ export function CsvImportClient() {
                 <h4 className="font-semibold text-red-700 mb-3 text-sm">
                   {contentType === 'MOCK_EXAM'
                     ? 'Rows with errors — Mock import is blocked until these are fixed:'
-                    : 'Rows with errors — these rows will not be imported:'}
+                    : contentType === 'QUIZ'
+                      ? 'Rows with errors — Quiz import is blocked until these are fixed:'
+                      : 'Rows with errors — these rows will not be imported:'}
                 </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {preview.errors.map((error) => (
