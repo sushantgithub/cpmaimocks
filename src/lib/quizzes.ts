@@ -116,12 +116,6 @@ async function poolFilter(key: QuizKey) {
     })
     if (!category) return null
 
-    const claimed = await prisma.quiz.findMany({
-      where: { isActive: true, certificationId: category.certificationId },
-      select: { tag: true },
-    })
-    const claimedTags = Array.from(new Set(claimed.map((q) => q.tag)))
-
     return {
       title: category.name,
       description: null as string | null,
@@ -131,7 +125,6 @@ async function poolFilter(key: QuizKey) {
         status: 'PUBLISHED' as const,
         contentType: 'QUIZ' as const,
         categoryId: category.id,
-        ...(claimedTags.length > 0 ? { NOT: { tags: { hasSome: claimedTags } } } : {}),
       },
     }
   }
@@ -316,14 +309,12 @@ function freeSlotState(attempts: NormalizedAttempt[]) {
 }
 
 export async function listQuizzes(userId: string): Promise<QuizSummary[]> {
-  const [categories, tagQuizzes, attempts, accessible] = await Promise.all([
+  const [categories, attempts, accessible] = await Promise.all([
     prisma.category.findMany({
-      where: { certification: { isActive: true, usesDomains: true } },
-      include: { certification: { select: { id: true, name: true, sortOrder: true } } },
-      orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-    }),
-    prisma.quiz.findMany({
-      where: { isActive: true, certification: { isActive: true } },
+      where: {
+        certification: { isActive: true, usesDomains: true },
+        quizzes: { some: { isActive: true } },
+      },
       include: { certification: { select: { id: true, name: true, sortOrder: true } } },
       orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
     }),
@@ -331,10 +322,10 @@ export async function listQuizzes(userId: string): Promise<QuizSummary[]> {
     getAccessibleCertificationIds(userId),
   ])
 
-  const keys: QuizKey[] = [
-    ...categories.map((category) => domainKey(category.id)),
-    ...tagQuizzes.map((quiz) => tagKey(quiz.id)),
-  ]
+  // Learner UI is domain-first: Certification -> Domain -> Quiz.
+  // Persisted Quiz rows define ownership/admin lifecycle, while the domain
+  // summary keeps the proven learner experience of one expandable domain card.
+  const keys: QuizKey[] = categories.map((category) => domainKey(category.id))
 
   const summaries = await Promise.all(
     keys.map((key) => quizSummary(userId, key, attempts, accessible))
