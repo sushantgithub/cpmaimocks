@@ -318,6 +318,18 @@ export async function POST(req: Request) {
 
     const created = await prisma.$transaction(async (tx) => {
       const questionIds: string[] = []
+      // One batch per successful import. Creating it inside this transaction
+      // means a failed row cannot leave an empty/partial batch behind.
+      const importBatch = await tx.questionImportBatch.create({
+        data: {
+          name: body.contentType === 'MOCK_EXAM'
+            ? (existingMock?.title ?? body.newMock?.title?.trim() ?? 'Mock import')
+            : `${body.contentType === 'PRACTICE_ONLY' ? 'Practice' : 'Quiz'} import ${new Date().toISOString()}`,
+          certificationId: certification.id,
+          contentType: body.contentType,
+        },
+        select: { id: true, name: true },
+      })
       let examStatus: 'PUBLISHED' | null = null
       let targetMock = existingMock
       let createdMock = false
@@ -480,6 +492,7 @@ export async function POST(req: Request) {
             topicId,
             status,
             contentType: body.contentType,
+            importBatchId: importBatch.id,
           },
         })
 
@@ -526,6 +539,8 @@ export async function POST(req: Request) {
         examTitle: targetMock?.title ?? null,
         createdMock,
         replacedQuestionCount: replaceDatabaseIds.length,
+        importBatchId: importBatch.id,
+        importBatchName: importBatch.name,
       }
     })
 
@@ -537,6 +552,8 @@ export async function POST(req: Request) {
       createdMock: created.createdMock,
       replacedQuestionCount: created.replacedQuestionCount,
       examStatus: created.examStatus,
+      importBatchId: created.importBatchId,
+      importBatchName: created.importBatchName,
       errors: [],
     })
   } catch (err) {
