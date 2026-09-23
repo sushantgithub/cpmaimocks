@@ -365,6 +365,10 @@ export function CsvImportClient() {
   }
 
   const mockError = mockValidationError()
+  const quizError =
+    contentType === 'QUIZ' && preview?.errors.length
+      ? 'Quiz imports are all-or-nothing. Fix every invalid row before importing so each persisted Quiz has exactly 10 questions.'
+      : null
 
   return (
     <div className="space-y-6">
@@ -409,8 +413,8 @@ export function CsvImportClient() {
               </select>
               {contentType && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {contentType === 'QUIZ' && 'Quiz questions are used in fixed quiz sets and are also available in Practice.'}
-                  {contentType === 'MOCK_EXAM' && 'Mock questions are assigned to the selected mock and are also available in Practice.'}
+                  {contentType === 'QUIZ' && 'Quiz imports create persisted Quiz records in fixed sets of 10 within each Domain. Quiz questions stay in Quiz only.'}
+                  {contentType === 'MOCK_EXAM' && 'Mock questions are assigned only to the selected Mock Exam.'}
                   {contentType === 'PRACTICE_ONLY' && 'Practice-only questions never enter Quiz or Mock automatically.'}
                 </p>
               )}
@@ -672,6 +676,14 @@ export function CsvImportClient() {
             )}
           </div>
 
+          {contentType === 'QUIZ' && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${
+              quizError ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
+            }`}>
+              {quizError ?? 'Quiz import is all-or-nothing. Every Domain must contain a multiple of 10 questions; each set becomes a persisted Quiz.'}
+            </div>
+          )}
+
           {contentType === 'MOCK_EXAM' && (
             <div className={`rounded-lg border px-4 py-3 text-sm ${
               mockError ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
@@ -686,7 +698,9 @@ export function CsvImportClient() {
                 <h4 className="font-semibold text-red-700 mb-3 text-sm">
                   {contentType === 'MOCK_EXAM'
                     ? 'Rows with errors — Mock import is blocked until these are fixed:'
-                    : 'Rows with errors — these rows will not be imported:'}
+                    : contentType === 'QUIZ'
+                      ? 'Rows with errors — Quiz import is blocked until these are fixed:'
+                      : 'Rows with errors — these rows will not be imported:'}
                 </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {preview.errors.map((error) => (
@@ -773,7 +787,9 @@ export function CsvImportClient() {
           <p className="text-xs text-muted-foreground -mt-2">
             {contentType === 'MOCK_EXAM'
               ? 'The Mock Exam is published automatically only when its full configured question set is assigned and every assigned question is published.'
-              : 'Published questions are immediately eligible for Practice.'}
+              : contentType === 'QUIZ'
+                ? 'Published Quiz questions appear only in their persisted 10-question Quiz.'
+                : 'Published Practice questions appear only in Practice.'}
           </p>
 
           <div className="flex gap-3">
@@ -783,7 +799,8 @@ export function CsvImportClient() {
               loading={importing}
               disabled={
                 preview.valid.length === 0 ||
-                (contentType === 'MOCK_EXAM' && Boolean(mockError))
+                (contentType === 'MOCK_EXAM' && Boolean(mockError)) ||
+                (contentType === 'QUIZ' && Boolean(quizError))
               }
             >
               Import {preview.valid.length} Questions

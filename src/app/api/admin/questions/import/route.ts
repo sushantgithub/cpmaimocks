@@ -15,6 +15,7 @@ import {
   explicitImportQuestionIds,
   questionIdImportErrors,
   validateNewMockImportConfig,
+  quizImportDomainErrors,
   type NewMockImportConfig,
 } from '@/lib/question-import'
 
@@ -154,6 +155,9 @@ export async function POST(req: Request) {
       validateRow(row, index + 2, certification.usesDomains)
     )
     const validationErrors = validation.flatMap((result) => result.errors)
+    if (contentType === 'QUIZ') {
+      validationErrors.push(...quizImportDomainErrors(questions, certification.usesDomains))
+    }
     if (validationErrors.length > 0) {
       return NextResponse.json(
         { error: 'Import validation failed', errors: validationErrors.slice(0, 20) },
@@ -334,6 +338,11 @@ export async function POST(req: Request) {
       })
       let examStatus: 'PUBLISHED' | null = null
       let targetMock = existingMock
+      const quizStateByDomain = new Map<string, {
+        nextSortOrder: number
+        rowsInCurrentQuiz: number
+        currentTag: string | null
+      }>()
       let createdMock = false
 
       if (replaceDatabaseIds.length > 0) {
@@ -443,6 +452,58 @@ export async function POST(req: Request) {
               ).id
         }
 
+        let quizTag: string | null = null
+        if (contentType === 'QUIZ') {
+          if (!categoryId) {
+            throw new Error('QUIZ_DOMAIN_REQUIRED')
+          }
+
+          let state = quizStateByDomain.get(categoryId)
+          if (!state) {
+            const lastQuiz = await tx.quiz.findFirst({
+              where: { categoryId },
+              select: { sortOrder: true },
+              orderBy: [{ sortOrder: 'desc' }, { createdAt: 'desc' }],
+            })
+            state = {
+              nextSortOrder: (lastQuiz?.sortOrder ?? -1) + 1,
+              rowsInCurrentQuiz: 0,
+              currentTag: null,
+            }
+            quizStateByDomain.set(categoryId, state)
+          }
+
+          if (state.rowsInCurrentQuiz === 0) {
+            const quizNumber = state.nextSortOrder + 1
+            const title = `${domain} - Quiz ${quizNumber}`
+            const tag = `quiz-${categoryId}-${quizNumber}`.toLowerCase()
+            const slugBase = slugify(title)
+            let slug = slugBase
+            let suffix = 2
+            while (await tx.quiz.findFirst({ where: { certificationId: certification.id, slug }, select: { id: true } })) {
+              slug = `${slugBase}-${suffix++}`
+            }
+
+            await tx.quiz.create({
+              data: {
+                title,
+                slug,
+                certificationId: certification.id,
+                categoryId,
+                tag,
+                isActive: true,
+                sortOrder: state.nextSortOrder,
+              },
+            })
+            state.currentTag = tag
+            state.nextSortOrder += 1
+          }
+
+          quizTag = state.currentTag
+          state.rowsInCurrentQuiz = (state.rowsInCurrentQuiz + 1) % 10
+          if (state.rowsInCurrentQuiz === 0) state.currentTag = null
+        }
+
         let topicId: string | undefined
         const topicName = row.topic?.trim()
         if (topicName && categoryId) {
@@ -487,7 +548,9 @@ export async function POST(req: Request) {
             explanationF: row.explanation_f?.trim() || null,
             difficulty,
             source: row.source?.trim() || null,
-            tags: parseTags(row.tags),
+            tags: quizTag
+              ? Array.from(new Set([quizTag, ...parseTags(row.tags)])).slice(0, 10)
+              : parseTags(row.tags),
             isTest: parseBool(row.is_test),
             certificationId: certification.id,
             categoryId,
@@ -560,6 +623,13 @@ export async function POST(req: Request) {
     })
   } catch (err) {
     console.error('[ImportQuestions]', err)
+
+    if (err instanceof Error && err.message === 'QUIZ_DOMAIN_REQUIRED') {
+      return NextResponse.json(
+        { error: 'Quiz questions must belong to a Domain so fixed 10-question Quiz records can be created.' },
+        { status: 400 },
+      )
+    }
 
     if (err instanceof Error && err.message === 'DUPLICATE_MOCK_NAME') {
       return NextResponse.json(
