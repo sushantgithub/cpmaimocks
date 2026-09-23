@@ -34,28 +34,36 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     }, { status: 409 })
   }
 
-  const questionIds = batch.questions.map((q) => q.id)
-  await prisma.$transaction(async (tx) => {
-    // Batch deletion is intentionally all-or-nothing and scoped by importBatchId.
-    // Never delete a partial mock's questions: doing so would silently damage
-    // an assessment. Delete the mock itself first (or archive questions) once
-    // product-level historical-attempt handling is defined.
-    const linkedToMock = batch.questions.filter((q) => q._count.mockExamQuestions > 0)
-    if (linkedToMock.length > 0) throw new Error('BATCH_HAS_MOCK_ASSIGNMENTS')
+  const linkedToMock = batch.questions.filter((q) => q._count.mockExamQuestions > 0)
+  if (linkedToMock.length > 0) {
+    return NextResponse.json({
+      error: `${linkedToMock.length} question(s) in this batch are assigned to a Mock Exam. Remove/delete the assessment relationship safely before deleting this batch.`,
+      code: 'BATCH_HAS_MOCK_ASSIGNMENTS',
+      questionCount: batch._count.questions,
+      protectedCount: linkedToMock.length,
+    }, { status: 409 })
+  }
 
-    if (questionIds.length > 0) {
-      const deleted = await tx.question.deleteMany({
-        where: { id: { in: questionIds }, importBatchId: batch.id },
-      })
-      if (deleted.count !== questionIds.length) throw new Error('BATCH_DELETE_CONFLICT')
-    }
-    await tx.questionImportBatch.delete({ where: { id: batch.id } })
-  }).catch((error) => {
-    if (error instanceof Error && error.message === 'BATCH_HAS_MOCK_ASSIGNMENTS') {
-      throw error
+  const questionIds = batch.questions.map((q) => q.id)
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (questionIds.length > 0) {
+        const deleted = await tx.question.deleteMany({
+          where: { id: { in: questionIds }, importBatchId: batch.id },
+        })
+        if (deleted.count !== questionIds.length) throw new Error('BATCH_DELETE_CONFLICT')
+      }
+      await tx.questionImportBatch.delete({ where: { id: batch.id } })
+    })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'BATCH_DELETE_CONFLICT') {
+      return NextResponse.json({
+        error: 'This batch changed while it was being deleted. Nothing was partially deleted; refresh and retry.',
+        code: 'BATCH_DELETE_CONFLICT',
+      }, { status: 409 })
     }
     throw error
-  })
+  }
 
   return NextResponse.json({ success: true, deleted: questionIds.length, name: batch.name })
 }
