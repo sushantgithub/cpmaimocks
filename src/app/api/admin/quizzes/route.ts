@@ -112,6 +112,7 @@ export async function POST(req: Request) {
   const tag = typeof body.tag === 'string' ? body.tag.trim().toLowerCase() : ''
   const certificationId =
     typeof body.certificationId === 'string' ? body.certificationId : ''
+  const categoryId = typeof body.categoryId === 'string' ? body.categoryId : ''
   const description =
     typeof body.description === 'string' ? body.description.trim() : ''
 
@@ -120,12 +121,22 @@ export async function POST(req: Request) {
   if (!certificationId) {
     return NextResponse.json({ error: 'Certification is required' }, { status: 400 })
   }
+  if (!categoryId) {
+    return NextResponse.json({ error: 'Domain is required' }, { status: 400 })
+  }
 
   const certification = await prisma.certification.findUnique({
     where: { id: certificationId },
   })
   if (!certification) {
     return NextResponse.json({ error: 'Certification not found' }, { status: 404 })
+  }
+  const category = await prisma.category.findFirst({
+    where: { id: categoryId, certificationId },
+    select: { id: true },
+  })
+  if (!category) {
+    return NextResponse.json({ error: 'Domain does not belong to this certification' }, { status: 400 })
   }
 
   const slug = slugify(title)
@@ -146,6 +157,7 @@ export async function POST(req: Request) {
       slug,
       tag,
       certificationId,
+      categoryId,
       description: description || null,
       sortOrder: count,
     },
