@@ -298,13 +298,15 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     where: { id: params.id },
     select: {
       id: true,
-      questions: { select: { questionId: true } },
+      questions: { select: { questionId: true, question: { select: { contentType: true, _count: { select: { mockExamQuestions: true } } } } } },
       attempts: { select: { id: true } },
     },
   })
   if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const questionIds = exam.questions.map((item) => item.questionId)
+  const questionIds = exam.questions
+    .filter((item) => item.question.contentType === 'MOCK_EXAM' && item.question._count.mockExamQuestions === 1)
+    .map((item) => item.questionId)
   const attemptIds = exam.attempts.map((attempt) => attempt.id)
 
   await prisma.$transaction(async (tx) => {
@@ -327,5 +329,5 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     await tx.mockExam.delete({ where: { id: exam.id } })
   })
 
-  return NextResponse.json({ success: true, deletedQuestions: questionIds.length })
+  return NextResponse.json({ success: true, deletedQuestions: questionIds.length, preservedSharedQuestions: exam.questions.length - questionIds.length })
 }
