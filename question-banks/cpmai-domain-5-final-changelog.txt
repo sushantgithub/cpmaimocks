@@ -1,0 +1,162 @@
+CPMAI DOMAIN 5 - FINAL CHANGELOG (REVISION 3) - PERMANENTLY FROZEN
+Applying the four remaining content issues plus one wording cleanup.
+
+SCOPE: exactly FIVE fields changed, across five questions. The other 55
+questions are byte-identical. No option, key, topic or difficulty was
+changed anywhere in the bank - this pass authorised none, and the build
+asserted it.
+
+====================================================================
+THE FIVE CHANGES
+====================================================================
+
+1. D5-059  explanation_a - a genuine alignment defect, and mine.
+   My Revision 2 cleanup put option B's reasoning into explanation A, so
+   A and B both opened "Better understanding does not...". Explanation A
+   was describing the distractor rather than the key.
+   NOW: "The team is being measured against a target that conflicts with
+   the outcome the model is intended to improve. Addressing that
+   incentive conflict removes a direct barrier to adoption."
+   Stem, all options, key A, key idea and explanations B/C/D unchanged.
+
+2. D5-055  question - the predicted outcome is now established in the
+   stem instead of being introduced by explanation A.
+   The stem now opens: "A loan model predicts whether an applicant would
+   default on a loan from the organisation." The counterfactual logic is
+   retained unchanged, and the distinction stands:
+     observed     - default with another lender
+     unobserved   - repayment or default on the organisation's own loan
+                    under its own terms
+   Key A and all options unchanged. The question was not turned back into
+   a precision and recall question.
+
+3. D5-048  explanation (key idea) - "cannot be reliably returned to or
+   audited" was too absolute, since other operational records may still
+   support parts of an audit.
+   NOW: "Missing production provenance prevents reliable reconstruction
+   and weakens both rollback and auditability."
+   Stem, options, key C and all per-option explanations unchanged.
+
+4. D5-017  explanation (key idea) - past decisions do not necessarily
+   remain in effect once a model is retired. The principle is the
+   preservation of historical operational evidence.
+   NOW: "Records of a retired model's past operation may still be needed
+   to examine or explain earlier decisions."
+   The revised key D and all other fields unchanged.
+
+5. D5-032  explanation (key idea) - "will crowd out everything else the
+   message says" was unnecessarily absolute.
+   NOW: "Leaving a major question about people's own roles unanswered can
+   undermine the rest of the communication."
+   No other change to D5-032.
+
+====================================================================
+BUILD GUARDS - asserted at build time, all passed
+====================================================================
+  1. The diff was required to EQUAL exactly this set, and did:
+       CPMAI-D5-017:explanation
+       CPMAI-D5-032:explanation
+       CPMAI-D5-048:explanation
+       CPMAI-D5-055:question
+       CPMAI-D5-059:explanation_a
+     Any other difference would have aborted the build.
+  2. Every option field across all 60 questions was asserted
+     byte-identical, alongside keys, topics, difficulty, domain, source,
+     tags, is_test and question_id.
+  3. The 55 questions not named above are byte-identical.
+  4. Every keyed letter still has a populated option and explanation.
+  Edits applied to the RENDERED CSV by final letter (spec 6.2).
+
+====================================================================
+MECHANICAL REPORT
+====================================================================
+  Validator                  24 of 24 checks, 0 failures     PASS
+  Questions                  60                              PASS
+  Select-two                 4                               PASS
+  Difficulty                 6 EASY / 37 MEDIUM / 17 HARD    PASS
+  Single-answer keys         A 14 / B 14 / C 14 / D 14       PASS
+  Select-two IDs and keys    D5-004 B,D | D5-005 A,C |
+                             D5-019 C,E | D5-020 B,E   - varied, and
+                             not all containing A            PASS
+  Longest identical-key run  2                               PASS
+  CSV schema / rows          22 columns / 60 rows, header
+                             byte-identical to Domain 1      PASS
+  Duplicate / near-duplicate none                            PASS
+  HTML <-> CSV               848 fields, 0 differences       PASS
+  Stem length                median 303, range 211-423
+
+  Originality vs 1,265 reference stems:
+    max Jaccard 0.257 | mean 0.162 | exact matches 0 | none over 0.40
+
+  Answer-length signal (ACCEPTED at 38% per the review, not engineered):
+    Correct-is-longest       23/60 = 38%   - unchanged by this pass
+    Median correct option    76 chars
+    Median distractor        79 chars
+    Length premium           -3.2%
+    No distractor was padded and no keyed option shortened.
+
+  Domain 5 CSV checksum: 306cc6f7a85b8907709c2e66090d3120
+
+====================================================================
+ONE OBSERVATION, NOT ACTED ON
+====================================================================
+  D5-055's option B still reads "Precision is the wrong measure for a
+  loan model and recall should be reported instead". Revision 2 removed
+  the word "precision" from that stem, so this distractor now names a
+  measure the stem does not mention. It remains a plausible and clearly
+  wrong option, and its explanation stands on its own.
+  I have NOT changed it, because this pass authorised five specific
+  fields and nothing else. Flagging it for a decision rather than
+  acting unasked.
+
+====================================================================
+FREEZE - ARTEFACT FINALISATION ONLY (NOT A REVISION 4)
+====================================================================
+Revision 3 was accepted with no further content changes required. The
+freeze step produced the final artefacts and set their metadata. It
+changed NO question content.
+
+  Frozen CSV   cpmai-domain-5-frozen.csv, copied from the working CSV
+  Frozen HTML  cpmai-domain-5-frozen.html, rendered from the frozen CSV
+  Metadata     title, subtitle and status row now read
+               "FROZEN - Revision 3, final"
+
+PROOF THAT THE FREEZE CHANGED NOTHING:
+  CSV checksum before the freeze   306cc6f7a85b8907709c2e66090d3120
+  CSV checksum after the freeze    306cc6f7a85b8907709c2e66090d3120
+  cpmai-domain-5.csv and cpmai-domain-5-frozen.csv are byte-identical.
+
+POST-FREEZE INTEGRITY CHECKS - all run against the FROZEN artefacts:
+  Validator                  24 of 24 checks, 0 failures     PASS
+  Frozen CSV = working CSV   identical checksums             PASS
+  Frozen HTML <-> frozen CSV 848 fields, 0 differences       PASS
+  Questions / select-two     60 / 4                          PASS
+  Difficulty                 6 EASY / 37 MEDIUM / 17 HARD    PASS
+  Single-answer keys         A 14 / B 14 / C 14 / D 14       PASS
+  Longest identical-key run  2                               PASS
+  Correct-is-longest         23/60 = 38%, accepted, unchanged
+  Length premium             -3.2%, unchanged
+
+D5-055 OPTION B: left as it stands, per the review. The distractor
+represents the mistaken response of changing the reported metric rather
+than recognising the missing counterfactual outcome, and explanation B
+addresses that directly. The absence of the word "precision" from the
+revised stem is not a substantive defect.
+
+REVISION HISTORY
+  Rev 1  60 questions authored. 1 held question (production drift, moved
+         out of Domain 4) inventoried first per spec 9, then 59 new
+         written around it. Two defects were found and fixed by the
+         build before review: batch-level answer-length drift, corrected
+         by measuring after each batch rather than at the end; and four
+         explanations flagged as universals, reworded rather than
+         loosening the check.
+  Rev 2  26 findings, all accepted. Two domain-boundary reframings
+         (D5-014 out of Domain 2 territory, D5-025 out of Domain 1),
+         12 substantive repairs and 12 wording cleanups.
+  Rev 3  5 changes. One was a defect I introduced in Rev 2: D5-059's
+         explanation A had been given option B's reasoning.
+  Freeze Artefact finalisation only. No content change.
+
+STATUS: **PERMANENTLY FROZEN.** Domain 5 is the final approved set and is
+ready for CertMocks import. No further editorial review.
