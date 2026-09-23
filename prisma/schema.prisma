@@ -272,6 +272,7 @@ model Certification {
   exams      MockExam[]
   plans      SubscriptionPlan[]
   quizzes    Quiz[]
+  importBatches QuestionImportBatch[]
 }
 
 model Category {
@@ -356,7 +357,10 @@ model Question {
   mockExamQuestions MockExamQuestion[]
   examAnswers       ExamAnswer[]
   bookmarks         Bookmark[]
+  importBatchId     String?
+  importBatch       QuestionImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
+  @@index([importBatchId])
   @@index([categoryId, difficulty, status])
   @@index([status])
   @@index([certificationId, status])
@@ -391,6 +395,20 @@ model MockExam {
   attempts      ExamAttempt[]
 
   @@index([certificationId, status])
+}
+
+model QuestionImportBatch {
+  id              String              @id @default(cuid())
+  name            String
+  certificationId String
+  contentType     QuestionContentType
+  sourceFilename  String?
+  createdAt       DateTime            @default(now())
+
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  questions     Question[]
+
+  @@index([certificationId, contentType, createdAt])
 }
 
 model MockExamQuestion {
