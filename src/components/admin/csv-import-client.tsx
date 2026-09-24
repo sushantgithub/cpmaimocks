@@ -193,7 +193,7 @@ export function CsvImportClient() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         const rows = results.data as RowData[]
         const headers = Object.keys(rows[0] ?? {})
         const missingCols = REQUIRED_COLS.filter((column) => !headers.includes(column))
@@ -218,7 +218,52 @@ export function CsvImportClient() {
           }
         })
 
-        setPreview({ valid, errors, total: rows.length })
+        // Check duplicate wording against both this CSV and the selected
+        // certification/content bank before showing the final preview.
+        try {
+          const response = await fetch('/api/admin/questions/import/duplicates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              certificationId,
+              contentType,
+              questions: rows.map((row) => ({ question: row.question })),
+            }),
+          })
+          const data = await response.json()
+          if (!response.ok) {
+            toast({ title: data.error ?? 'Duplicate check failed', variant: 'destructive' })
+            return
+          }
+
+          const duplicateByRow = new Map<number, string[]>()
+          for (const duplicate of data.duplicates ?? []) {
+            const rowNumber = Number(duplicate.row)
+            if (!rowNumber) continue
+            const messages = duplicateByRow.get(rowNumber) ?? []
+            messages.push(`Duplicate: ${duplicate.message}`)
+            duplicateByRow.set(rowNumber, messages)
+          }
+
+          const mergedErrors = new Map<number, string[]>()
+          for (const error of errors) mergedErrors.set(error.row, [...error.errors])
+          for (const [rowNumber, messages] of duplicateByRow) {
+            mergedErrors.set(rowNumber, [...(mergedErrors.get(rowNumber) ?? []), ...messages])
+          }
+
+          const blockedRows = new Set(mergedErrors.keys())
+          setPreview({
+            valid: rows.filter((_, index) => !blockedRows.has(index + 2)),
+            errors: Array.from(mergedErrors, ([row, rowErrors]) => ({ row, errors: rowErrors }))
+              .sort((a, b) => a.row - b.row),
+            total: rows.length,
+          })
+        } catch {
+          toast({
+            title: 'Could not check for duplicate questions. Import was not enabled.',
+            variant: 'destructive',
+          })
+        }
       },
       error: () =>
         toast({ title: 'Failed to parse file. Check the CSV format.', variant: 'destructive' }),
