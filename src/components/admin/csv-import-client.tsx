@@ -227,7 +227,7 @@ export function CsvImportClient() {
             body: JSON.stringify({
               certificationId,
               contentType,
-              questions: rows.map((row) => ({ question: row.question })),
+              questions: rows.map((row) => ({ question: row.question, question_id: row.question_id })),
             }),
           })
           const data = await response.json()
