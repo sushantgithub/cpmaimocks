@@ -10,19 +10,33 @@ const inter = Inter({ subsets: ['latin'] })
 const isStaging = isStagingEnvironment()
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://certmocks.com'),
   title: {
     default: 'CertMocks — PMI CPMAI Mock Exams & Practice Tests',
     template: '%s | CertMocks',
   },
   description:
     'Prepare for the PMI CPMAI certification with realistic mock exams, practice questions, and detailed performance analytics. Independent exam preparation platform.',
-  keywords: ['CPMAI', 'PMI CPMAI', 'CPMAI mock exam', 'CPMAI practice test', 'AI certification', 'CPMAI preparation'],
+  keywords: [
+    'CPMAI', 'PMI CPMAI', 'CPMAI mock exam', 'CPMAI practice test',
+    'AI certification', 'CPMAI preparation', 'CPMAI exam questions',
+    'CPMAI study guide', 'CPMAI exam pattern', 'CPMAI practice questions',
+    'artificial intelligence certification', 'CPMAI exam prep',
+  ],
   openGraph: {
     title: 'CertMocks — PMI CPMAI Mock Exams',
     description: 'Realistic mock exams and practice questions for PMI CPMAI certification.',
     type: 'website',
+    siteName: 'CertMocks',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CertMocks — PMI CPMAI Mock Exams & Practice Tests',
+    description: 'Realistic mock exams and practice questions for PMI CPMAI certification.',
   },
   robots: isStaging ? { index: false, follow: false } : { index: true, follow: true },
+  alternates: { canonical: '/' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

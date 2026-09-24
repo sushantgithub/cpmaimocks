@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { Card, CardContent } from '@/components/ui/card'
+import { FAQPageJsonLd } from '@/components/seo/json-ld'
 
 export const metadata: Metadata = {
   title: 'FAQ — CertMocks',
-  description: 'Frequently asked questions about CertMocks exam preparation platform.',
+  description: 'Frequently asked questions about CertMocks CPMAI exam preparation — mock exams, pricing, explanations, and more.',
+  alternates: { canonical: '/faq' },
 }
 
 const faqs = [
@@ -29,8 +31,11 @@ const faqs = [
 ]
 
 export default function FAQPage() {
+  const allFaqs = faqs.flatMap((s) => s.items.map((i) => ({ question: i.q, answer: i.a })))
+
   return (
     <div className="container mx-auto px-4 py-16 max-w-3xl">
+      <FAQPageJsonLd faqs={allFaqs} />
       <h1 className="text-3xl font-bold text-center mb-2">Frequently Asked Questions</h1>
       <p className="text-muted-foreground text-center mb-12">Everything you need to know about CertMocks.</p>
 
