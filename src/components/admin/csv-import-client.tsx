@@ -325,6 +325,17 @@ export function CsvImportClient() {
   async function importQuestions() {
     if (!preview?.valid.length || !certificationId || !contentType) return
 
+    const duplicateError = preview.errors.some((item) =>
+      item.errors.some((error) => error.startsWith('Duplicate:'))
+    )
+    if (duplicateError) {
+      toast({
+        title: 'Duplicate questions found. Fix the highlighted CSV rows before importing.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     const mockError = mockValidationError()
     if (mockError) {
       toast({ title: mockError, variant: 'destructive' })
@@ -410,6 +421,10 @@ export function CsvImportClient() {
   }
 
   const mockError = mockValidationError()
+  const duplicateError =
+    preview?.errors.some((item) => item.errors.some((error) => error.startsWith('Duplicate:')))
+      ? 'Duplicate questions found. Remove or change every duplicate row before importing.'
+      : null
   const quizError =
     contentType === 'QUIZ' && preview?.errors.length
       ? 'Quiz imports are all-or-nothing. Fix every invalid row before importing so each persisted Quiz has exactly 10 questions.'
@@ -844,6 +859,7 @@ export function CsvImportClient() {
               loading={importing}
               disabled={
                 preview.valid.length === 0 ||
+                Boolean(duplicateError) ||
                 (contentType === 'MOCK_EXAM' && Boolean(mockError)) ||
                 (contentType === 'QUIZ' && Boolean(quizError))
               }
