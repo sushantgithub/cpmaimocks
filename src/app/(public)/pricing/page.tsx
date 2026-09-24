@@ -6,6 +6,7 @@ import { CheckCircle2 } from 'lucide-react'
 import { formatCurrency, approxUsd, planPeriodLabel, isLifetime } from '@/lib/utils'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { ProductJsonLd, FAQPageJsonLd } from '@/components/seo/json-ld'
 
 // Reads plans from the database, so it cannot be built ahead of time like
 // the other public pages.
@@ -14,6 +15,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'Pricing — CertMocks',
   description: 'Affordable subscription plans for CPMAI exam preparation. Start free, upgrade for full access.',
+  alternates: { canonical: '/pricing' },
 }
 
 export default async function PricingPage() {
@@ -23,8 +25,25 @@ export default async function PricingPage() {
     include: { certification: { select: { name: true } } },
   })
 
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://certmocks.com'
+  const pricingFaqs = [
+    { question: 'Can I cancel anytime?', answer: 'Yes. Cancel from your account settings. You keep access until the end of your billing period.' },
+    { question: 'What payment methods are supported?', answer: 'UPI, credit/debit cards, net banking (India), and international Visa/Mastercard.' },
+    { question: 'Is there a refund policy?', answer: 'Yes. See our Refund Policy page for details.' },
+    { question: 'Are prices in INR only?', answer: "Plans show INR pricing. International cards are charged the equivalent in your card's currency." },
+  ]
+
   return (
     <div className="py-16 md:py-20">
+      <ProductJsonLd
+        name="CertMocks CPMAI Exam Prep"
+        description="Mock exams and practice questions for PMI CPMAI certification."
+        url={`${siteUrl}/pricing`}
+        offers={plans
+          .filter((p) => p.price > 0)
+          .map((p) => ({ price: p.price, currency: p.currency, name: p.name }))}
+      />
+      <FAQPageJsonLd faqs={pricingFaqs} />
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-3">Simple, Transparent Pricing</h1>
@@ -78,15 +97,10 @@ export default async function PricingPage() {
         <div className="max-w-2xl mx-auto mt-16">
           <h2 className="text-2xl font-bold text-center mb-8">Pricing FAQ</h2>
           <div className="space-y-4">
-            {[
-              { q: 'Can I cancel anytime?', a: 'Yes. Cancel from your account settings. You keep access until the end of your billing period.' },
-              { q: 'What payment methods are supported?', a: 'UPI, credit/debit cards, net banking (India), and international Visa/Mastercard.' },
-              { q: 'Is there a refund policy?', a: 'Yes. See our Refund Policy page for details.' },
-              { q: 'Are prices in INR only?', a: 'Plans show INR pricing. International cards are charged the equivalent in your card\'s currency.' },
-            ].map((item) => (
-              <div key={item.q} className="border rounded-lg p-4">
-                <p className="font-semibold text-sm">{item.q}</p>
-                <p className="text-sm text-muted-foreground mt-1">{item.a}</p>
+            {pricingFaqs.map((item) => (
+              <div key={item.question} className="border rounded-lg p-4">
+                <p className="font-semibold text-sm">{item.question}</p>
+                <p className="text-sm text-muted-foreground mt-1">{item.answer}</p>
               </div>
             ))}
           </div>

@@ -4,6 +4,7 @@ import { BookOpen, Target, ShieldCheck } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'About — CertMocks',
   description: 'CertMocks is an independent exam preparation platform for PMI CPMAI certification candidates.',
+  alternates: { canonical: '/about' },
 }
 
 export default function AboutPage() {

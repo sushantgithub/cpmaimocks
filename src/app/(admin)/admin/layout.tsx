@@ -24,6 +24,7 @@ const adminNav = [
   { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { label: 'Payments', href: '/admin/payments', icon: Receipt },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
+  { label: 'Blog', href: '/admin/blog', icon: FileText },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
