@@ -16,6 +16,7 @@ import {
   questionIdImportErrors,
   validateNewMockImportConfig,
   quizImportDomainErrors,
+  duplicateQuestionTextErrors,
   type NewMockImportConfig,
 } from '@/lib/question-import'
 
@@ -231,6 +232,33 @@ export async function POST(req: Request) {
     }
 
     const replaceDatabaseIds = collisionAssessment.replaceDatabaseIds
+
+    // Block duplicate wording before any write. Scope database checks to the
+    // selected certification + content type so legitimate reuse across
+    // different banks is not accidentally blocked. Safe orphaned Mock rows
+    // explicitly selected for replacement are excluded.
+    const existingTextRows = await prisma.question.findMany({
+      where: {
+        certificationId: certification.id,
+        contentType,
+        ...(replaceDatabaseIds.length > 0 ? { id: { notIn: replaceDatabaseIds } } : {}),
+      },
+      select: { text: true },
+    })
+    const duplicateTextErrors = duplicateQuestionTextErrors(
+      questions,
+      existingTextRows.map((question) => question.text),
+    )
+    if (duplicateTextErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Duplicate question text found. Import blocked.',
+          code: 'DUPLICATE_QUESTION_TEXT',
+          errors: duplicateTextErrors.slice(0, 50),
+        },
+        { status: 409 },
+      )
+    }
 
     let existingMock:
       | {
