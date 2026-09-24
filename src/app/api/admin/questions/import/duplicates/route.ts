@@ -15,7 +15,8 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     certificationId?: string
     contentType?: ContentType
-    questions?: Array<{ question?: string }>
+    questions?: Array<{ question?: string; question_id?: string }>
+    replaceOrphanedMockQuestions?: boolean
   }
 
   if (!body.certificationId || !body.contentType || !CONTENT_TYPES.includes(body.contentType)) {
@@ -30,13 +31,36 @@ export async function POST(req: Request) {
       certificationId: body.certificationId,
       contentType: body.contentType,
     },
-    select: { text: true },
+    select: {
+      text: true,
+      questionId: true,
+      _count: {
+        select: {
+          mockExamQuestions: true,
+          examAnswers: true,
+          bookmarks: true,
+        },
+      },
+    },
   })
 
-  const errors = duplicateQuestionTextErrors(
-    body.questions,
-    existing.map((question) => question.text),
+  const incomingIds = new Set(
+    body.questions.map((row) => row.question_id?.trim()).filter(Boolean),
   )
+  const existingTexts = existing
+    .filter((question) => {
+      const replaceableOrphan =
+        body.contentType === 'MOCK_EXAM' &&
+        body.replaceOrphanedMockQuestions === true &&
+        incomingIds.has(question.questionId) &&
+        question._count.mockExamQuestions === 0 &&
+        question._count.examAnswers === 0 &&
+        question._count.bookmarks === 0
+      return !replaceableOrphan
+    })
+    .map((question) => question.text)
+
+  const errors = duplicateQuestionTextErrors(body.questions, existingTexts)
 
   const duplicates = errors.map((message) => {
     const match = /^Row (\d+):\s*(.*)$/.exec(message)
