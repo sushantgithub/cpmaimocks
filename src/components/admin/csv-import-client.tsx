@@ -247,7 +247,7 @@ export function CsvImportClient() {
 
           const mergedErrors = new Map<number, string[]>()
           for (const error of errors) mergedErrors.set(error.row, [...error.errors])
-          for (const [rowNumber, messages] of duplicateByRow) {
+          for (const [rowNumber, messages] of Array.from(duplicateByRow.entries())) {
             mergedErrors.set(rowNumber, [...(mergedErrors.get(rowNumber) ?? []), ...messages])
           }
 
