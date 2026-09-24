@@ -7,6 +7,7 @@ import {
   quizImportDomainErrors,
   duplicateQuestionTextErrors,
   normalizeQuestionText,
+  planQuizBatchCleanup,
 } from './question-import'
 
 describe('question import ID validation', () => {
@@ -261,5 +262,26 @@ describe('question text duplicate validation', () => {
     expect(duplicateQuestionTextErrors([
       { question: 'Same wording may exist in another content type' },
     ], [])).toEqual([])
+  })
+})
+
+
+describe('Quiz import batch cleanup', () => {
+  it('deletes only Quiz records whose ownership tags are in the batch', () => {
+    expect(planQuizBatchCleanup(
+      [{ tags: ['quiz-domain-1-1', 'algorithm'] }, { tags: ['quiz-domain-1-2'] }],
+      [
+        { id: 'quiz-1', tag: 'quiz-domain-1-1', externalQuestionCount: 0 },
+        { id: 'quiz-2', tag: 'quiz-domain-1-2', externalQuestionCount: 0 },
+        { id: 'other', tag: 'quiz-domain-2-1', externalQuestionCount: 0 },
+      ],
+    )).toEqual({ deleteQuizIds: ['quiz-1', 'quiz-2'], sharedQuizIds: [] })
+  })
+
+  it('blocks deleting a Quiz record when its tag is still used by questions outside the batch', () => {
+    expect(planQuizBatchCleanup(
+      [{ tags: ['quiz-domain-1-1'] }],
+      [{ id: 'quiz-1', tag: 'quiz-domain-1-1', externalQuestionCount: 1 }],
+    )).toEqual({ deleteQuizIds: [], sharedQuizIds: ['quiz-1'] })
   })
 })

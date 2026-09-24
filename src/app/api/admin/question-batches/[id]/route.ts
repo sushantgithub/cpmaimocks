@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { planQuizBatchCleanup } from '@/lib/question-import'
 
 export async function DELETE(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -13,10 +14,13 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     select: {
       id: true,
       name: true,
+      certificationId: true,
+      contentType: true,
       _count: { select: { questions: true } },
       questions: {
         select: {
           id: true,
+          tags: true,
           _count: { select: { examAnswers: true, bookmarks: true, mockExamQuestions: true } },
         },
       },
@@ -45,8 +49,50 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
   }
 
   const questionIds = batch.questions.map((q) => q.id)
+  let quizIdsToDelete: string[] = []
+
+  if (batch.contentType === 'QUIZ' && questionIds.length > 0) {
+    const batchTags = Array.from(new Set(batch.questions.flatMap((question) => question.tags)))
+    const candidateQuizzes = batchTags.length > 0
+      ? await prisma.quiz.findMany({
+          where: {
+            certificationId: batch.certificationId,
+            tag: { in: batchTags },
+          },
+          select: { id: true, tag: true },
+        })
+      : []
+
+    const candidatesWithExternalCounts = await Promise.all(
+      candidateQuizzes.map(async (quiz) => ({
+        ...quiz,
+        externalQuestionCount: await prisma.question.count({
+          where: {
+            certificationId: batch.certificationId,
+            contentType: 'QUIZ',
+            tags: { has: quiz.tag },
+            id: { notIn: questionIds },
+          },
+        }),
+      })),
+    )
+
+    const cleanup = planQuizBatchCleanup(batch.questions, candidatesWithExternalCounts)
+    if (cleanup.sharedQuizIds.length > 0) {
+      return NextResponse.json({
+        error: 'This import shares a Quiz ownership tag with questions outside the batch. Nothing was deleted.',
+        code: 'BATCH_HAS_SHARED_QUIZ',
+        protectedQuizCount: cleanup.sharedQuizIds.length,
+      }, { status: 409 })
+    }
+    quizIdsToDelete = cleanup.deleteQuizIds
+  }
   try {
     await prisma.$transaction(async (tx) => {
+      if (quizIdsToDelete.length > 0) {
+        const deletedQuizzes = await tx.quiz.deleteMany({ where: { id: { in: quizIdsToDelete } } })
+        if (deletedQuizzes.count !== quizIdsToDelete.length) throw new Error('BATCH_QUIZ_DELETE_CONFLICT')
+      }
       if (questionIds.length > 0) {
         const deleted = await tx.question.deleteMany({
           where: { id: { in: questionIds }, importBatchId: batch.id },
@@ -56,7 +102,7 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
       await tx.questionImportBatch.delete({ where: { id: batch.id } })
     })
   } catch (error) {
-    if (error instanceof Error && error.message === 'BATCH_DELETE_CONFLICT') {
+    if (error instanceof Error && (error.message === 'BATCH_DELETE_CONFLICT' || error.message === 'BATCH_QUIZ_DELETE_CONFLICT')) {
       return NextResponse.json({
         error: 'This batch changed while it was being deleted. Nothing was partially deleted; refresh and retry.',
         code: 'BATCH_DELETE_CONFLICT',
@@ -65,5 +111,5 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     throw error
   }
 
-  return NextResponse.json({ success: true, deleted: questionIds.length, name: batch.name })
+  return NextResponse.json({ success: true, deleted: questionIds.length, deletedQuizzes: quizIdsToDelete.length, name: batch.name })
 }
