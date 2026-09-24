@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { PublicNav } from '@/components/layout/public-nav'
 import { PublicFooter } from '@/components/layout/public-footer'
+import { WebSiteJsonLd, FAQPageJsonLd, CourseJsonLd } from '@/components/seo/json-ld'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { formatCurrency, planPeriodLabel, isLifetime } from '@/lib/utils'
@@ -82,8 +83,20 @@ export default async function HomePage() {
         { value: '24/7', label: 'Access' },
       ]
 
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://certmocks.com'
+
   return (
     <div className="flex min-h-screen flex-col">
+      <WebSiteJsonLd url={siteUrl} />
+      <CourseJsonLd
+        url={siteUrl}
+        providerName="CertMocks"
+        courseName="CPMAI Exam Preparation"
+        description="Realistic mock exams, domain-wise practice questions, and detailed explanations for the PMI Certified Professional in AI and Machine Learning exam."
+      />
+      <FAQPageJsonLd
+        faqs={faqs.map((f) => ({ question: f.q, answer: f.a }))}
+      />
       <PublicNav />
 
       {/* Hero */}

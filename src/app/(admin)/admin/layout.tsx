@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 import { requireAdminSession } from '@/lib/require-auth'
 import Link from 'next/link'
 import { signOut } from '@/lib/auth'
-import { BookOpen, LayoutDashboard, Users, HelpCircle, Trophy, CreditCard, Tag, BarChart3, Settings, LogOut, Upload, Award, ListTree, ListChecks } from 'lucide-react'
+import { BookOpen, LayoutDashboard, Users, HelpCircle, Trophy, CreditCard, Tag, BarChart3, Settings, LogOut, Upload, Award, ListTree, ListChecks, FileText } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Admin',
@@ -23,6 +23,7 @@ const adminNav = [
   { label: 'Plans', href: '/admin/plans', icon: Tag },
   { label: 'Subscriptions', href: '/admin/subscriptions', icon: CreditCard },
   { label: 'Coupons', href: '/admin/coupons', icon: Tag },
+  { label: 'Blog', href: '/admin/blog', icon: FileText },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { label: 'Settings', href: '/admin/settings', icon: Settings },
 ]
