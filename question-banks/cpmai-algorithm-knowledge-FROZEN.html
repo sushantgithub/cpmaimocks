@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPMAI Algorithms - Knowledge Bank - FROZEN</title>
+<style>
+ :root{--ink:#16202e;--muted:#5b6b7f;--line:#dce3ec;--bg:#f4f6f9;--card:#fff;
+       --ok:#116b35;--okbg:#e8f6ee;--tag:#2c4b8f;--tagbg:#eaf0fb;--warn:#8a5a00;--warnbg:#fdf3e2;}
+ *{box-sizing:border-box}
+ body{margin:0;background:var(--bg);color:var(--ink);
+      font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:0 16px}
+ .wrap{max-width:900px;margin:0 auto;padding-block:32px}
+ h1{font-size:26px;margin:0 0 6px}
+ .sub{color:var(--muted);margin:0 0 24px}
+ .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:20px}
+ .panel h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+ table{border-collapse:collapse;width:100%;font-size:14px}
+ td,th{text-align:left;padding:5px 10px 5px 0;vertical-align:top}
+ th{color:var(--muted);font-weight:600}
+ .q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+ .qhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+ .qid{font-weight:700;font-size:15px}
+ .tag{background:var(--tagbg);color:var(--tag);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
+ .key{background:var(--okbg);color:var(--ok);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+ .stem{margin:0 0 14px;white-space:pre-wrap}
+ ol.opts{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-direction:column;gap:7px}
+ ol.opts li{border:1px solid var(--line);border-radius:9px;padding:9px 12px;display:flex;gap:10px}
+ ol.opts li.correct{border-color:#8fcaa6;background:var(--okbg)}
+ .letter{font-weight:700;min-width:18px}
+ .idea{background:var(--warnbg);border-left:3px solid #e0b567;padding:9px 13px;border-radius:0 8px 8px 0;margin-bottom:12px}
+ .idea b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--warn);margin-bottom:2px}
+ .whys{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+ .why{display:flex;gap:10px}
+ .why .letter{color:var(--muted)}
+ .why.correct .letter{color:var(--ok)}
+ @media print{body{background:#fff}.q,.panel{break-inside:avoid;box-shadow:none}}
+</style></head><body><div class="wrap">
+<h1>CPMAI Algorithms &mdash; Knowledge Bank</h1>
+<p class="sub">40 questions, FROZEN REVISION 3 &mdash; coverage update, for freeze review.mdash; Revision 3, final. Correct answers and all explanations shown. Correct answers and all explanations shown.</p>
+
+<div class="panel"><h2>Set composition</h2>
+<table>
+<tr><th style="width:190px">Total questions</th><td>40</td></tr>
+<tr><th>Tag</th><td>algorithm &mdash; a cross-domain drill, not a domain bank</td></tr>
+<tr><th>ID range</th><td>CPMAI-ALGK-001 to CPMAI-ALGK-040</td></tr>
+<tr><th>Status</th><td>FROZEN &mdash; Revision 3, final</td></tr>
+<tr><th>Difficulty</th><td>14 easy &middot; 26 medium &middot; 0 hard</td></tr>
+<tr><th>Multi-answer</th><td>0 (none in this bank)</td></tr>
+<tr><th>Question length</th><td>median 148 characters (range 25&ndash;230)</td></tr>
+</table></div>
+
+<div class="panel"><h2>Topic coverage</h2><table>
+<tr><th style="width:320px">Learning Paradigms</th><td>5 questions</td></tr><tr><th style="width:320px">Decision Trees</th><td>2 questions</td></tr><tr><th style="width:320px">K-Means</th><td>2 questions</td></tr><tr><th style="width:320px">Fuzzy C-Means</th><td>2 questions</td></tr><tr><th style="width:320px">Gaussian Mixture Models</th><td>2 questions</td></tr><tr><th style="width:320px">Hidden Markov Models</th><td>2 questions</td></tr><tr><th style="width:320px">Naive Bayes</th><td>2 questions</td></tr><tr><th style="width:320px">Support Vector Machines</th><td>2 questions</td></tr><tr><th style="width:320px">K-Nearest Neighbor</th><td>2 questions</td></tr><tr><th style="width:320px">Foundation Models</th><td>2 questions</td></tr><tr><th style="width:320px">Random Forest</th><td>1 questions</td></tr><tr><th style="width:320px">Logistic Regression</th><td>1 questions</td></tr><tr><th style="width:320px">Linear Regression</th><td>1 questions</td></tr><tr><th style="width:320px">Convolutional Neural Networks</th><td>1 questions</td></tr><tr><th style="width:320px">Large Language Models</th><td>1 questions</td></tr><tr><th style="width:320px">Symbolic Approaches</th><td>1 questions</td></tr><tr><th style="width:320px">Deep Learning</th><td>1 questions</td></tr><tr><th style="width:320px">Supervised Learning</th><td>1 questions</td></tr><tr><th style="width:320px">Unsupervised Learning</th><td>1 questions</td></tr><tr><th style="width:320px">Reinforcement Learning</th><td>1 questions</td></tr><tr><th style="width:320px">Recurrent Neural Networks</th><td>1 questions</td></tr><tr><th style="width:320px">Spectral Clustering</th><td>1 questions</td></tr><tr><th style="width:320px">Hierarchical Clustering</th><td>1 questions</td></tr><tr><th style="width:320px">Neural Networks</th><td>1 questions</td></tr><tr><th style="width:320px">Model Explainability</th><td>1 questions</td></tr><tr><th style="width:320px">Algorithm Selection</th><td>1 questions</td></tr><tr><th style="width:320px">Algorithm Recognition</th><td>1 questions</td></tr>
+</table></div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-001</span>
+<span class="tag">Learning Paradigms</span><span class="tag">EASY</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">A training dataset contains thousands of loan applications, and every record already shows whether the applicant repaid or defaulted. Which learning approach uses these known outcomes to learn how to predict new cases?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Supervised learning</span></li><li class=""><span class="letter">B</span><span>Unsupervised learning</span></li><li class=""><span class="letter">C</span><span>Reinforcement learning</span></li><li class=""><span class="letter">D</span><span>Symbolic reasoning</span></li></ol>
+<div class="idea"><b>Key idea</b>Supervised learning learns from labeled examples where the desired outcome is already known.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. The historical records contain labels—the repayment outcome—so the model can learn a mapping from inputs to a known target.</span></div><div class="why "><span class="letter">B</span><span>Unsupervised learning is used when the data has no target labels and the goal is to discover structure or groups.</span></div><div class="why "><span class="letter">C</span><span>Reinforcement learning learns from actions and rewards or penalties, not from a table of pre-labeled outcomes.</span></div><div class="why "><span class="letter">D</span><span>Symbolic approaches use explicit logical rules and human-understandable concepts rather than learning this labeled mapping from examples.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-002</span>
+<span class="tag">Learning Paradigms</span><span class="tag">EASY</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">A retailer has customer purchase histories but no existing customer categories. It wants the data itself to reveal useful groups. Which learning approach best matches this goal?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Supervised learning</span></li><li class="correct"><span class="letter">B</span><span>Unsupervised learning</span></li><li class=""><span class="letter">C</span><span>Reinforcement learning</span></li><li class=""><span class="letter">D</span><span>Deep learning</span></li></ol>
+<div class="idea"><b>Key idea</b>Unsupervised learning discovers structure in data when predefined outcome labels are not available.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Supervised learning requires known labels or outcomes to learn from; no customer categories exist here.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. The goal is to discover natural structure in unlabeled customer data.</span></div><div class="why "><span class="letter">C</span><span>Reinforcement learning requires an agent taking actions and receiving rewards or penalties.</span></div><div class="why "><span class="letter">D</span><span>Deep learning describes a neural-network architecture and does not by itself specify whether learning is supervised or unsupervised.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-003</span>
+<span class="tag">Learning Paradigms</span><span class="tag">EASY</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">An autonomous cart tries different routes through a warehouse. Short, safe trips earn a positive score and collisions receive a penalty. Which learning approach is being used?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Unsupervised learning</span></li><li class=""><span class="letter">B</span><span>Supervised learning</span></li><li class="correct"><span class="letter">C</span><span>Reinforcement learning</span></li><li class=""><span class="letter">D</span><span>Linear regression</span></li></ol>
+<div class="idea"><b>Key idea</b>Reinforcement learning is characterized by an agent taking actions, receiving feedback, and improving its policy over time.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Unsupervised learning discovers patterns or groups; it does not use an action-and-reward loop.</span></div><div class="why "><span class="letter">B</span><span>Supervised learning learns from examples that already contain the correct target.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. The cart acts in an environment and learns from rewards and penalties.</span></div><div class="why "><span class="letter">D</span><span>Linear regression predicts continuous values; it is not the learning loop described here.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-004</span>
+<span class="tag">Learning Paradigms</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">A robot uses a deep neural network to choose how to grasp objects, but it improves only after trying a grasp and receiving a success or failure reward. What is the learning type?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Deep learning only</span></li><li class=""><span class="letter">B</span><span>Supervised learning</span></li><li class=""><span class="letter">C</span><span>Unsupervised learning</span></li><li class="correct"><span class="letter">D</span><span>Reinforcement learning</span></li></ol>
+<div class="idea"><b>Key idea</b>The neural network is an architecture; the action → reward → policy-improvement loop identifies reinforcement learning.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Deep learning describes the network architecture, not the learning paradigm created by the reward loop.</span></div><div class="why "><span class="letter">B</span><span>Success or failure arrives after the robot acts as feedback; this is not a pre-labeled table of correct grasps.</span></div><div class="why "><span class="letter">C</span><span>Unsupervised learning finds structure without labels or rewards and does not describe policy improvement from actions.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. The robot acts, receives a reward signal, and updates its behavior.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-005</span>
+<span class="tag">Decision Trees</span><span class="tag">EASY</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">Which characteristic makes a decision tree especially useful when a reviewer must understand how an individual prediction was reached?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Its prediction follows a traceable path of branching rules</span></li><li class=""><span class="letter">B</span><span>It combines the predictions of many separately trained trees</span></li><li class=""><span class="letter">C</span><span>It groups unlabeled records around a chosen number of centroids</span></li><li class=""><span class="letter">D</span><span>It improves its behaviour from rewards received after each action</span></li></ol>
+<div class="idea"><b>Key idea</b>A decision tree exposes a readable branch-by-branch path from input conditions to an output.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. Its branching structure provides a traceable sequence of decisions.</span></div><div class="why "><span class="letter">B</span><span>Combining many models describes an ensemble such as a random forest, not a single decision tree.</span></div><div class="why "><span class="letter">C</span><span>Grouping around centroids describes K-means clustering.</span></div><div class="why "><span class="letter">D</span><span>Learning from action feedback describes reinforcement learning.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-006</span>
+<span class="tag">Random Forest</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Why can a random forest be less straightforward to explain than a single decision tree?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>It can only process unlabeled data</span></li><li class="correct"><span class="letter">B</span><span>It combines the outputs of many decision trees</span></li><li class=""><span class="letter">C</span><span>It predicts only continuous values</span></li><li class=""><span class="letter">D</span><span>It requires an action-and-reward environment</span></li></ol>
+<div class="idea"><b>Key idea</b>Random forest is an ensemble of many decision trees, which makes an individual decision less directly traceable than a single tree.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Random forests are not defined by using only unlabeled data.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. Aggregating many trees makes the overall decision less directly traceable than one branch path.</span></div><div class="why "><span class="letter">C</span><span>Random forest is not limited to continuous-value prediction.</span></div><div class="why "><span class="letter">D</span><span>An action-and-reward environment is associated with reinforcement learning.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-007</span>
+<span class="tag">K-Means</span><span class="tag">EASY</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">A team wants a fast first-pass clustering method and already knows it wants exactly six groups. Which algorithm directly uses that chosen number of groups?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Hidden Markov Model (HMM)</span></li><li class=""><span class="letter">B</span><span>Naive Bayes classifier</span></li><li class="correct"><span class="letter">C</span><span>K-means clustering</span></li><li class=""><span class="letter">D</span><span>Linear regression</span></li></ol>
+<div class="idea"><b>Key idea</b>K-means partitions unlabeled data into a user-specified number, K, of clusters.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>HMM models sequences with hidden states rather than partitioning static data into a chosen number of centroid-based groups.</span></div><div class="why "><span class="letter">B</span><span>Naive Bayes is a supervised probabilistic classifier.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. The K in K-means is the number of clusters selected in advance.</span></div><div class="why "><span class="letter">D</span><span>Linear regression predicts a continuous numerical value.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-008</span>
+<span class="tag">Fuzzy C-Means</span><span class="tag">EASY</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">Which clustering method is designed to give one record a degree of membership in several clusters instead of forcing it into exactly one cluster?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>K-means clustering</span></li><li class=""><span class="letter">B</span><span>Decision tree</span></li><li class=""><span class="letter">C</span><span>Support Vector Machine (SVM)</span></li><li class="correct"><span class="letter">D</span><span>Fuzzy C-means clustering</span></li></ol>
+<div class="idea"><b>Key idea</b>Fuzzy C-means assigns membership weights between 0 and 1 across clusters.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>K-means makes a hard assignment to one nearest cluster.</span></div><div class="why "><span class="letter">B</span><span>A decision tree follows branching rules for prediction; it is not a soft clustering method.</span></div><div class="why "><span class="letter">C</span><span>SVM separates labeled classes with a decision boundary.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. Fuzzy C-means represents partial membership across multiple clusters.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-009</span>
+<span class="tag">Gaussian Mixture Models</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">A measurement appears to come from several overlapping bell-shaped populations. Which algorithm is specifically designed to model the data as a weighted blend of those underlying distributions?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Gaussian Mixture Model (GMM)</span></li><li class=""><span class="letter">B</span><span>K-Nearest Neighbor (KNN)</span></li><li class=""><span class="letter">C</span><span>Decision tree</span></li><li class=""><span class="letter">D</span><span>Support Vector Machine (SVM)</span></li></ol>
+<div class="idea"><b>Key idea</b>GMM represents data as a mixture of Gaussian components and estimates the components that make up the blend.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. GMM models overlapping Gaussian components and their relative contributions.</span></div><div class="why "><span class="letter">B</span><span>KNN predicts from nearby labeled examples rather than decomposing a distribution into Gaussian components.</span></div><div class="why "><span class="letter">C</span><span>A decision tree uses branching rules rather than a probabilistic mixture of distributions.</span></div><div class="why "><span class="letter">D</span><span>SVM separates labeled classes with a boundary rather than recovering blended Gaussian populations.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-010</span>
+<span class="tag">Hidden Markov Models</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Which model is built around hidden states that change through a sequence and produce observable outputs?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>K-means clustering</span></li><li class="correct"><span class="letter">B</span><span>Hidden Markov Model (HMM)</span></li><li class=""><span class="letter">C</span><span>Linear regression</span></li><li class=""><span class="letter">D</span><span>Fuzzy C-means clustering</span></li></ol>
+<div class="idea"><b>Key idea</b>An HMM models a sequence of unobserved states and the observable outputs associated with those states.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>K-means partitions static unlabeled records into centroid-based clusters.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. Hidden states and sequential transitions are the defining HMM concepts.</span></div><div class="why "><span class="letter">C</span><span>Linear regression predicts a continuous numerical output from input features.</span></div><div class="why "><span class="letter">D</span><span>Fuzzy C-means assigns degrees of cluster membership to static records.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-011</span>
+<span class="tag">Naive Bayes</span><span class="tag">EASY</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">A team needs a simple baseline to categorize text documents using the words that occur in them. Which algorithm is strongly associated with this type of text classification?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>K-means clustering</span></li><li class=""><span class="letter">B</span><span>Linear regression</span></li><li class="correct"><span class="letter">C</span><span>Naive Bayes classifier</span></li><li class=""><span class="letter">D</span><span>Gaussian Mixture Model (GMM)</span></li></ol>
+<div class="idea"><b>Key idea</b>Naive Bayes is a strong fit for text classification using word occurrence or frequency information.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>K-means discovers clusters in unlabeled data rather than learning predefined text categories.</span></div><div class="why "><span class="letter">B</span><span>Linear regression predicts continuous numeric values.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. Naive Bayes combines feature probabilities and is commonly used as a simple text classifier.</span></div><div class="why "><span class="letter">D</span><span>GMM models mixtures of distributions rather than predefined text classes.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-012</span>
+<span class="tag">Support Vector Machines</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">Which supervised algorithm is identified by the idea of placing a separating hyperplane between classes and maximizing the margin around that boundary?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Decision tree</span></li><li class=""><span class="letter">B</span><span>K-Nearest Neighbor (KNN)</span></li><li class=""><span class="letter">C</span><span>Naive Bayes classifier</span></li><li class="correct"><span class="letter">D</span><span>Support Vector Machine (SVM)</span></li></ol>
+<div class="idea"><b>Key idea</b>SVM separates labeled classes using a maximum-margin decision boundary.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>A decision tree separates cases through branching rules, not a maximum-margin hyperplane.</span></div><div class="why "><span class="letter">B</span><span>KNN uses the labels of nearby examples rather than fitting a separating hyperplane.</span></div><div class="why "><span class="letter">C</span><span>Naive Bayes combines probabilities across features.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. A maximum-margin hyperplane is the key identifying mechanism of SVM.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-013</span>
+<span class="tag">Logistic Regression</span><span class="tag">EASY</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">A model must output the probability that a customer will accept an offer, so that a business threshold can be applied to that probability later. Which algorithm is designed to produce class probabilities for a two-outcome problem?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Logistic regression</span></li><li class=""><span class="letter">B</span><span>Linear regression</span></li><li class=""><span class="letter">C</span><span>K-means clustering</span></li><li class=""><span class="letter">D</span><span>Hidden Markov Model (HMM)</span></li></ol>
+<div class="idea"><b>Key idea</b>Logistic regression estimates the probability of a two-outcome result, which a threshold can then turn into a decision.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. It models the probability of one of two outcomes, producing a value between 0 and 1 that a business threshold can act on.</span></div><div class="why "><span class="letter">B</span><span>Linear regression predicts an unbounded continuous value, which can fall below 0 or above 1 and so cannot be read directly as a probability.</span></div><div class="why "><span class="letter">C</span><span>K-means clustering groups unlabeled records and produces no probability for a defined outcome.</span></div><div class="why "><span class="letter">D</span><span>HMM infers hidden states behind a sequence rather than estimating the probability of a single two-outcome result.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-014</span>
+<span class="tag">K-Nearest Neighbor</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Why can KNN become expensive when a prediction service grows to a very large stored dataset?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>It must retrain a deep neural network from scratch before each prediction</span></li><li class="correct"><span class="letter">B</span><span>Much of its computation occurs when comparing a new case with stored examples</span></li><li class=""><span class="letter">C</span><span>It must first infer the hidden states that generated the sequence</span></li><li class=""><span class="letter">D</span><span>It can only run once the number of clusters has been fixed in advance</span></li></ol>
+<div class="idea"><b>Key idea</b>KNN is described as a lazy-learning method that defers much of its work to prediction time.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>KNN does not retrain a deep neural network before each prediction.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. Prediction requires comparisons with stored examples, so cost can grow with the dataset.</span></div><div class="why "><span class="letter">C</span><span>Hidden-state inference describes HMM rather than KNN.</span></div><div class="why "><span class="letter">D</span><span>A fixed number of clusters is a K-means concept, not a KNN requirement.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-015</span>
+<span class="tag">Linear Regression</span><span class="tag">EASY</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">Which task is the clearest match for linear regression?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Discovering unknown customer segments</span></li><li class=""><span class="letter">B</span><span>Choosing actions from rewards</span></li><li class="correct"><span class="letter">C</span><span>Predicting a continuous numerical value</span></li><li class=""><span class="letter">D</span><span>Assigning membership weights across clusters</span></li></ol>
+<div class="idea"><b>Key idea</b>Linear regression is used to predict a continuous numerical outcome from input features.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Discovering unknown groups is an unsupervised clustering task.</span></div><div class="why "><span class="letter">B</span><span>Choosing actions based on reward feedback is reinforcement learning.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. Continuous-value prediction is the core use described for linear regression.</span></div><div class="why "><span class="letter">D</span><span>Membership weights across clusters are associated with Fuzzy C-means.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-016</span>
+<span class="tag">K-Nearest Neighbor</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">A valuation tool estimates a new property&#x27;s price by averaging prices from the most similar recently sold properties. Which algorithm most directly matches that method?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Naive Bayes classifier</span></li><li class=""><span class="letter">B</span><span>K-means clustering</span></li><li class=""><span class="letter">C</span><span>Support Vector Machine (SVM)</span></li><li class="correct"><span class="letter">D</span><span>K-Nearest Neighbor (KNN)</span></li></ol>
+<div class="idea"><b>Key idea</b>KNN can estimate a numerical value from the values of the nearest comparable examples.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Naive Bayes is a probabilistic classifier rather than a nearest-comparable price estimator.</span></div><div class="why "><span class="letter">B</span><span>K-means groups unlabeled records into clusters.</span></div><div class="why "><span class="letter">C</span><span>SVM separates labeled classes with a maximum-margin boundary and also has regression variants, but neither estimates a value by averaging the nearest comparable examples.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. The estimate comes from the values of the nearest similar examples.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-017</span>
+<span class="tag">Decision Trees</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">A model must provide a plain sequence of yes/no checks that explains why a case reached a particular outcome. Which model structure best provides that form of reasoning?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Decision tree</span></li><li class=""><span class="letter">B</span><span>Gaussian Mixture Model (GMM)</span></li><li class=""><span class="letter">C</span><span>K-means clustering</span></li><li class=""><span class="letter">D</span><span>Large Language Model (LLM)</span></li></ol>
+<div class="idea"><b>Key idea</b>A decision tree represents predictions as a path through understandable branching conditions.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. The prediction can be traced through successive branches.</span></div><div class="why "><span class="letter">B</span><span>GMM explains data as a mixture of distributions, not a yes/no rule path.</span></div><div class="why "><span class="letter">C</span><span>K-means assigns records to centroid-based clusters.</span></div><div class="why "><span class="letter">D</span><span>An LLM generates language from learned patterns and does not provide the branch structure described.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-018</span>
+<span class="tag">K-Means</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Which statement correctly describes how standard K-means assigns a data point after clusters have been formed?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>It gives the point a probability for every possible hidden state</span></li><li class="correct"><span class="letter">B</span><span>It assigns the point to the cluster with the nearest centroid</span></li><li class=""><span class="letter">C</span><span>It asks an agent to choose the cluster and then rewards that choice</span></li><li class=""><span class="letter">D</span><span>It predicts the point&#x27;s label from word frequencies</span></li></ol>
+<div class="idea"><b>Key idea</b>K-means makes a hard assignment to the nearest cluster centroid.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Assigning a probability across hidden states describes HMM, not K-means.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. Standard K-means assigns each point to a single nearest centroid.</span></div><div class="why "><span class="letter">C</span><span>Reward-driven action selection describes reinforcement learning.</span></div><div class="why "><span class="letter">D</span><span>Word-frequency classification is associated with Naive Bayes.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-019</span>
+<span class="tag">Fuzzy C-Means</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">What is the key difference between Fuzzy C-means and standard K-means?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Fuzzy C-means requires a labeled outcome on every record</span></li><li class=""><span class="letter">B</span><span>Fuzzy C-means predicts a continuous numeric value per record</span></li><li class="correct"><span class="letter">C</span><span>Fuzzy C-means allows partial membership in multiple clusters</span></li><li class=""><span class="letter">D</span><span>Fuzzy C-means models a sequence of hidden underlying states</span></li></ol>
+<div class="idea"><b>Key idea</b>Fuzzy C-means replaces hard single-cluster assignment with membership weights across clusters.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Fuzzy C-means is a clustering method and does not require labeled outcomes.</span></div><div class="why "><span class="letter">B</span><span>It is not primarily a continuous-value regression algorithm.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. A record can belong to several clusters to different degrees.</span></div><div class="why "><span class="letter">D</span><span>Hidden-state sequences describe HMM.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-020</span>
+<span class="tag">Convolutional Neural Networks</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">A model must recognise objects in photographs, where what matters is the spatial arrangement of nearby pixels rather than their position in a list. Which neural network design is built for that kind of spatial structure?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Recurrent neural network (RNN)</span></li><li class=""><span class="letter">B</span><span>Hidden Markov Model (HMM)</span></li><li class=""><span class="letter">C</span><span>K-Nearest Neighbor (KNN)</span></li><li class="correct"><span class="letter">D</span><span>Convolutional neural network (CNN)</span></li></ol>
+<div class="idea"><b>Key idea</b>A convolutional network learns features from local spatial regions, which suits image data.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Recurrent networks carry information forward across ordered steps and are built for sequence, not for spatial relationships across an image.</span></div><div class="why "><span class="letter">B</span><span>HMM models hidden states behind an ordered sequence, which does not capture the two-dimensional spatial structure of a photograph.</span></div><div class="why "><span class="letter">C</span><span>KNN compares a new case against whole stored examples and learns no spatial features within an image.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. Convolutional layers detect features within small neighbouring regions and build up to larger shapes, which is what spatial recognition needs.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-021</span>
+<span class="tag">Hidden Markov Models</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">Why is an HMM a natural fit for identifying speech units from sequential audio signals?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>It can infer hidden speech units from a sequence of observed audio signals</span></li><li class=""><span class="letter">B</span><span>It divides audio into a preset number of centroid-based clusters</span></li><li class=""><span class="letter">C</span><span>It predicts speech by averaging the nearest recordings</span></li><li class=""><span class="letter">D</span><span>It requires every sound to be assigned a fixed membership weight across clusters</span></li></ol>
+<div class="idea"><b>Key idea</b>Phoneme identification from observed audio is a canonical sequence problem for HMM.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. HMM connects observed sequential signals with underlying hidden states such as phonemes.</span></div><div class="why "><span class="letter">B</span><span>Preset centroid-based clustering describes K-means.</span></div><div class="why "><span class="letter">C</span><span>Nearest-example prediction describes KNN.</span></div><div class="why "><span class="letter">D</span><span>Membership weights across clusters describe Fuzzy C-means.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-022</span>
+<span class="tag">Large Language Models</span><span class="tag">EASY</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Which model type generates coherent natural-language text by predicting likely next words or tokens from patterns learned on massive training data?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Hidden Markov Model (HMM)</span></li><li class="correct"><span class="letter">B</span><span>Large Language Model (LLM)</span></li><li class=""><span class="letter">C</span><span>K-means clustering</span></li><li class=""><span class="letter">D</span><span>Decision tree</span></li></ol>
+<div class="idea"><b>Key idea</b>LLMs generate contextually rich text by predicting likely next words or tokens from large-scale learned patterns.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>HMM is a statistical sequence model for hidden-state problems such as phoneme identification.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. Generating language from learned next-token patterns is the defining role of an LLM.</span></div><div class="why "><span class="letter">C</span><span>K-means is a clustering algorithm.</span></div><div class="why "><span class="letter">D</span><span>A decision tree provides branching rules rather than long-form language generation.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-023</span>
+<span class="tag">Foundation Models</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">A small team needs a natural-language assistant quickly and has limited resources to train a large model from scratch. Which strategy best fits that constraint?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Build an entirely new foundation model from the ground up</span></li><li class=""><span class="letter">B</span><span>Replace the natural-language requirement with K-means clustering</span></li><li class="correct"><span class="letter">C</span><span>Adapt an existing foundation model and connect it to curated domain content</span></li><li class=""><span class="letter">D</span><span>Use only a hand-built decision tree to handle all natural-language responses</span></li></ol>
+<div class="idea"><b>Key idea</b>Reusing an existing foundation model and adapting it to domain content is preferred when speed and resources matter.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Training a large model from scratch is described as expensive and unnecessary when an existing model can be reused.</span></div><div class="why "><span class="letter">B</span><span>K-means solves clustering problems and does not provide a natural-language assistant.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. Reuse plus domain content provides the capability without building the entire model from scratch.</span></div><div class="why "><span class="letter">D</span><span>A decision tree does not provide the flexible natural-language capability described.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-024</span>
+<span class="tag">Symbolic Approaches</span><span class="tag">EASY</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">Which AI approach relies on explicit logical rules, semantic relationships, and human-understandable concepts rather than primarily learning statistical patterns from data?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Deep learning</span></li><li class=""><span class="letter">B</span><span>Gaussian Mixture Model (GMM)</span></li><li class=""><span class="letter">C</span><span>Support Vector Machine (SVM)</span></li><li class="correct"><span class="letter">D</span><span>Symbolic approaches</span></li></ol>
+<div class="idea"><b>Key idea</b>Symbolic approaches use logic and human-understandable concepts to represent reasoning.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Deep learning learns complex statistical patterns through neural networks.</span></div><div class="why "><span class="letter">B</span><span>GMM is a probabilistic clustering method.</span></div><div class="why "><span class="letter">C</span><span>SVM is a statistical classifier based on a separating boundary.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. Symbolic approaches represent knowledge through explicit concepts and rules.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-025</span>
+<span class="tag">Deep Learning</span><span class="tag">EASY</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">What feature distinguishes deep learning from a simple single-layer neural network?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>It uses many hidden layers to represent greater complexity</span></li><li class=""><span class="letter">B</span><span>It is restricted to clustering unlabeled data</span></li><li class=""><span class="letter">C</span><span>It requires the number of groups to be specified before training begins</span></li><li class=""><span class="letter">D</span><span>It can learn only from rewards received after actions</span></li></ol>
+<div class="idea"><b>Key idea</b>Deep learning uses many hidden layers to capture more complex patterns.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. Depth refers to multiple hidden layers in the neural network.</span></div><div class="why "><span class="letter">B</span><span>Deep learning is not restricted to clustering.</span></div><div class="why "><span class="letter">C</span><span>A preset number of groups is associated with K-means.</span></div><div class="why "><span class="letter">D</span><span>Deep learning can be used in different learning settings; reward-only learning describes reinforcement learning.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-026</span>
+<span class="tag">Supervised Learning</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Which detail most strongly signals that a classification problem is supervised?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>The team does not yet know which groups exist in the data</span></li><li class="correct"><span class="letter">B</span><span>Historical examples already carry the category to be predicted</span></li><li class=""><span class="letter">C</span><span>The system receives a reward or penalty after choosing an action</span></li><li class=""><span class="letter">D</span><span>The data appears to contain overlapping bell-shaped populations</span></li></ol>
+<div class="idea"><b>Key idea</b>Known labels on historical examples are the defining cue for supervised learning.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>No predefined groups points toward unsupervised learning.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. The model can learn from input examples paired with known target categories.</span></div><div class="why "><span class="letter">C</span><span>Action followed by reward points toward reinforcement learning.</span></div><div class="why "><span class="letter">D</span><span>Overlapping bell-shaped populations point toward a Gaussian mixture model.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-027</span>
+<span class="tag">Unsupervised Learning</span><span class="tag">EASY</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">Which statement best describes the purpose of unsupervised learning?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Predict a known target value from labeled training examples</span></li><li class=""><span class="letter">B</span><span>Improve a policy from rewards and penalties over time</span></li><li class="correct"><span class="letter">C</span><span>Discover patterns or groups when labels are absent</span></li><li class=""><span class="letter">D</span><span>Generate coherent natural-language text from a prompt</span></li></ol>
+<div class="idea"><b>Key idea</b>Unsupervised learning is used to discover structure in data without predefined target labels.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Predicting from labeled examples describes supervised learning.</span></div><div class="why "><span class="letter">B</span><span>Learning from rewards and penalties describes reinforcement learning.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. The data itself is used to reveal structure or groupings.</span></div><div class="why "><span class="letter">D</span><span>Generating natural-language text is an LLM use case.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-028</span>
+<span class="tag">Reinforcement Learning</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">Which combination of elements is the strongest indicator of reinforcement learning?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Labels, features, and a fixed target</span></li><li class=""><span class="letter">B</span><span>Clusters, centroids, and a chosen K</span></li><li class=""><span class="letter">C</span><span>Hidden states, observations, and transition probabilities</span></li><li class="correct"><span class="letter">D</span><span>Agent, environment, actions, and rewards</span></li></ol>
+<div class="idea"><b>Key idea</b>Reinforcement learning is identified by an agent acting in an environment and improving from rewards or penalties.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Labels and targets are characteristic of supervised learning.</span></div><div class="why "><span class="letter">B</span><span>Clusters and centroids are characteristic of K-means.</span></div><div class="why "><span class="letter">C</span><span>Hidden states and sequential transitions are characteristic of HMM.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. This action-feedback loop is the signature of reinforcement learning.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-029</span>
+<span class="tag">Support Vector Machines</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">A labeled problem has two classes, and the team wants a classifier whose boundary is positioned to leave the widest possible margin between the closest cases. Which algorithm matches that description?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Support Vector Machine (SVM)</span></li><li class=""><span class="letter">B</span><span>K-means clustering</span></li><li class=""><span class="letter">C</span><span>Fuzzy C-means clustering</span></li><li class=""><span class="letter">D</span><span>Gaussian Mixture Model (GMM)</span></li></ol>
+<div class="idea"><b>Key idea</b>SVM is identified by a maximum-margin boundary for supervised classification.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. SVM places a separating hyperplane to maximize the margin between classes.</span></div><div class="why "><span class="letter">B</span><span>K-means performs unsupervised centroid-based clustering.</span></div><div class="why "><span class="letter">C</span><span>Fuzzy C-means performs soft clustering with membership weights.</span></div><div class="why "><span class="letter">D</span><span>GMM models data as a mixture of probability distributions.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-030</span>
+<span class="tag">Naive Bayes</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">Why is Naive Bayes a useful baseline for a large labeled text-classification task?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>It builds a nested hierarchy of clusters automatically</span></li><li class="correct"><span class="letter">B</span><span>It is simple and fast, using text feature probabilities</span></li><li class=""><span class="letter">C</span><span>It learns by trial and error from rewards and penalties over time</span></li><li class=""><span class="letter">D</span><span>It infers hidden underlying states behind an ordered signal sequence</span></li></ol>
+<div class="idea"><b>Key idea</b>Naive Bayes is a fast, simple probabilistic classifier well suited to text categorization.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Nested clusters are associated with hierarchical clustering.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. Its probabilistic treatment of text features makes it a practical simple baseline.</span></div><div class="why "><span class="letter">C</span><span>Trial-and-error rewards describe reinforcement learning.</span></div><div class="why "><span class="letter">D</span><span>Hidden-state sequence inference describes HMM.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-031</span>
+<span class="tag">Recurrent Neural Networks</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">A model must predict the next value in a stream of sensor readings, where each reading depends on the ones before it. Which neural network design carries information forward from earlier steps in the sequence?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Convolutional neural network (CNN)</span></li><li class=""><span class="letter">B</span><span>Random forest</span></li><li class="correct"><span class="letter">C</span><span>Recurrent neural network (RNN)</span></li><li class=""><span class="letter">D</span><span>Naive Bayes classifier</span></li></ol>
+<div class="idea"><b>Key idea</b>A recurrent network passes information from earlier steps forward, which suits data whose order carries meaning.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Convolutional networks detect features in local spatial regions and do not carry information forward across time steps.</span></div><div class="why "><span class="letter">B</span><span>Random forest treats each record independently and has no mechanism for passing information between ordered observations.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. Recurrent connections carry a state forward from one step to the next, so earlier readings influence the prediction for the current one.</span></div><div class="why "><span class="letter">D</span><span>Naive Bayes classifier combines feature probabilities for a single record and does not model dependence between successive readings.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-032</span>
+<span class="tag">Spectral Clustering</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">Which clustering approach is useful when groups have irregular or non-convex shapes that simple distance-to-centroid methods may miss?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Linear regression</span></li><li class=""><span class="letter">B</span><span>Naive Bayes classifier</span></li><li class=""><span class="letter">C</span><span>K-Nearest Neighbor (KNN)</span></li><li class="correct"><span class="letter">D</span><span>Spectral clustering</span></li></ol>
+<div class="idea"><b>Key idea</b>Spectral clustering uses similarity relationships and suits non-convex or irregularly shaped groups.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Linear regression predicts continuous values.</span></div><div class="why "><span class="letter">B</span><span>Naive Bayes is a supervised probabilistic classifier.</span></div><div class="why "><span class="letter">C</span><span>KNN predicts from nearby labeled examples.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. Spectral clustering uses relationships among points to capture group shapes that centroid-based clustering may miss.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-033</span>
+<span class="tag">Hierarchical Clustering</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">Which clustering method builds a tree of nested groups by repeatedly merging or splitting clusters?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Hierarchical clustering</span></li><li class=""><span class="letter">B</span><span>Support Vector Machine (SVM)</span></li><li class=""><span class="letter">C</span><span>Linear regression</span></li><li class=""><span class="letter">D</span><span>Reinforcement learning</span></li></ol>
+<div class="idea"><b>Key idea</b>Hierarchical clustering constructs nested clusters through repeated merging or splitting.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. The result represents a hierarchy of clusters.</span></div><div class="why "><span class="letter">B</span><span>SVM is a supervised classifier based on a separating boundary.</span></div><div class="why "><span class="letter">C</span><span>Linear regression predicts a continuous numeric value.</span></div><div class="why "><span class="letter">D</span><span>Reinforcement learning improves actions from reward feedback.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-034</span>
+<span class="tag">Gaussian Mixture Models</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">How does GMM differ from standard K-means when clusters overlap?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>GMM requires every record to carry a known outcome label before training</span></li><li class="correct"><span class="letter">B</span><span>GMM can represent probabilistic mixed membership across distributions</span></li><li class=""><span class="letter">C</span><span>GMM can only ever produce one cluster from the data</span></li><li class=""><span class="letter">D</span><span>GMM learns only through rewards received after actions</span></li></ol>
+<div class="idea"><b>Key idea</b>GMM can model overlapping probability distributions and represent a point as belonging probabilistically across components.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>GMM is used as an unsupervised probabilistic model and does not require target labels.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. This probabilistic mixture is a key difference from K-means hard assignment.</span></div><div class="why "><span class="letter">C</span><span>GMM is specifically a mixture of multiple components.</span></div><div class="why "><span class="letter">D</span><span>Reward-driven action learning describes reinforcement learning.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-035</span>
+<span class="tag">Neural Networks</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">What structure allows a neural network to learn relationships that a straight-line model cannot represent?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>A single yes-or-no rule applied at each branch of a tree</span></li><li class=""><span class="letter">B</span><span>A fixed number of centroids chosen before training begins</span></li><li class="correct"><span class="letter">C</span><span>Interconnected layers applying non-linear transformations</span></li><li class=""><span class="letter">D</span><span>A maximum margin placed between two labelled classes</span></li></ol>
+<div class="idea"><b>Key idea</b>Layers of connected units applying non-linear transformations let a network represent relationships a straight line cannot.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Branching rules describe a decision tree, which partitions the data into regions rather than composing layered transformations.</span></div><div class="why "><span class="letter">B</span><span>A preset number of centroids describes K-means clustering, which groups unlabeled records and learns no input-to-output relationship.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. Each layer transforms its input non-linearly and passes it on, and stacking those layers lets the network represent curved and complex relationships.</span></div><div class="why "><span class="letter">D</span><span>A margin between labelled classes describes SVM, which positions a boundary rather than composing layers of transformations.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-036</span>
+<span class="tag">Model Explainability</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">For a use case where an auditor must trace one prediction through explicit steps, why might a single decision tree be preferred over a random forest?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>A random forest&#x27;s individual trees are too shallow to inspect</span></li><li class=""><span class="letter">B</span><span>A forest can be traced by averaging its trees into one tree</span></li><li class=""><span class="letter">C</span><span>A single tree is preferred because it uses fewer input features</span></li><li class="correct"><span class="letter">D</span><span>A single tree exposes one branch path, while a forest aggregates many trees.</span></li></ol>
+<div class="idea"><b>Key idea</b>One decision tree offers direct traceability, while an ensemble of many trees reduces that transparency.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Depth is not the obstacle. Individual tree outputs can be examined; what makes a forest harder to interpret is that its prediction aggregates many trees rather than following one path.</span></div><div class="why "><span class="letter">B</span><span>Trees cannot be meaningfully averaged into one equivalent tree. The forest&#x27;s prediction comes from aggregating separate trees, and that aggregation is what resists tracing.</span></div><div class="why "><span class="letter">C</span><span>A single tree may use just as many features as a forest. Its advantage to an auditor is the traceable branch path, not the number of inputs.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. A single branch path is easier to audit than an aggregate across many trees.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-037</span>
+<span class="tag">Algorithm Selection</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: A</span></div>
+<p class="stem">A proven model already exists for the same narrow classification task a team needs. What principle should the team consider before training an equivalent model from scratch?</p>
+<ol class="opts"><li class="correct"><span class="letter">A</span><span>Reuse and adapt an existing suitable model when it meets the need</span></li><li class=""><span class="letter">B</span><span>Always choose the largest available model on offer</span></li><li class=""><span class="letter">C</span><span>Always build a custom model in-house in order to retain full control</span></li><li class=""><span class="letter">D</span><span>Choose an unsupervised algorithm even when labels exist</span></li></ol>
+<div class="idea"><b>Key idea</b>Avoid unnecessary reinvention when an existing task-specific model can be adapted effectively.</div>
+<div class="whys"><div class="why correct"><span class="letter">A</span><span>Correct. Reuse can save time, cost, data, and specialist effort when the task fit is already strong.</span></div><div class="why "><span class="letter">B</span><span>Model size alone does not establish task fit.</span></div><div class="why "><span class="letter">C</span><span>Building from scratch typically requires substantially more time, data, compute and specialist effort, so it needs specific justification when a suitable model already exists.</span></div><div class="why "><span class="letter">D</span><span>Existing labels can support supervised learning; there is no reason to discard them automatically.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-038</span>
+<span class="tag">Foundation Models</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: B</span></div>
+<p class="stem">A company wants an internal policy assistant that answers natural-language questions from curated company documents. Which option is the appropriate pattern for a small team?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Train a new LLM entirely from scratch</span></li><li class="correct"><span class="letter">B</span><span>Use an existing foundation model with the curated internal knowledge source</span></li><li class=""><span class="letter">C</span><span>Convert all documents into K-means clusters and return the nearest centroid</span></li><li class=""><span class="letter">D</span><span>Use an HMM because policies are written as sequences of words</span></li></ol>
+<div class="idea"><b>Key idea</b>Using an existing foundation model connected to curated internal content is preferable to training a large model from scratch.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Training from scratch is resource intensive and unnecessary for the stated need.</span></div><div class="why correct"><span class="letter">B</span><span>Correct. This pattern combines an existing language capability with domain-specific internal information.</span></div><div class="why "><span class="letter">C</span><span>K-means clustering does not provide a natural-language question-answering capability.</span></div><div class="why "><span class="letter">D</span><span>HMM is a sequence model, but long-form natural-language generation is an LLM capability rather than an HMM one.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-039</span>
+<span class="tag">Learning Paradigms</span><span class="tag">EASY</span>
+<span class="key">Answer: C</span></div>
+<p class="stem">Which pairing is correct?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>Supervised learning — discovers groups without labels</span></li><li class=""><span class="letter">B</span><span>Reinforcement learning — predicts only continuous numbers</span></li><li class="correct"><span class="letter">C</span><span>Unsupervised learning - structure without labels</span></li><li class=""><span class="letter">D</span><span>K-means clustering - learns a policy from rewards</span></li></ol>
+<div class="idea"><b>Key idea</b>Unsupervised learning searches for structure in data without predefined target labels.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>Supervised learning uses labeled examples rather than requiring labels to be absent.</span></div><div class="why "><span class="letter">B</span><span>Reinforcement learning is defined by actions and reward feedback, not by continuous-number prediction.</span></div><div class="why correct"><span class="letter">C</span><span>Correct. Discovering structure without predefined target labels is the core unsupervised-learning pattern.</span></div><div class="why "><span class="letter">D</span><span>K-means is a clustering algorithm, not a reward-driven policy-learning method.</span></div></div>
+</div>
+<div class="q">
+<div class="qhead"><span class="qid">CPMAI-ALGK-040</span>
+<span class="tag">Algorithm Recognition</span><span class="tag">MEDIUM</span>
+<span class="key">Answer: D</span></div>
+<p class="stem">A learner sees four clues: &#x27;nearest labeled examples,&#x27; &#x27;maximum-margin boundary,&#x27; &#x27;membership weights across clusters,&#x27; and &#x27;hidden states over time.&#x27; Which sequence of algorithms matches those clues?</p>
+<ol class="opts"><li class=""><span class="letter">A</span><span>K-means, Decision tree, GMM, Linear regression</span></li><li class=""><span class="letter">B</span><span>Naive Bayes, KNN, SVM, K-means</span></li><li class=""><span class="letter">C</span><span>Decision tree, Naive Bayes, K-means, GMM</span></li><li class="correct"><span class="letter">D</span><span>KNN, SVM, Fuzzy C-means, HMM</span></li></ol>
+<div class="idea"><b>Key idea</b>The four clues map respectively to KNN, SVM, Fuzzy C-means, and HMM.</div>
+<div class="whys"><div class="why "><span class="letter">A</span><span>None of these four fits its clue: K-means assigns to the nearest centroid rather than comparing stored labeled examples, and linear regression fits a line rather than modelling hidden states over time.</span></div><div class="why "><span class="letter">B</span><span>KNN and SVM do match two of the clues, but not the ones they are paired with here. Naive Bayes classifies by feature probabilities, and K-means does not model hidden states over time.</span></div><div class="why "><span class="letter">C</span><span>A decision tree traces branching rules rather than comparing nearest labeled examples, K-means makes hard cluster assignments rather than membership weights, and GMM models a static mixture rather than states changing over time.</span></div><div class="why correct"><span class="letter">D</span><span>Correct. KNN uses nearest labeled examples; SVM uses a maximum-margin boundary; Fuzzy C-means uses membership weights; HMM models hidden states across sequences.</span></div></div>
+</div>
+</div></body></html>

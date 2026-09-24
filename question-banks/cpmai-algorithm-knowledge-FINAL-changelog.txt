@@ -1,0 +1,136 @@
+CPMAI ALGORITHM KNOWLEDGE BANK - FINAL (REVISION 3) - FROZEN
+Bounded freeze fixes. No unaffected question was rewritten.
+
+1. COVERAGE - FOUR AREAS ADDED, BANK HELD AT 40
+   Four redundant questions replaced. Each replacement keeps the REPLACED
+   question's key letter and difficulty, so 10/10/10/10 and 14 EASY /
+   26 MEDIUM are preserved by construction, not by rebalancing. A build
+   assertion enforces both and aborts if either would move.
+
+   ALGK-013  KNN recognition        -> Logistic Regression   EASY   key A
+             (duplicated by ALGK-016's valuation scenario)
+   ALGK-020  GMM components         -> CNN                   MEDIUM key D
+             (duplicated by ALGK-009's blend-of-distributions question)
+   ALGK-031  K-means preset groups  -> RNN                   MEDIUM key C
+             (duplicated by ALGK-007)
+   ALGK-035  HMM vs clustering      -> Neural Networks       MEDIUM key C
+             (duplicated by ALGK-010; this also disposes of fix 4, the
+             "in the examples provided" wording, as the review noted)
+
+   Wording is original, not taken from the 48-question reference.
+   The CNN and RNN questions each use the other as a distractor, so the
+   spatial-versus-sequential distinction is reinforced from both sides.
+
+2. ALGK-036 - RANDOM FOREST
+   Explanation A no longer claims the combined prediction "cannot be
+   traced". It now reads that individual tree outputs CAN be examined,
+   and that what makes a forest harder to interpret is the aggregation
+   across many trees rather than a single traceable path.
+   Key D reworded exactly as specified:
+     "A single tree exposes one branch path, while a forest aggregates
+      many trees."
+   Key D retained.
+
+3. ALGK-016 - SVM
+   Explanation C no longer implies SVM is exclusively a classifier. It
+   now notes the maximum-margin boundary AND the existence of regression
+   variants, while keeping the reason the option is wrong: neither
+   estimates a value by averaging the nearest comparable examples, which
+   is what the stem describes. Key D retained.
+
+4. ALGK-035 - resolved by replacement, as above.
+
+5. ALGK-037 - ABSOLUTE REMOVED
+   "Building from scratch is the most expensive path" replaced with the
+   supplied wording: it typically requires substantially more time, data,
+   compute and specialist effort, so it needs specific justification when
+   a suitable model already exists. Key A retained.
+
+====================================================================
+VALIDATION
+====================================================================
+  Validator                 all enforced checks pass, 0 failures
+  Questions                 40
+  Coverage                  Logistic Regression ALGK-013 | CNN ALGK-020
+                            RNN ALGK-031 | Neural Networks ALGK-035
+  Keys                      A 10 / B 10 / C 10 / D 10
+  Longest key run           1
+  Difficulty                14 EASY / 26 MEDIUM  (EASY/MEDIUM only)
+  tags                      "algorithm" on every row
+  CSV schema                22 columns, header byte-identical to Domain 1
+  Source references         0
+  Option/explanation        no duplicate options, no unpaired explanations
+  HTML <-> CSV              560 fields compared, 0 differences
+  Originality               max Jaccard 0.333, mean 0.154, 0 exact matches
+
+  ANSWER-LENGTH - DRIFTED, REPORTED, NOT ENGINEERED
+    correct-is-longest      18% -> 22%
+    always-pick-longest     25% -> 30%   (chance 25%)
+    length premium          +8.2% -> +6.7%
+    key by length rank      12 / 16 / 7 / 5
+
+    Exactly two questions moved the key into rank 1:
+      ALGK-036 - the mandated D wording, 52 -> 76 characters. Specified
+                 verbatim by the review, so not mine to alter.
+      ALGK-020 - the new CNN question, where the correct algorithm's
+                 canonical name is simply longer than the distractors'
+                 ("Convolutional neural network (CNN)" at 34 against
+                 "K-Nearest Neighbor (KNN)" at 24). Evening it out would
+                 mean breaking the canonical-naming rule set in the
+                 previous round, and a 4-character gap between technique
+                 names is not exploitable.
+    Per the instruction, the metric was NOT engineered down. For scale,
+    frozen Domain 4 sits at 35% and Domain 5 at 38%.
+
+  FILES - versioned so the reviewed artefact is unambiguous
+    cpmai-algorithm-knowledge-REV3.html  8cb6df1dd89a55b17fa2bdb56e049d93
+    cpmai-algorithm-knowledge-REV3.csv   568e16e01845752652f9b9ec97c76768
+
+====================================================================
+FREEZE - ARTEFACT FINALISATION ONLY (NO REVISION 4)
+====================================================================
+Revision 3 content was accepted with no further changes required. The
+freeze produced the final artefacts and set their metadata. NO CONTENT
+WAS EDITED.
+
+  CSV checksum before the freeze   568e16e01845752652f9b9ec97c76768
+  CSV checksum after the freeze    568e16e01845752652f9b9ec97c76768
+  cpmai-algorithm-knowledge-REV3.csv and -FROZEN.csv are byte-identical.
+
+  Metadata only: the HTML title, subtitle and status row now read
+  "FROZEN - Revision 3, final".
+
+THE EIGHT REQUESTED VERIFICATION CHECKS - run on the FROZEN artefacts
+
+  1  22-column CertMocks schema, header byte-identical to the
+     shipped Domain 1 file                                      PASS
+  2  exactly 40 data rows                                       PASS
+  3  IDs CPMAI-ALGK-001..040, sequential and unique             PASS
+  4  domain / tag / difficulty values                           PASS
+        domain      Manage AI Model Development and Evaluation
+        tag         algorithm
+        difficulty  14 EASY / 26 MEDIUM  (EASY and MEDIUM only)
+  5  every keyed option and its explanation populated           PASS
+  6  no orphan explanations                                     PASS
+  7  HTML <-> CSV, 560 fields compared, 0 differences           PASS
+  8  checksums recorded                                         PASS
+
+  Supporting checks, all PASS: every row has 22 fields; no leading or
+  trailing whitespace in any field; source and is_test blank; option E
+  and F unused throughout; keys A10/B10/C10/D10 with a longest run of 1;
+  zero learner-facing source references; no duplicate options within any
+  question.
+
+FROZEN ARTEFACTS
+  cpmai-algorithm-knowledge-FROZEN.csv   568e16e01845752652f9b9ec97c76768
+  cpmai-algorithm-knowledge-FROZEN.html  32404b8d5a3668f5aae3f29d022e93c8
+
+IMPORT - TWO STEPS
+  1. Admin > Questions > Import, Certification CPMAI, Content type Quiz.
+  2. Admin > Quizzes > create the drill with Tag "algorithm".
+     The Tag field must match the CSV tags column exactly or the drill
+     returns nothing. Note that a tag quiz REMOVES its questions from the
+     domain quizzes, so these 40 appear in the Algorithm drill only.
+     Domains 1 to 5 are unaffected - they carry a blank tags column.
+
+STATUS: **PERMANENTLY FROZEN** at Revision 3. No Revision 4.
