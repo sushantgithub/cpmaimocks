@@ -6,13 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
-import {
-  ChevronRight,
-  Pencil,
-  Save,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { ChevronRight, Pencil, Save, X } from 'lucide-react'
 
 interface AdminQuiz {
   id: string
@@ -57,7 +51,6 @@ export default function AdminQuizzesPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -155,35 +148,6 @@ export default function AdminQuizzesPage() {
       })
     } finally {
       setSavingId(null)
-    }
-  }
-
-  async function remove(quiz: AdminQuiz) {
-    const confirmed = confirm(
-      `Delete "${quiz.title}"?\n\nThis permanently deletes its ${quiz.questionCount} Quiz questions and related learner Quiz history/bookmarks. This cannot be undone.`
-    )
-    if (!confirmed) return
-
-    setDeletingId(quiz.id)
-    try {
-      const res = await fetch(`/api/admin/quizzes/${quiz.id}`, {
-        method: 'DELETE',
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Could not delete quiz')
-
-      toast({
-        title: `Quiz deleted with ${data.deletedQuestions ?? quiz.questionCount} questions`,
-        variant: 'success',
-      })
-      await load()
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Could not delete quiz',
-        variant: 'destructive',
-      })
-    } finally {
-      setDeletingId(null)
     }
   }
 
@@ -330,15 +294,6 @@ export default function AdminQuizzesPage() {
                                         ) : (
                                           <Pencil className="h-4 w-4" />
                                         )}
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => remove(quiz)}
-                                        disabled={deletingId === quiz.id}
-                                        aria-label={`Delete ${quiz.title}`}
-                                      >
-                                        <Trash2 className="h-4 w-4 text-red-500" />
                                       </Button>
                                     </div>
                                   </div>
