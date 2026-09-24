@@ -144,3 +144,9 @@ Upload at: Admin → Questions → Import CSV
 <!-- deploy trigger: mock publish import and practice question visibility -->
 
 <!-- deploy trigger: PR #10 and #11 production release -->
+
+<!-- staging deploy trigger: signup session isolation -->
+
+<!-- staging deploy trigger: auth cookie stability -->
+
+<!-- staging deploy trigger: Android Chrome PKCE replay recovery -->

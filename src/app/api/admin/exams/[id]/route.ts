@@ -121,11 +121,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: {
         id: { in: uniqueQuestionIds },
         certificationId,
+        contentType: 'MOCK_EXAM',
       },
     })
     if (eligibleCount !== uniqueQuestionIds.length) {
       return NextResponse.json(
-        { error: 'Every assigned question must belong to this certification.' },
+        { error: 'Every assigned question must belong to this certification and be a Mock Exam question.' },
         { status: 400 }
       )
     }
@@ -293,6 +294,40 @@ export async function DELETE(_: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await prisma.mockExam.delete({ where: { id: params.id } })
-  return NextResponse.json({ success: true })
+  const exam = await prisma.mockExam.findUnique({
+    where: { id: params.id },
+    select: {
+      id: true,
+      questions: { select: { questionId: true, question: { select: { contentType: true, _count: { select: { mockExamQuestions: true } } } } } },
+      attempts: { select: { id: true } },
+    },
+  })
+  if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const questionIds = exam.questions
+    .filter((item) => item.question.contentType === 'MOCK_EXAM' && item.question._count.mockExamQuestions === 1)
+    .map((item) => item.questionId)
+  const attemptIds = exam.attempts.map((attempt) => attempt.id)
+
+  await prisma.$transaction(async (tx) => {
+    // Deleting the assessment means deleting its learner attempt records too;
+    // ExamAnswer references Question, so history must be removed before the
+    // assessment-owned questions can be deleted.
+    if (attemptIds.length > 0) {
+      await tx.examAnswer.deleteMany({ where: { attemptId: { in: attemptIds } } })
+      await tx.examAttempt.deleteMany({ where: { id: { in: attemptIds } } })
+    }
+    if (questionIds.length > 0) {
+      await tx.bookmark.deleteMany({ where: { questionId: { in: questionIds } } })
+      await tx.mockExamQuestion.deleteMany({ where: { examId: exam.id } })
+      // Ownership guard: only Mock questions are eligible for cascade deletion.
+      // A bad cross-content assignment can therefore never erase Quiz/Practice.
+      await tx.question.deleteMany({
+        where: { id: { in: questionIds }, contentType: 'MOCK_EXAM' },
+      })
+    }
+    await tx.mockExam.delete({ where: { id: exam.id } })
+  })
+
+  return NextResponse.json({ success: true, deletedQuestions: questionIds.length, preservedSharedQuestions: exam.questions.length - questionIds.length })
 }

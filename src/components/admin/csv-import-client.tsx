@@ -110,6 +110,7 @@ function validateRow(row: RowData, requireDomain: boolean): string[] {
 export function CsvImportClient() {
   const [preview, setPreview] = useState<Preview | null>(null)
   const [importing, setImporting] = useState(false)
+  const [sourceFilename, setSourceFilename] = useState('')
   const [imported, setImported] = useState(false)
   const [importResult, setImportResult] = useState<{ count: number; examTitle?: string } | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -177,6 +178,7 @@ export function CsvImportClient() {
   }
 
   function processFile(file: File) {
+    setSourceFilename(file.name)
     if (!certificationId) {
       toast({ title: 'Select a certification first', variant: 'destructive' })
       return
@@ -193,7 +195,7 @@ export function CsvImportClient() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         const rows = results.data as RowData[]
         const headers = Object.keys(rows[0] ?? {})
         const missingCols = REQUIRED_COLS.filter((column) => !headers.includes(column))
@@ -218,7 +220,52 @@ export function CsvImportClient() {
           }
         })
 
-        setPreview({ valid, errors, total: rows.length })
+        // Check duplicate wording against both this CSV and the selected
+        // certification/content bank before showing the final preview.
+        try {
+          const response = await fetch('/api/admin/questions/import/duplicates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              certificationId,
+              contentType,
+              questions: rows.map((row) => ({ question: row.question, question_id: row.question_id })),
+            }),
+          })
+          const data = await response.json()
+          if (!response.ok) {
+            toast({ title: data.error ?? 'Duplicate check failed', variant: 'destructive' })
+            return
+          }
+
+          const duplicateByRow = new Map<number, string[]>()
+          for (const duplicate of data.duplicates ?? []) {
+            const rowNumber = Number(duplicate.row)
+            if (!rowNumber) continue
+            const messages = duplicateByRow.get(rowNumber) ?? []
+            messages.push(`Duplicate: ${duplicate.message}`)
+            duplicateByRow.set(rowNumber, messages)
+          }
+
+          const mergedErrors = new Map<number, string[]>()
+          for (const error of errors) mergedErrors.set(error.row, [...error.errors])
+          for (const [rowNumber, messages] of Array.from(duplicateByRow.entries())) {
+            mergedErrors.set(rowNumber, [...(mergedErrors.get(rowNumber) ?? []), ...messages])
+          }
+
+          const blockedRows = new Set(mergedErrors.keys())
+          setPreview({
+            valid: rows.filter((_, index) => !blockedRows.has(index + 2)),
+            errors: Array.from(mergedErrors, ([row, rowErrors]) => ({ row, errors: rowErrors }))
+              .sort((a, b) => a.row - b.row),
+            total: rows.length,
+          })
+        } catch {
+          toast({
+            title: 'Could not check for duplicate questions. Import was not enabled.',
+            variant: 'destructive',
+          })
+        }
       },
       error: () =>
         toast({ title: 'Failed to parse file. Check the CSV format.', variant: 'destructive' }),
@@ -280,6 +327,17 @@ export function CsvImportClient() {
   async function importQuestions() {
     if (!preview?.valid.length || !certificationId || !contentType) return
 
+    const duplicateError = preview.errors.some((item) =>
+      item.errors.some((error) => error.startsWith('Duplicate:'))
+    )
+    if (duplicateError) {
+      toast({
+        title: 'Duplicate questions found. Fix the highlighted CSV rows before importing.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     const mockError = mockValidationError()
     if (mockError) {
       toast({ title: mockError, variant: 'destructive' })
@@ -297,6 +355,7 @@ export function CsvImportClient() {
         body: JSON.stringify({
           certificationId,
           contentType,
+          sourceFilename: sourceFilename || undefined,
           examId: targetExamId,
           newMock:
             contentType === 'MOCK_EXAM' && mockMode === 'NEW'
@@ -365,6 +424,14 @@ export function CsvImportClient() {
   }
 
   const mockError = mockValidationError()
+  const duplicateError =
+    preview?.errors.some((item) => item.errors.some((error) => error.startsWith('Duplicate:')))
+      ? 'Duplicate questions found. Remove or change every duplicate row before importing.'
+      : null
+  const quizError =
+    contentType === 'QUIZ' && preview?.errors.length
+      ? 'Quiz imports are all-or-nothing. Fix every invalid row before importing so each persisted Quiz has exactly 10 questions.'
+      : null
 
   return (
     <div className="space-y-6">
@@ -409,8 +476,8 @@ export function CsvImportClient() {
               </select>
               {contentType && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {contentType === 'QUIZ' && 'Quiz questions are used in fixed quiz sets and are also available in Practice.'}
-                  {contentType === 'MOCK_EXAM' && 'Mock questions are assigned to the selected mock and are also available in Practice.'}
+                  {contentType === 'QUIZ' && 'Quiz imports create persisted Quiz records in fixed sets of 10 within each Domain. Quiz questions stay in Quiz only.'}
+                  {contentType === 'MOCK_EXAM' && 'Mock questions are assigned only to the selected Mock Exam.'}
                   {contentType === 'PRACTICE_ONLY' && 'Practice-only questions never enter Quiz or Mock automatically.'}
                 </p>
               )}
@@ -672,6 +739,14 @@ export function CsvImportClient() {
             )}
           </div>
 
+          {contentType === 'QUIZ' && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${
+              quizError ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
+            }`}>
+              {quizError ?? 'Quiz import is all-or-nothing. Every Domain must contain a multiple of 10 questions; each set becomes a persisted Quiz.'}
+            </div>
+          )}
+
           {contentType === 'MOCK_EXAM' && (
             <div className={`rounded-lg border px-4 py-3 text-sm ${
               mockError ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-700'
@@ -686,7 +761,9 @@ export function CsvImportClient() {
                 <h4 className="font-semibold text-red-700 mb-3 text-sm">
                   {contentType === 'MOCK_EXAM'
                     ? 'Rows with errors — Mock import is blocked until these are fixed:'
-                    : 'Rows with errors — these rows will not be imported:'}
+                    : contentType === 'QUIZ'
+                      ? 'Rows with errors — Quiz import is blocked until these are fixed:'
+                      : 'Rows with errors — these rows will not be imported:'}
                 </h4>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {preview.errors.map((error) => (
@@ -773,7 +850,9 @@ export function CsvImportClient() {
           <p className="text-xs text-muted-foreground -mt-2">
             {contentType === 'MOCK_EXAM'
               ? 'The Mock Exam is published automatically only when its full configured question set is assigned and every assigned question is published.'
-              : 'Published questions are immediately eligible for Practice.'}
+              : contentType === 'QUIZ'
+                ? 'Published Quiz questions appear only in their persisted 10-question Quiz.'
+                : 'Published Practice questions appear only in Practice.'}
           </p>
 
           <div className="flex gap-3">
@@ -783,7 +862,9 @@ export function CsvImportClient() {
               loading={importing}
               disabled={
                 preview.valid.length === 0 ||
-                (contentType === 'MOCK_EXAM' && Boolean(mockError))
+                Boolean(duplicateError) ||
+                (contentType === 'MOCK_EXAM' && Boolean(mockError)) ||
+                (contentType === 'QUIZ' && Boolean(quizError))
               }
             >
               Import {preview.valid.length} Questions

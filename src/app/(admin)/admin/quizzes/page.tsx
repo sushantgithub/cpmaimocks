@@ -1,74 +1,68 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
-import { Plus, Trash2, Save, CheckCircle2 } from 'lucide-react'
+import { ChevronRight, Pencil, Save, X } from 'lucide-react'
 
-interface Certification {
-  id: string
-  name: string
-}
-
-interface QuizSlot {
-  number: number
-  questionCount: number
-}
-
-interface DomainQuiz {
-  id: string
-  domainName: string
-  certificationId: string
-  certification: { id: string; name: string }
-  questionCount: number
-  quizCount: number
-  slots: QuizSlot[]
-}
-
-interface TagQuiz {
+interface AdminQuiz {
   id: string
   title: string
-  tag: string
   description: string | null
   isActive: boolean
+  sortOrder: number
   certificationId: string
+  categoryId: string
   certification: { id: string; name: string }
+  category: { id: string; name: string }
   questionCount: number
+  publishedQuestionCount: number
 }
 
 interface QuizResponse {
-  domainQuizzes: DomainQuiz[]
-  tagQuizzes: TagQuiz[]
+  quizzes: AdminQuiz[]
 }
 
-const EMPTY = {
-  title: '',
-  tag: '',
-  description: '',
-  certificationId: '',
+interface EditForm {
+  title: string
+  description: string
+  isActive: boolean
+}
+
+interface DomainGroup {
+  id: string
+  name: string
+  quizzes: AdminQuiz[]
+}
+
+interface CertificationGroup {
+  id: string
+  name: string
+  domains: DomainGroup[]
 }
 
 export default function AdminQuizzesPage() {
-  const [domainQuizzes, setDomainQuizzes] = useState<DomainQuiz[]>([])
-  const [tagQuizzes, setTagQuizzes] = useState<TagQuiz[]>([])
-  const [certifications, setCertifications] = useState<Certification[]>([])
-  const [form, setForm] = useState(EMPTY)
-  const [showNew, setShowNew] = useState(false)
-  const [creating, setCreating] = useState(false)
+  const [quizzes, setQuizzes] = useState<AdminQuiz[]>([])
   const [loading, setLoading] = useState(true)
-  const [edits, setEdits] = useState<Record<string, Partial<TagQuiz>>>({})
+  const [openDomains, setOpenDomains] = useState<Record<string, boolean>>({})
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<EditForm | null>(null)
   const [savingId, setSavingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/quizzes')
+      const res = await fetch('/api/admin/quizzes', { cache: 'no-store' })
       const data = await res.json() as QuizResponse
-      setDomainQuizzes(Array.isArray(data.domainQuizzes) ? data.domainQuizzes : [])
-      setTagQuizzes(Array.isArray(data.tagQuizzes) ? data.tagQuizzes : [])
-      setEdits({})
+      if (!res.ok) throw new Error('Could not load quizzes')
+      setQuizzes(Array.isArray(data.quizzes) ? data.quizzes : [])
+    } catch (error) {
+      toast({
+        title: error instanceof Error ? error.message : 'Could not load quizzes',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -78,59 +72,75 @@ export default function AdminQuizzesPage() {
     load()
   }, [load])
 
-  useEffect(() => {
-    fetch('/api/certifications')
-      .then((r) => r.json())
-      .then((certs: Certification[]) => {
-        setCertifications(certs)
-        if (certs.length > 0) {
-          setForm((current) => ({
-            ...current,
-            certificationId: current.certificationId || certs[0].id,
-          }))
-        }
-      })
-      .catch(() => {})
-  }, [])
+  const groups = useMemo<CertificationGroup[]>(() => {
+    const certifications = new Map<string, CertificationGroup>()
 
-  async function create() {
-    setCreating(true)
-    try {
-      const res = await fetch('/api/admin/quizzes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Failed to create')
-      toast({ title: `${data.title} created`, variant: 'success' })
-      setForm({ ...EMPTY, certificationId: form.certificationId })
-      setShowNew(false)
-      load()
-    } catch (error) {
-      toast({
-        title: error instanceof Error ? error.message : 'Failed',
-        variant: 'destructive',
-      })
-    } finally {
-      setCreating(false)
+    for (const quiz of quizzes) {
+      let certification = certifications.get(quiz.certificationId)
+      if (!certification) {
+        certification = {
+          id: quiz.certificationId,
+          name: quiz.certification.name,
+          domains: [],
+        }
+        certifications.set(quiz.certificationId, certification)
+      }
+
+      let domain = certification.domains.find((item) => item.id === quiz.categoryId)
+      if (!domain) {
+        domain = {
+          id: quiz.categoryId,
+          name: quiz.category.name,
+          quizzes: [],
+        }
+        certification.domains.push(domain)
+      }
+
+      domain.quizzes.push(quiz)
     }
+
+    return Array.from(certifications.values())
+  }, [quizzes])
+
+  const totalQuestions = quizzes.reduce((sum, quiz) => sum + quiz.questionCount, 0)
+
+  function toggleDomain(domainId: string) {
+    setOpenDomains((current) => ({
+      ...current,
+      [domainId]: !current[domainId],
+    }))
   }
 
-  async function save(quiz: TagQuiz) {
-    const patch = edits[quiz.id]
-    if (!patch) return
+  function beginEdit(quiz: AdminQuiz) {
+    setEditingId(quiz.id)
+    setEditForm({
+      title: quiz.title,
+      description: quiz.description ?? '',
+      isActive: quiz.isActive,
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditForm(null)
+  }
+
+  async function save(quiz: AdminQuiz) {
+    if (!editForm) return
+
     setSavingId(quiz.id)
     try {
       const res = await fetch(`/api/admin/quizzes/${quiz.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
+        body: JSON.stringify(editForm),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Save failed')
-      toast({ title: 'Tag quiz updated', variant: 'success' })
-      load()
+
+      toast({ title: 'Quiz updated', variant: 'success' })
+      cancelEdit()
+      await load()
     } catch (error) {
       toast({
         title: error instanceof Error ? error.message : 'Save failed',
@@ -141,293 +151,248 @@ export default function AdminQuizzesPage() {
     }
   }
 
-  async function remove(quiz: TagQuiz) {
-    if (!confirm(`Delete the "${quiz.title}" tag quiz? Its questions are not affected.`)) return
-    const res = await fetch(`/api/admin/quizzes/${quiz.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      toast({ title: 'Could not delete', variant: 'destructive' })
-      return
-    }
-    toast({ title: 'Tag quiz deleted', variant: 'success' })
-    load()
-  }
-
-  function edit(id: string, patch: Partial<TagQuiz>) {
-    setEdits((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], ...patch },
-    }))
-  }
-
   return (
-    <div className="space-y-8 max-w-4xl">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quizzes</h1>
-          <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-            Quiz questions are grouped automatically into fixed sets of 10 within each domain.
-            These are the quizzes learners see on the site.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => setShowNew((value) => !value)}>
-          <Plus className="h-4 w-4 mr-1" />
-          New Tag Quiz
-        </Button>
+    <div className="space-y-6 max-w-5xl">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Quizzes</h1>
+        <p className="text-sm text-gray-500 mt-1 max-w-2xl">
+          Quizzes are created automatically from Quiz CSV imports and kept under
+          their certification and domain.
+        </p>
+        {!loading && quizzes.length > 0 && (
+          <div className="flex gap-2 flex-wrap mt-3">
+            <Badge variant="secondary">
+              {quizzes.length} quizzes
+            </Badge>
+            <Badge variant="secondary">
+              {totalQuestions} questions
+            </Badge>
+          </div>
+        )}
       </div>
 
-      {showNew && (
+      {loading ? (
+        <div className="space-y-3">
+          <div className="animate-pulse h-20 bg-gray-100 rounded-xl" />
+          <div className="animate-pulse h-20 bg-gray-100 rounded-xl" />
+        </div>
+      ) : quizzes.length === 0 ? (
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">New Tag Quiz</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Optional: create a special drill that groups Quiz questions by CSV tag across domains.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Name *</label>
-                <Input
-                  className="mt-1"
-                  placeholder="Algorithms"
-                  value={form.title}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, title: event.target.value }))
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Tag *</label>
-                <Input
-                  className="mt-1"
-                  placeholder="algorithm"
-                  value={form.tag}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, tag: event.target.value }))
-                  }
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Must match the tags column in the CSV.
-                </p>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Certification</label>
-              <select
-                className="mt-1 w-full border rounded-lg px-3 py-2 text-sm"
-                value={form.certificationId}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    certificationId: event.target.value,
-                  }))
-                }
-              >
-                {certifications.map((certification) => (
-                  <option key={certification.id} value={certification.id}>
-                    {certification.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Description</label>
-              <Input
-                className="mt-1"
-                placeholder="Shown under the quiz name"
-                value={form.description}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, description: event.target.value }))
-                }
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowNew(false)}>
-                Cancel
-              </Button>
-              <Button size="sm" onClick={create} loading={creating}>
-                Create Tag Quiz
-              </Button>
-            </div>
+          <CardContent className="p-8 text-center text-sm text-gray-500">
+            No persisted quizzes are available. Import Quiz questions to create
+            fixed 10-question quizzes automatically.
           </CardContent>
         </Card>
+      ) : (
+        <div className="space-y-6">
+          {groups.map((certification) => {
+            const certificationQuizCount = certification.domains.reduce(
+              (sum, domain) => sum + domain.quizzes.length,
+              0
+            )
+            const certificationQuestionCount = certification.domains.reduce(
+              (sum, domain) =>
+                sum + domain.quizzes.reduce(
+                  (domainSum, quiz) => domainSum + quiz.questionCount,
+                  0
+                ),
+              0
+            )
+
+            return (
+              <section key={certification.id} className="space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {certification.name}
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    {certificationQuizCount} quizzes · {certificationQuestionCount} questions
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {certification.domains.map((domain) => {
+                    const isOpen = Boolean(openDomains[domain.id])
+                    const domainQuestionCount = domain.quizzes.reduce(
+                      (sum, quiz) => sum + quiz.questionCount,
+                      0
+                    )
+
+                    return (
+                      <Card key={domain.id} className="overflow-hidden">
+                        <button
+                          type="button"
+                          className="w-full p-4 flex items-center justify-between gap-3 text-left hover:bg-gray-50 transition-colors"
+                          onClick={() => toggleDomain(domain.id)}
+                          aria-expanded={isOpen}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ChevronRight
+                              className={`h-5 w-5 text-gray-500 flex-shrink-0 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                            />
+                            <div className="min-w-0">
+                              <h3 className="font-semibold text-gray-900 leading-snug">
+                                {domain.name}
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {domain.quizzes.length} quizzes · {domainQuestionCount} questions
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+
+                        {isOpen && (
+                          <div className="border-t divide-y">
+                            {domain.quizzes.map((quiz) => {
+                              const isEditing = editingId === quiz.id
+                              const allPublished =
+                                quiz.questionCount === quiz.publishedQuestionCount
+
+                              return (
+                                <div key={quiz.id}>
+                                  <div className="p-3 sm:p-4 flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-sm font-medium text-gray-900">
+                                          {quiz.title}
+                                        </p>
+                                        <Badge
+                                          variant={quiz.isActive ? 'success' : 'secondary'}
+                                          className="text-xs"
+                                        >
+                                          {quiz.isActive ? 'Live' : 'Hidden'}
+                                        </Badge>
+                                        <Badge
+                                          variant={
+                                            quiz.questionCount === 10
+                                              ? 'secondary'
+                                              : 'destructive'
+                                          }
+                                          className="text-xs"
+                                        >
+                                          {quiz.questionCount} questions
+                                        </Badge>
+                                        {!allPublished && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {quiz.publishedQuestionCount} published
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() =>
+                                          isEditing ? cancelEdit() : beginEdit(quiz)
+                                        }
+                                        aria-label={isEditing ? 'Cancel editing' : `Edit ${quiz.title}`}
+                                      >
+                                        {isEditing ? (
+                                          <X className="h-4 w-4" />
+                                        ) : (
+                                          <Pencil className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  {isEditing && editForm && (
+                                    <div className="px-3 pb-4 sm:px-4 bg-gray-50 border-t">
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
+                                        <div>
+                                          <label className="text-xs font-medium text-gray-600">
+                                            Name
+                                          </label>
+                                          <Input
+                                            className="mt-1"
+                                            value={editForm.title}
+                                            onChange={(event) =>
+                                              setEditForm((current) =>
+                                                current
+                                                  ? { ...current, title: event.target.value }
+                                                  : current
+                                              )
+                                            }
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-xs font-medium text-gray-600">
+                                            Description
+                                          </label>
+                                          <Input
+                                            className="mt-1"
+                                            value={editForm.description}
+                                            placeholder="Optional"
+                                            onChange={(event) =>
+                                              setEditForm((current) =>
+                                                current
+                                                  ? {
+                                                      ...current,
+                                                      description: event.target.value,
+                                                    }
+                                                  : current
+                                              )
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
+                                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                                          <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded"
+                                            checked={editForm.isActive}
+                                            onChange={(event) =>
+                                              setEditForm((current) =>
+                                                current
+                                                  ? {
+                                                      ...current,
+                                                      isActive: event.target.checked,
+                                                    }
+                                                  : current
+                                              )
+                                            }
+                                          />
+                                          Live
+                                        </label>
+
+                                        <div className="flex gap-2">
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={cancelEdit}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => save(quiz)}
+                                            loading={savingId === quiz.id}
+                                          >
+                                            <Save className="h-4 w-4 mr-1" />
+                                            Save
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </Card>
+                    )
+                  })}
+                </div>
+              </section>
+            )
+          })}
+        </div>
       )}
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Generated Domain Quizzes</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            These are generated from published questions classified as Quiz.
-          </p>
-        </div>
-
-        {loading ? (
-          <div className="animate-pulse h-32 bg-gray-100 rounded-xl" />
-        ) : domainQuizzes.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 text-center text-sm text-gray-500">
-              No published Quiz questions are currently available in any domain.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {domainQuizzes.map((domain) => (
-              <Card key={domain.id}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900 leading-snug">
-                        {domain.domainName}
-                      </h3>
-                      <div className="flex gap-2 flex-wrap mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {domain.certification.name}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {domain.questionCount} Quiz questions
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {domain.quizCount} quiz{domain.quizCount === 1 ? '' : 'zes'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                    {domain.slots.map((slot) => (
-                      <div
-                        key={slot.number}
-                        className="rounded-lg border bg-gray-50 px-3 py-3 min-w-0"
-                      >
-                        <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
-                          <span>Quiz {slot.number}</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {slot.questionCount} question{slot.questionCount === 1 ? '' : 's'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Custom Tag Quizzes</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Optional drills grouped by tag instead of by domain.
-          </p>
-        </div>
-
-        {!loading && tagQuizzes.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">
-            No custom tag quizzes.
-          </p>
-        ) : (
-          <div className="space-y-4">
-            {tagQuizzes.map((quiz) => {
-              const patch = edits[quiz.id] ?? {}
-              const dirty = Object.keys(patch).length > 0
-
-              return (
-                <Card key={quiz.id}>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900">{quiz.title}</h3>
-                        <Badge variant="outline" className="text-xs">
-                          {quiz.certification.name}
-                        </Badge>
-                        <Badge
-                          variant={quiz.isActive ? 'success' : 'secondary'}
-                          className="text-xs"
-                        >
-                          {quiz.isActive ? 'Live' : 'Hidden'}
-                        </Badge>
-                        <Badge
-                          variant={quiz.questionCount > 0 ? 'secondary' : 'destructive'}
-                          className="text-xs"
-                        >
-                          {quiz.questionCount} published question{quiz.questionCount === 1 ? '' : 's'}
-                        </Badge>
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={() => remove(quiz)}>
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-medium text-gray-600">Name</label>
-                        <Input
-                          className="mt-1"
-                          value={patch.title ?? quiz.title}
-                          onChange={(event) =>
-                            edit(quiz.id, { title: event.target.value })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-gray-600">Tag</label>
-                        <Input
-                          className="mt-1"
-                          value={patch.tag ?? quiz.tag}
-                          onChange={(event) =>
-                            edit(quiz.id, { tag: event.target.value })
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-medium text-gray-600">
-                        Description
-                      </label>
-                      <Input
-                        className="mt-1"
-                        value={patch.description ?? quiz.description ?? ''}
-                        onChange={(event) =>
-                          edit(quiz.id, { description: event.target.value })
-                        }
-                      />
-                    </div>
-
-                    <label className="flex items-center gap-2 text-xs text-gray-700">
-                      <input
-                        type="checkbox"
-                        className="h-3.5 w-3.5 rounded"
-                        checked={patch.isActive ?? quiz.isActive}
-                        onChange={(event) =>
-                          edit(quiz.id, { isActive: event.target.checked })
-                        }
-                      />
-                      Live
-                    </label>
-
-                    {dirty && (
-                      <div className="flex justify-end">
-                        <Button
-                          size="sm"
-                          onClick={() => save(quiz)}
-                          loading={savingId === quiz.id}
-                        >
-                          <Save className="h-4 w-4 mr-1" />
-                          Save changes
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        )}
-      </section>
     </div>
   )
 }
