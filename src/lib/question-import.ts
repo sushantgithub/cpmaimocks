@@ -240,3 +240,31 @@ export function duplicateQuestionTextErrors(
 
   return errors
 }
+
+
+export interface QuizBatchQuestionTags {
+  tags: string[]
+}
+
+export interface QuizBatchCandidate {
+  id: string
+  tag: string
+  externalQuestionCount: number
+}
+
+export function planQuizBatchCleanup(
+  questions: QuizBatchQuestionTags[],
+  quizzes: QuizBatchCandidate[],
+): { deleteQuizIds: string[]; sharedQuizIds: string[] } {
+  const batchTags = new Set(questions.flatMap((question) => question.tags))
+  const deleteQuizIds: string[] = []
+  const sharedQuizIds: string[] = []
+
+  for (const quiz of quizzes) {
+    if (!batchTags.has(quiz.tag)) continue
+    if (quiz.externalQuestionCount > 0) sharedQuizIds.push(quiz.id)
+    else deleteQuizIds.push(quiz.id)
+  }
+
+  return { deleteQuizIds, sharedQuizIds }
+}
