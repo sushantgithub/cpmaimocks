@@ -31,7 +31,11 @@ export function ImportBatchesTable({ batches }: { batches: Batch[] }) {
       const response = await fetch(`/api/admin/question-batches/${batch.id}`, { method: 'DELETE' })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? 'Batch deletion failed')
-      toast({ title: `Deleted ${data.deleted} questions`, description: batch.name, variant: 'success' })
+      toast({
+        title: `Deleted ${data.deleted} questions${data.deletedQuizzes ? ` and ${data.deletedQuizzes} quiz${data.deletedQuizzes === 1 ? '' : 'zes'}` : ''}`,
+        description: batch.sourceFilename || batch.name,
+        variant: 'success',
+      })
       router.refresh()
     } catch (error) {
       toast({ title: error instanceof Error ? error.message : 'Batch deletion failed', variant: 'destructive' })
