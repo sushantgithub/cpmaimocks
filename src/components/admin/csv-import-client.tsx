@@ -110,6 +110,7 @@ function validateRow(row: RowData, requireDomain: boolean): string[] {
 export function CsvImportClient() {
   const [preview, setPreview] = useState<Preview | null>(null)
   const [importing, setImporting] = useState(false)
+  const [sourceFilename, setSourceFilename] = useState('')
   const [imported, setImported] = useState(false)
   const [importResult, setImportResult] = useState<{ count: number; examTitle?: string } | null>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -177,6 +178,7 @@ export function CsvImportClient() {
   }
 
   function processFile(file: File) {
+    setSourceFilename(file.name)
     if (!certificationId) {
       toast({ title: 'Select a certification first', variant: 'destructive' })
       return
@@ -353,6 +355,7 @@ export function CsvImportClient() {
         body: JSON.stringify({
           certificationId,
           contentType,
+          sourceFilename: sourceFilename || undefined,
           examId: targetExamId,
           newMock:
             contentType === 'MOCK_EXAM' && mockMode === 'NEW'
