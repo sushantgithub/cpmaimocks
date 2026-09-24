@@ -197,3 +197,46 @@ export function quizImportDomainErrors(
         `Domain "${name}" has ${count} Quiz questions. Each domain must contain a multiple of ${quizSize} so every persisted Quiz has exactly ${quizSize} questions.`,
     )
 }
+
+
+export interface ImportQuestionTextRow {
+  question?: string
+}
+
+export function normalizeQuestionText(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+}
+
+export function duplicateQuestionTextErrors(
+  rows: ImportQuestionTextRow[],
+  existingQuestionTexts: Iterable<string>,
+): string[] {
+  const existing = new Set(
+    Array.from(existingQuestionTexts, (text) => normalizeQuestionText(text)).filter(Boolean),
+  )
+  const firstRowByText = new Map<string, number>()
+  const errors: string[] = []
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2
+    const normalized = normalizeQuestionText(row.question ?? '')
+    if (!normalized) return
+
+    const firstRow = firstRowByText.get(normalized)
+    if (firstRow !== undefined) {
+      errors.push(
+        `Row ${rowNumber}: duplicate question text in this CSV (first used on row ${firstRow}).`,
+      )
+    } else {
+      firstRowByText.set(normalized, rowNumber)
+    }
+
+    if (existing.has(normalized)) {
+      errors.push(
+        `Row ${rowNumber}: this question already exists in the selected certification and content type.`,
+      )
+    }
+  })
+
+  return errors
+}
