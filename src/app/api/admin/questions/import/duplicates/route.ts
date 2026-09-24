@@ -51,7 +51,6 @@ export async function POST(req: Request) {
     .filter((question) => {
       const replaceableOrphan =
         body.contentType === 'MOCK_EXAM' &&
-        body.replaceOrphanedMockQuestions === true &&
         incomingIds.has(question.questionId) &&
         question._count.mockExamQuestions === 0 &&
         question._count.examAnswers === 0 &&
