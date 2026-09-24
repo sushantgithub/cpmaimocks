@@ -38,5 +38,12 @@ export async function POST(req: Request) {
     existing.map((question) => question.text),
   )
 
-  return NextResponse.json({ errors })
+  const duplicates = errors.map((message) => {
+    const match = /^Row (\d+):\s*(.*)$/.exec(message)
+    return match
+      ? { row: Number(match[1]), message: match[2] }
+      : { row: 0, message }
+  })
+
+  return NextResponse.json({ duplicates })
 }
