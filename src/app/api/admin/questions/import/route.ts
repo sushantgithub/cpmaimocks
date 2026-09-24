@@ -126,6 +126,7 @@ export async function POST(req: Request) {
       questions?: ImportRow[]
       certificationId?: string
       contentType?: ContentType
+      sourceFilename?: string
       examId?: string
       newMock?: NewMockImportConfig
       publishMock?: boolean
@@ -361,6 +362,7 @@ export async function POST(req: Request) {
             : `${contentType === 'PRACTICE_ONLY' ? 'Practice' : 'Quiz'} import ${new Date().toISOString()}`,
           certificationId: certification.id,
           contentType: contentType,
+          sourceFilename: body.sourceFilename?.trim().slice(0, 255) || null,
         },
         select: { id: true, name: true },
       })
