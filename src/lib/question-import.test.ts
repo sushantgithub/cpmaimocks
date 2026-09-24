@@ -5,6 +5,8 @@ import {
   questionIdImportErrors,
   validateNewMockImportConfig,
   quizImportDomainErrors,
+  duplicateQuestionTextErrors,
+  normalizeQuestionText,
 } from './question-import'
 
 describe('question import ID validation', () => {
@@ -227,5 +229,37 @@ describe('fixed-size Quiz imports', () => {
       ...rows('Domain 1', 5),
       ...rows('domain 1', 5),
     ], true)).toEqual([])
+  })
+})
+
+
+describe('question text duplicate validation', () => {
+  it('normalizes case, surrounding whitespace, repeated whitespace, and Unicode width', () => {
+    expect(normalizeQuestionText('  WHAT   is ＡI?  ')).toBe('what is ai?')
+  })
+
+  it('reports exact CSV rows for duplicates within the uploaded file', () => {
+    expect(duplicateQuestionTextErrors([
+      { question: 'What is supervised learning?' },
+      { question: 'Another question' },
+      { question: '  WHAT   IS SUPERVISED LEARNING? ' },
+    ], [])).toEqual([
+      'Row 4: duplicate question text in this CSV (first used on row 2).',
+    ])
+  })
+
+  it('reports exact rows that already exist in the selected question bank', () => {
+    expect(duplicateQuestionTextErrors([
+      { question: 'New question' },
+      { question: 'What is supervised learning?' },
+    ], [' what IS supervised   learning? '])).toEqual([
+      'Row 3: this question already exists in the selected certification and content type.',
+    ])
+  })
+
+  it('does not treat the same text in another bank as a duplicate when no existing text is supplied', () => {
+    expect(duplicateQuestionTextErrors([
+      { question: 'Same wording may exist in another content type' },
+    ], [])).toEqual([])
   })
 })
