@@ -62,81 +62,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   return NextResponse.json(quiz)
 }
 
-export async function DELETE(_: Request, { params }: { params: { id: string } }) {
+export async function DELETE() {
   const session = await auth()
   if (!session || session.user.role !== 'ADMIN') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const quiz = await prisma.quiz.findUnique({
-    where: { id: params.id },
-    select: {
-      id: true,
-      certificationId: true,
-      categoryId: true,
-      tag: true,
+  return NextResponse.json(
+    {
+      error:
+        'Individual Quiz deletion is disabled. Delete the original Quiz import batch from Import History instead.',
     },
-  })
-  if (!quiz) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  // Persisted Quiz records own QUIZ questions carrying their internal tag in
-  // the same certification and domain. A question carrying another active Quiz
-  // tag is shared and must survive this deletion.
-  const siblingTags = (
-    await prisma.quiz.findMany({
-      where: {
-        certificationId: quiz.certificationId,
-        categoryId: quiz.categoryId,
-        id: { not: quiz.id },
-        isActive: true,
-      },
-      select: { tag: true },
-    })
-  ).map((item) => item.tag)
-
-  const owned = await prisma.question.findMany({
-    where: {
-      certificationId: quiz.certificationId,
-      categoryId: quiz.categoryId,
-      contentType: 'QUIZ',
-      tags: { has: quiz.tag },
-      ...(siblingTags.length > 0
-        ? { NOT: { tags: { hasSome: siblingTags } } }
-        : {}),
-    },
-    select: { id: true },
-  })
-  const questionIds = owned.map((question) => question.id)
-
-  await prisma.$transaction(async (tx) => {
-    if (questionIds.length > 0) {
-      const answers = await tx.examAnswer.findMany({
-        where: { questionId: { in: questionIds } },
-        select: { attemptId: true },
-      })
-      const attemptIds = Array.from(new Set(answers.map((answer) => answer.attemptId)))
-
-      if (attemptIds.length > 0) {
-        await tx.examAnswer.deleteMany({ where: { attemptId: { in: attemptIds } } })
-        await tx.examAttempt.deleteMany({
-          where: { id: { in: attemptIds }, mode: 'QUIZ' },
-        })
-      }
-
-      await tx.bookmark.deleteMany({ where: { questionId: { in: questionIds } } })
-      const deleted = await tx.question.deleteMany({
-        where: { id: { in: questionIds }, contentType: 'QUIZ' },
-      })
-      if (deleted.count !== questionIds.length) {
-        throw new Error('QUIZ_DELETE_CONFLICT')
-      }
-    }
-
-    await tx.quiz.delete({ where: { id: quiz.id } })
-  })
-
-  return NextResponse.json({
-    success: true,
-    deletedQuestions: questionIds.length,
-  })
+    { status: 405 }
+  )
 }
