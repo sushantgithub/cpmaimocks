@@ -11,20 +11,13 @@ export function firstUnansweredQuestionIndex(
 }
 
 export function resolveQuizResumeQuestionIndex(
-  savedIndex: number | undefined,
+  _savedIndex: number | undefined,
   selectedAnswers: Array<string | null | undefined>,
 ): number {
-  if (selectedAnswers.length === 0) return 0
-
-  if (
-    typeof savedIndex === 'number' &&
-    Number.isInteger(savedIndex) &&
-    savedIndex >= 0 &&
-    savedIndex < selectedAnswers.length
-  ) {
-    return savedIndex
-  }
-
+  // Resume consistently at the earliest unfinished work. A persisted UI
+  // position can point at an already-answered question (for example when the
+  // learner answers Q1 and leaves before tapping Next), which made Quiz resume
+  // appear to restart at Q1 even though the answer itself was restored.
   return firstUnansweredQuestionIndex(selectedAnswers)
 }
 
