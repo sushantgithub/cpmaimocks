@@ -6,11 +6,12 @@ import {
 
 export interface DashboardMockAttempt {
   score: number | null
-  exam: MockExamShape | null
+  exam: (MockExamShape & { passingScore: number }) | null
 }
 
 export interface MockProgressStats {
   examsTaken: number
+  examsPassed: number
   averageScore: number
   bestScore: number
 }
@@ -20,19 +21,27 @@ export interface DashboardMockMetrics {
   fullLength: MockProgressStats
 }
 
-function summarizeScores(scores: number[]): MockProgressStats {
-  if (scores.length === 0) {
+interface ScoredAttempt {
+  score: number
+  passingScore: number
+}
+
+function summarizeAttempts(attempts: ScoredAttempt[]): MockProgressStats {
+  if (attempts.length === 0) {
     return {
       examsTaken: 0,
+      examsPassed: 0,
       averageScore: 0,
       bestScore: 0,
     }
   }
 
+  const scores = attempts.map((attempt) => attempt.score)
   const average = scores.reduce((sum, score) => sum + score, 0) / scores.length
 
   return {
-    examsTaken: scores.length,
+    examsTaken: attempts.length,
+    examsPassed: attempts.filter((attempt) => attempt.score >= attempt.passingScore).length,
     averageScore: Math.round(average * 10) / 10,
     bestScore: Math.round(Math.max(...scores) * 10) / 10,
   }
@@ -46,24 +55,27 @@ function summarizeScores(scores: number[]): MockProgressStats {
 export function dashboardMockMetrics(
   attempts: DashboardMockAttempt[],
 ): DashboardMockMetrics {
-  const fortyQuestionScores: number[] = []
-  const fullLengthScores: number[] = []
+  const fortyQuestionAttempts: ScoredAttempt[] = []
+  const fullLengthAttempts: ScoredAttempt[] = []
 
   for (const attempt of attempts) {
     if (!attempt.exam || !isFullMockExam(attempt.exam)) continue
 
-    const score = attempt.score ?? 0
+    const scoredAttempt = {
+      score: attempt.score ?? 0,
+      passingScore: attempt.exam.passingScore,
+    }
     const group = mockExamDisplayGroup(attempt.exam.questionCount)
 
     if (group === 'FORTY_QUESTION') {
-      fortyQuestionScores.push(score)
+      fortyQuestionAttempts.push(scoredAttempt)
     } else if (group === 'FULL_LENGTH') {
-      fullLengthScores.push(score)
+      fullLengthAttempts.push(scoredAttempt)
     }
   }
 
   return {
-    fortyQuestion: summarizeScores(fortyQuestionScores),
-    fullLength: summarizeScores(fullLengthScores),
+    fortyQuestion: summarizeAttempts(fortyQuestionAttempts),
+    fullLength: summarizeAttempts(fullLengthAttempts),
   }
 }
