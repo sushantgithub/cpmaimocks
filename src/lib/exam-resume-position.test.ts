@@ -29,6 +29,13 @@ describe('resumeQuestionIndex', () => {
     ).toBe(2)
   })
 
+  it('handles a 120-question full-length mock the same way', () => {
+    const questionIds = Array.from({ length: 120 }, (_, index) => `q${index + 1}`)
+    const answered = questionIds.slice(0, 47)
+
+    expect(resumeQuestionIndex(questionIds, answered)).toBe(47)
+  })
+
   it('returns zero for an empty question list', () => {
     expect(resumeQuestionIndex([], [])).toBe(0)
   })
