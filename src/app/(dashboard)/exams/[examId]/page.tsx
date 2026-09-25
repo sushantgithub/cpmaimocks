@@ -7,6 +7,7 @@ import { ExamInterface } from '@/components/exam/exam-interface'
 import type { ExamQuestion } from '@/types'
 import { expectedCount } from '@/lib/answers'
 import { isFullMockExam } from '@/lib/mock-exams'
+import { resumeQuestionIndex } from '@/lib/exam-resume-position'
 
 const questionSelect = {
   id: true, questionId: true, text: true,
@@ -142,6 +143,11 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
           }])
       )
 
+      const initialQuestionIndex = resumeQuestionIndex(
+        runningAnswers.map((answer) => answer.question.id),
+        showImmediateFeedback ? initialChecked : Object.keys(initialAnswers),
+      )
+
       return (
         <ExamInterface
           key={running.id}
@@ -153,6 +159,7 @@ export default async function ExamPage({ params, searchParams }: { params: { exa
           initialMarked={initialMarked}
           initialChecked={initialChecked}
           initialFeedback={initialFeedback}
+          initialQuestionIndex={initialQuestionIndex}
         />
       )
     }
