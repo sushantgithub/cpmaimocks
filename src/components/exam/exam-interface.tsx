@@ -37,11 +37,12 @@ interface Props {
   initialMarked?: string[]
   initialChecked?: string[]
   initialFeedback?: Record<string, FeedbackData>
+  initialQuestionIndex?: number
 }
 
-export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [], initialFeedback = {} }: Props) {
+export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [], initialFeedback = {}, initialQuestionIndex = 0 }: Props) {
   const router = useRouter()
-  const [current, setCurrent] = useState(0)
+  const [current, setCurrent] = useState(() => Math.min(Math.max(0, initialQuestionIndex), Math.max(0, questions.length - 1)))
   const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers)
   const [marked, setMarked] = useState<Set<string>>(() => new Set(initialMarked))
   const [checked, setChecked] = useState<Set<string>>(() => new Set(initialChecked))
