@@ -618,7 +618,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                   if (needsReview.length > 0) setShowReview(true)
                 }}
               >
-                Review
+                Back to Exam
               </Button>
               <Button className="flex-1" onClick={() => { setShowConfirm(false); submitExam() }} loading={submitting}>
                 Submit
