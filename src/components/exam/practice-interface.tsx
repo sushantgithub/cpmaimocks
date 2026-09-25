@@ -10,6 +10,7 @@ import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import { buildUnansweredQueue, finishNeedsConfirmation, reviewQueueTarget } from '@/lib/review-unanswered'
 import { needsMultiAnswerCheck } from '@/lib/quiz-ui-state'
+import { resolveQuizResumeQuestionIndex } from '@/lib/quiz-resume'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle, Lock
@@ -59,9 +60,16 @@ export function PracticeInterface({
   initialQuestionIndex = 0,
 }: Props) {
   const router = useRouter()
+  const resolvedInitialQuestionIndex =
+    mode === 'QUIZ'
+      ? resolveQuizResumeQuestionIndex(
+          initialQuestionIndex,
+          questions.map((question) => question.selectedAnswer),
+        )
+      : initialQuestionIndex
   const safeInitialQuestionIndex =
     questions.length > 0
-      ? Math.min(Math.max(0, initialQuestionIndex), questions.length - 1)
+      ? Math.min(Math.max(0, resolvedInitialQuestionIndex), questions.length - 1)
       : 0
   const [current, setCurrent] = useState(safeInitialQuestionIndex)
   // answers: questionId -> selected option key
@@ -82,6 +90,14 @@ export function PracticeInterface({
   const contentScrollRef = useRef<HTMLDivElement>(null)
   const lastQueuedPosition = useRef(safeInitialQuestionIndex)
   const positionSaveQueue = useRef<Promise<void>>(Promise.resolve())
+
+  useEffect(() => {
+    // Next.js can preserve client component state when revisiting the same
+    // attempt route. Re-apply the server-restored position so Resume Quiz does
+    // not visually reopen at Q1 while the checked answers are already restored.
+    setCurrent(safeInitialQuestionIndex)
+    lastQueuedPosition.current = safeInitialQuestionIndex
+  }, [attemptId, safeInitialQuestionIndex])
 
   useEffect(() => {
     if (mode !== 'QUIZ' || current === lastQueuedPosition.current) return

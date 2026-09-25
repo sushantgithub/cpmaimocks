@@ -18,6 +18,12 @@ describe('quiz resume position', () => {
     ).toBe(1)
   })
 
+  it('resumes after two checked answers instead of returning to question 1', () => {
+    expect(
+      resolveQuizResumeQuestionIndex(0, ['A', 'B', null, null]),
+    ).toBe(2)
+  })
+
   it('returns the earliest unanswered question even if a later position was saved', () => {
     expect(
       resolveQuizResumeQuestionIndex(3, ['A', null, 'C', null, null]),
