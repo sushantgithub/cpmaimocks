@@ -18,6 +18,10 @@ describe('quiz resume position', () => {
     ).toBe(1)
   })
 
+  it('resumes after several answered questions even when the saved position is zero', () => {
+    expect(resolveQuizResumeQuestionIndex(0, ['A', 'B', 'C', null, null])).toBe(3)
+  })
+
   it('returns the earliest unanswered question even if a later position was saved', () => {
     expect(
       resolveQuizResumeQuestionIndex(3, ['A', null, 'C', null, null]),
