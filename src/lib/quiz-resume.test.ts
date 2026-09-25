@@ -6,19 +6,25 @@ import {
 } from './quiz-resume'
 
 describe('quiz resume position', () => {
-  it('falls back to the first unanswered question for legacy attempts', () => {
+  it('resumes at the first unanswered question', () => {
     expect(
       firstUnansweredQuestionIndex(['A', 'B', 'C', null, null]),
     ).toBe(3)
   })
 
-  it('uses the exact saved question even when an earlier question was skipped', () => {
+  it('does not reopen an already-answered saved position', () => {
     expect(
-      resolveQuizResumeQuestionIndex(3, ['A', null, 'C', null, null]),
-    ).toBe(3)
+      resolveQuizResumeQuestionIndex(0, ['A', null, null, null]),
+    ).toBe(1)
   })
 
-  it('ignores an invalid saved position and falls back safely', () => {
+  it('returns the earliest unanswered question even if a later position was saved', () => {
+    expect(
+      resolveQuizResumeQuestionIndex(3, ['A', null, 'C', null, null]),
+    ).toBe(1)
+  })
+
+  it('ignores invalid saved positions and resumes safely', () => {
     expect(
       resolveQuizResumeQuestionIndex(99, ['A', 'B', null, null]),
     ).toBe(2)
