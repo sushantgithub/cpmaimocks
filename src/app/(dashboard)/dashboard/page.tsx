@@ -1,10 +1,10 @@
 import { requireActiveSession } from '@/lib/require-auth'
 import { prisma } from '@/lib/db'
-import { getUserStats } from '@/lib/quiz'
 import { listQuizzes } from '@/lib/quizzes'
 import { hasRemainingFreeQuizSession } from '@/lib/free-quiz-access'
 import { getUserActiveSubscriptions } from '@/lib/subscription'
 import { isFullMockExam } from '@/lib/mock-exams'
+import { dashboardMockMetrics } from '@/lib/mock-dashboard-metrics'
 import { dashboardQuizMetrics } from '@/lib/quiz-dashboard-metrics'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,19 +23,37 @@ export default async function DashboardPage() {
   const session = await requireActiveSession()
   const userId = session.user.id
 
-  const [stats, subscription, quizzes, publishedExamShapes] = await Promise.all([
-    getUserStats(userId),
+  const [subscription, quizzes, publishedExamShapes, completedMockAttempts] = await Promise.all([
     getUserActiveSubscriptions(userId),
     listQuizzes(userId),
     prisma.mockExam.findMany({
       where: { status: 'PUBLISHED' },
       select: { questionCount: true, questionsPerAttempt: true, timeLimitMinutes: true },
     }),
+    prisma.examAttempt.findMany({
+      where: {
+        userId,
+        status: 'COMPLETED',
+        mode: 'EXAM',
+        examId: { not: null },
+      },
+      select: {
+        score: true,
+        exam: {
+          select: {
+            questionCount: true,
+            questionsPerAttempt: true,
+            timeLimitMinutes: true,
+          },
+        },
+      },
+    }),
   ])
 
   const isSubscribed = subscription.length > 0
   const freeQuizAvailable = !isSubscribed && hasRemainingFreeQuizSession(quizzes)
   const examCount = publishedExamShapes.filter(isFullMockExam).length
+  const mockMetrics = dashboardMockMetrics(completedMockAttempts)
 
   const {
     quizCount,
@@ -139,7 +157,52 @@ export default async function DashboardPage() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="font-semibold text-lg">Mock Exam Progress</h2>
+              <h2 className="font-semibold text-lg">40-Question Mock Progress</h2>
+              <p className="text-xs text-muted-foreground">Timed 40-question mock exams only</p>
+            </div>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/exams">View Mock Exams →</Link>
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {[
+              {
+                label: 'Exams Taken',
+                value: mockMetrics.fortyQuestion.examsTaken,
+                icon: Trophy,
+                help: 'Completed timed 40-question Mock Exams only. Quizzes, Practice, and full-length mocks are excluded.',
+              },
+              {
+                label: 'Average Score',
+                value: `${mockMetrics.fortyQuestion.averageScore}%`,
+                icon: Target,
+                help: 'Average score across completed timed 40-question Mock Exams only.',
+              },
+              {
+                label: 'Best Score',
+                value: `${mockMetrics.fortyQuestion.bestScore}%`,
+                icon: TrendingUp,
+                help: 'Highest score achieved in a completed timed 40-question Mock Exam.',
+              },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl border bg-gray-50/50 p-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                  <item.icon className="h-4 w-4 text-primary" />
+                  <span>{item.label}</span>
+                  <InfoTooltip label={`About ${item.label}`} content={item.help} />
+                </div>
+                <div className="text-2xl font-bold">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 className="font-semibold text-lg">Full-Length Mock Progress</h2>
               <p className="text-xs text-muted-foreground">Timed full-length mock exams only</p>
             </div>
             <Button variant="ghost" size="sm" asChild>
@@ -150,19 +213,19 @@ export default async function DashboardPage() {
             {[
               {
                 label: 'Exams Taken',
-                value: stats.totalExams,
+                value: mockMetrics.fullLength.examsTaken,
                 icon: Trophy,
-                help: 'Completed timed full-length Mock Exams only. Quizzes and Practice are excluded.',
+                help: 'Completed timed full-length Mock Exams only. Quizzes, Practice, and 40-question mocks are excluded.',
               },
               {
                 label: 'Average Score',
-                value: `${stats.avgScore}%`,
+                value: `${mockMetrics.fullLength.averageScore}%`,
                 icon: Target,
                 help: 'Average score across completed timed full-length Mock Exams only.',
               },
               {
                 label: 'Best Score',
-                value: `${stats.bestScore}%`,
+                value: `${mockMetrics.fullLength.bestScore}%`,
                 icon: TrendingUp,
                 help: 'Highest score achieved in a completed timed full-length Mock Exam.',
               },
