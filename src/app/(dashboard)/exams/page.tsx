@@ -13,6 +13,8 @@ import {
   sortMockExamsForDisplay,
 } from '@/lib/mock-exams'
 import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
+import { MockAttemptHistory } from '@/components/dashboard/mock-attempt-history'
+import { newestMockAttemptsFirst } from '@/lib/mock-attempt-history'
 
 export default async function ExamsPage() {
   const session = await requireActiveSession()
@@ -81,7 +83,13 @@ export default async function ExamsPage() {
         {sectionExams.map((exam) => {
           const locked = exam.requireSubscription && !canAccess(exam.certification.id)
           const history = completedByExam.get(exam.id) ?? []
-          const prev = history.length > 0 ? history[history.length - 1] : null
+          const historyNewestFirst = newestMockAttemptsFirst(history)
+          const historyForDisplay = historyNewestFirst.map((attempt) => ({
+            id: attempt.id,
+            score: attempt.score,
+            attemptNumber: history.indexOf(attempt) + 1,
+          }))
+          const prev = historyNewestFirst[0] ?? null
           const active = activeByExam.get(exam.id) ?? null
           const passed = history.some((attempt) => (attempt.score ?? 0) >= exam.passingScore)
 
@@ -127,25 +135,7 @@ export default async function ExamsPage() {
                   <span>Pass: {exam.passingScore}%</span>
                 </div>
 
-                {history.length > 0 && (
-                  <div className="mb-3 rounded-lg border overflow-hidden">
-                    <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-700">
-                      Attempt history
-                    </div>
-                    <div className="max-h-32 overflow-y-auto divide-y">
-                      {history.map((attempt, index) => (
-                        <Link
-                          key={attempt.id}
-                          href={`/results/${attempt.id}`}
-                          className="flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-gray-50"
-                        >
-                          <span>Attempt {index + 1}</span>
-                          <span className="font-semibold">{Math.round(attempt.score ?? 0)}%</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <MockAttemptHistory attempts={historyForDisplay} />
 
                 {active && (
                   <p className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mb-3">
