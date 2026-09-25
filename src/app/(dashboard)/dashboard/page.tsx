@@ -44,6 +44,7 @@ export default async function DashboardPage() {
             questionCount: true,
             questionsPerAttempt: true,
             timeLimitMinutes: true,
+            passingScore: true,
           },
         },
       },
@@ -164,13 +165,19 @@ export default async function DashboardPage() {
               <Link href="/exams">View Mock Exams →</Link>
             </Button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               {
                 label: 'Exams Taken',
                 value: mockMetrics.fortyQuestion.examsTaken,
                 icon: Trophy,
                 help: 'Completed timed 40-question Mock Exams only. Quizzes, Practice, and full-length mocks are excluded.',
+              },
+              {
+                label: 'Exams Passed',
+                value: mockMetrics.fortyQuestion.examsPassed,
+                icon: CheckCircle2,
+                help: 'Completed timed 40-question Mock Exams that met or exceeded that exam’s passing score.',
               },
               {
                 label: 'Average Score',
@@ -209,13 +216,19 @@ export default async function DashboardPage() {
               <Link href="/exams">View Mock Exams →</Link>
             </Button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
               {
                 label: 'Exams Taken',
                 value: mockMetrics.fullLength.examsTaken,
                 icon: Trophy,
                 help: 'Completed timed full-length Mock Exams only. Quizzes, Practice, and 40-question mocks are excluded.',
+              },
+              {
+                label: 'Exams Passed',
+                value: mockMetrics.fullLength.examsPassed,
+                icon: CheckCircle2,
+                help: 'Completed timed full-length Mock Exams that met or exceeded that exam’s passing score.',
               },
               {
                 label: 'Average Score',
