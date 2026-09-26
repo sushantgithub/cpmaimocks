@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { freshExamHref } from '@/lib/exam-links'
+import { submitExam } from '@/lib/quiz'
+import { isTimedExamExpired } from '@/lib/exam-expiry'
+import { redirect } from 'next/navigation'
 import {
   isFullMockExam,
   mockExamDisplayGroup,
@@ -46,6 +49,26 @@ export default async function ExamsPage() {
       orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
     }),
   ])
+
+  // A learner may leave the app/background the browser when the timer reaches
+  // zero, so the client-side submit request is not guaranteed to run. Reconcile
+  // expired attempts on the server before rendering the Mock list; otherwise an
+  // expired attempt incorrectly remains resumable forever.
+  const examById = new Map(publishedExams.map((exam) => [exam.id, exam]))
+  const expiredAttempts = attempts.filter((attempt) => {
+    if (attempt.status !== 'IN_PROGRESS' || !attempt.examId) return false
+    const attemptExam = examById.get(attempt.examId)
+    return attemptExam
+      ? isTimedExamExpired(attempt.startedAt, attemptExam.timeLimitMinutes)
+      : false
+  })
+
+  if (expiredAttempts.length > 0) {
+    await Promise.all(expiredAttempts.map((attempt) => submitExam(attempt.id, {})))
+    // Reload from the database so history, Latest score and action buttons all
+    // reflect the newly completed attempts in this same navigation.
+    redirect('/exams')
+  }
 
   const exams = sortMockExamsForDisplay(publishedExams.filter(isFullMockExam))
   const fortyQuestionExams = exams.filter(
