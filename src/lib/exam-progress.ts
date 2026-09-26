@@ -47,6 +47,14 @@ export function nextReviewIndex(current: number, pending: number[]): number | nu
   return pending.find((index) => index > current) ?? null
 }
 
+export function nextResumeIndex(current: number, pending: number[]): number | null {
+  // Resume should continue through unanswered questions rather than walking
+  // through already-saved answers again. Prefer the next unanswered question
+  // ahead of the current one, then wrap only if the user manually jumped past
+  // an earlier unanswered question.
+  return pending.find((index) => index > current) ?? pending[0] ?? null
+}
+
 export function latestCheckedVerdicts(
   rows: { questionId: string; isCorrect: boolean | null }[],
 ): Map<string, boolean> {
