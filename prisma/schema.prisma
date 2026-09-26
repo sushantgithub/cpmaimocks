@@ -229,6 +229,7 @@ model Quiz {
   slug            String
   description     String?
   certificationId String
+  categoryId      String
   tag             String
   isActive        Boolean  @default(true)
   sortOrder       Int      @default(0)
@@ -236,8 +237,10 @@ model Quiz {
   updatedAt       DateTime @updatedAt
 
   certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([slug, certificationId])
+  @@index([categoryId, sortOrder])
 }
 
 /// Marks when someone restarted a mastered quiz. Answers given before this
@@ -272,6 +275,7 @@ model Certification {
   exams      MockExam[]
   plans      SubscriptionPlan[]
   quizzes    Quiz[]
+  importBatches QuestionImportBatch[]
 }
 
 model Category {
@@ -286,6 +290,7 @@ model Category {
   certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
   questions     Question[]
   topics        Topic[]
+  quizzes       Quiz[]
 
   @@unique([name, certificationId])
   @@unique([slug, certificationId])
@@ -338,9 +343,8 @@ model Question {
   topicId         String?
   difficulty      Difficulty          @default(MEDIUM)
   status          QuestionStatus      @default(DRAFT)
-  /// Controls where the question is surfaced. Every published question is
-  /// still eligible for Practice; this prevents mock/practice-only imports
-  /// from leaking into the automatically generated domain quizzes.
+  /// Controls where the question is surfaced. Content pools are exclusive:
+  /// QUIZ -> Quiz only, MOCK_EXAM -> Mock only, PRACTICE_ONLY -> Practice only.
   contentType     QuestionContentType @default(QUIZ)
   /// Marks throwaway content imported to try the platform out, so it can be
   /// found and removed later without guessing from names or domains.
@@ -356,7 +360,10 @@ model Question {
   mockExamQuestions MockExamQuestion[]
   examAnswers       ExamAnswer[]
   bookmarks         Bookmark[]
+  importBatchId     String?
+  importBatch       QuestionImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
+  @@index([importBatchId])
   @@index([categoryId, difficulty, status])
   @@index([status])
   @@index([certificationId, status])
@@ -391,6 +398,20 @@ model MockExam {
   attempts      ExamAttempt[]
 
   @@index([certificationId, status])
+}
+
+model QuestionImportBatch {
+  id              String              @id @default(cuid())
+  name            String
+  certificationId String
+  contentType     QuestionContentType
+  sourceFilename  String?
+  createdAt       DateTime            @default(now())
+
+  certification Certification @relation(fields: [certificationId], references: [id], onDelete: Cascade)
+  questions     Question[]
+
+  @@index([certificationId, contentType, createdAt])
 }
 
 model MockExamQuestion {

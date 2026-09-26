@@ -15,6 +15,8 @@ import {
   explicitImportQuestionIds,
   questionIdImportErrors,
   validateNewMockImportConfig,
+  quizImportDomainErrors,
+  duplicateQuestionTextErrors,
   type NewMockImportConfig,
 } from '@/lib/question-import'
 
@@ -124,6 +126,7 @@ export async function POST(req: Request) {
       questions?: ImportRow[]
       certificationId?: string
       contentType?: ContentType
+      sourceFilename?: string
       examId?: string
       newMock?: NewMockImportConfig
       publishMock?: boolean
@@ -140,6 +143,8 @@ export async function POST(req: Request) {
     if (!body.contentType || !CONTENT_TYPES.includes(body.contentType)) {
       return NextResponse.json({ error: 'Content type is required' }, { status: 400 })
     }
+    // Preserve the validated non-optional type across the transaction callback.
+    const contentType: ContentType = body.contentType
 
     const certification = await prisma.certification.findUnique({
       where: { id: body.certificationId },
@@ -152,6 +157,9 @@ export async function POST(req: Request) {
       validateRow(row, index + 2, certification.usesDomains)
     )
     const validationErrors = validation.flatMap((result) => result.errors)
+    if (contentType === 'QUIZ') {
+      validationErrors.push(...quizImportDomainErrors(questions, certification.usesDomains))
+    }
     if (validationErrors.length > 0) {
       return NextResponse.json(
         { error: 'Import validation failed', errors: validationErrors.slice(0, 20) },
@@ -198,7 +206,7 @@ export async function POST(req: Request) {
       rows: questions,
       certificationId: certification.id,
       allowReplaceOrphans:
-        body.contentType === 'MOCK_EXAM' &&
+        contentType === 'MOCK_EXAM' &&
         body.replaceOrphanedMockQuestions === true,
       existingQuestions: existingQuestions.map((question) => ({
         id: question.id,
@@ -215,7 +223,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            body.contentType === 'MOCK_EXAM' && body.replaceOrphanedMockQuestions
+            contentType === 'MOCK_EXAM' && body.replaceOrphanedMockQuestions
               ? 'Some existing questions cannot be replaced safely.'
               : 'Duplicate question_id values must be fixed before import.',
           errors: collisionAssessment.errors.slice(0, 20),
@@ -226,6 +234,33 @@ export async function POST(req: Request) {
 
     const replaceDatabaseIds = collisionAssessment.replaceDatabaseIds
 
+    // Block duplicate wording before any write. Scope database checks to the
+    // selected certification + content type so legitimate reuse across
+    // different banks is not accidentally blocked. Safe orphaned Mock rows
+    // explicitly selected for replacement are excluded.
+    const existingTextRows = await prisma.question.findMany({
+      where: {
+        certificationId: certification.id,
+        contentType,
+        ...(replaceDatabaseIds.length > 0 ? { id: { notIn: replaceDatabaseIds } } : {}),
+      },
+      select: { text: true },
+    })
+    const duplicateTextErrors = duplicateQuestionTextErrors(
+      questions,
+      existingTextRows.map((question) => question.text),
+    )
+    if (duplicateTextErrors.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Duplicate question text found. Import blocked.',
+          code: 'DUPLICATE_QUESTION_TEXT',
+          errors: duplicateTextErrors.slice(0, 50),
+        },
+        { status: 409 },
+      )
+    }
+
     let existingMock:
       | {
           id: string
@@ -235,7 +270,7 @@ export async function POST(req: Request) {
         }
       | null = null
 
-    if (body.contentType === 'MOCK_EXAM') {
+    if (contentType === 'MOCK_EXAM') {
       if (body.examId && body.newMock) {
         return NextResponse.json(
           { error: 'Choose either an existing Mock Exam or create a new one, not both.' },
@@ -318,8 +353,26 @@ export async function POST(req: Request) {
 
     const created = await prisma.$transaction(async (tx) => {
       const questionIds: string[] = []
+      // One batch per successful import. Creating it inside this transaction
+      // means a failed row cannot leave an empty/partial batch behind.
+      const importBatch = await tx.questionImportBatch.create({
+        data: {
+          name: contentType === 'MOCK_EXAM'
+            ? (existingMock?.title ?? body.newMock?.title?.trim() ?? 'Mock import')
+            : `${contentType === 'PRACTICE_ONLY' ? 'Practice' : 'Quiz'} import ${new Date().toISOString()}`,
+          certificationId: certification.id,
+          contentType: contentType,
+          sourceFilename: body.sourceFilename?.trim().slice(0, 255) || null,
+        },
+        select: { id: true, name: true },
+      })
       let examStatus: 'PUBLISHED' | null = null
       let targetMock = existingMock
+      const quizStateByDomain = new Map<string, {
+        nextSortOrder: number
+        rowsInCurrentQuiz: number
+        currentTag: string | null
+      }>()
       let createdMock = false
 
       if (replaceDatabaseIds.length > 0) {
@@ -343,7 +396,7 @@ export async function POST(req: Request) {
         }
       }
 
-      if (body.contentType === 'MOCK_EXAM' && !targetMock) {
+      if (contentType === 'MOCK_EXAM' && !targetMock) {
         const config = body.newMock!
         const title = config.title!.trim().replace(/\s+/g, ' ')
         const questionCount = Number(config.questionCount)
@@ -429,6 +482,58 @@ export async function POST(req: Request) {
               ).id
         }
 
+        let quizTag: string | null = null
+        if (contentType === 'QUIZ') {
+          if (!categoryId) {
+            throw new Error('QUIZ_DOMAIN_REQUIRED')
+          }
+
+          let state = quizStateByDomain.get(categoryId)
+          if (!state) {
+            const lastQuiz = await tx.quiz.findFirst({
+              where: { categoryId },
+              select: { sortOrder: true },
+              orderBy: [{ sortOrder: 'desc' }, { createdAt: 'desc' }],
+            })
+            state = {
+              nextSortOrder: (lastQuiz?.sortOrder ?? -1) + 1,
+              rowsInCurrentQuiz: 0,
+              currentTag: null,
+            }
+            quizStateByDomain.set(categoryId, state)
+          }
+
+          if (state.rowsInCurrentQuiz === 0) {
+            const quizNumber = state.nextSortOrder + 1
+            const title = `${domain} - Quiz ${quizNumber}`
+            const tag = `quiz-${categoryId}-${quizNumber}`.toLowerCase()
+            const slugBase = slugify(title)
+            let slug = slugBase
+            let suffix = 2
+            while (await tx.quiz.findFirst({ where: { certificationId: certification.id, slug }, select: { id: true } })) {
+              slug = `${slugBase}-${suffix++}`
+            }
+
+            await tx.quiz.create({
+              data: {
+                title,
+                slug,
+                certificationId: certification.id,
+                categoryId,
+                tag,
+                isActive: true,
+                sortOrder: state.nextSortOrder,
+              },
+            })
+            state.currentTag = tag
+            state.nextSortOrder += 1
+          }
+
+          quizTag = state.currentTag
+          state.rowsInCurrentQuiz = (state.rowsInCurrentQuiz + 1) % 10
+          if (state.rowsInCurrentQuiz === 0) state.currentTag = null
+        }
+
         let topicId: string | undefined
         const topicName = row.topic?.trim()
         if (topicName && categoryId) {
@@ -473,13 +578,16 @@ export async function POST(req: Request) {
             explanationF: row.explanation_f?.trim() || null,
             difficulty,
             source: row.source?.trim() || null,
-            tags: parseTags(row.tags),
+            tags: quizTag
+              ? Array.from(new Set([quizTag, ...parseTags(row.tags)])).slice(0, 10)
+              : parseTags(row.tags),
             isTest: parseBool(row.is_test),
             certificationId: certification.id,
             categoryId,
             topicId,
             status,
-            contentType: body.contentType,
+            contentType: contentType,
+            importBatchId: importBatch.id,
           },
         })
 
@@ -526,21 +634,32 @@ export async function POST(req: Request) {
         examTitle: targetMock?.title ?? null,
         createdMock,
         replacedQuestionCount: replaceDatabaseIds.length,
+        importBatchId: importBatch.id,
+        importBatchName: importBatch.name,
       }
     })
 
     return NextResponse.json({
       imported: created.questionIds.length,
-      contentType: body.contentType,
+      contentType: contentType,
       examId: created.examId,
       examTitle: created.examTitle,
       createdMock: created.createdMock,
       replacedQuestionCount: created.replacedQuestionCount,
       examStatus: created.examStatus,
+      importBatchId: created.importBatchId,
+      importBatchName: created.importBatchName,
       errors: [],
     })
   } catch (err) {
     console.error('[ImportQuestions]', err)
+
+    if (err instanceof Error && err.message === 'QUIZ_DOMAIN_REQUIRED') {
+      return NextResponse.json(
+        { error: 'Quiz questions must belong to a Domain so fixed 10-question Quiz records can be created.' },
+        { status: 400 },
+      )
+    }
 
     if (err instanceof Error && err.message === 'DUPLICATE_MOCK_NAME') {
       return NextResponse.json(

@@ -6,13 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { freshExamHref } from '@/lib/exam-links'
+import { submitExam } from '@/lib/quiz'
 import {
   isFullMockExam,
   mockExamDisplayGroup,
   mockExamDisplayLabel,
   sortMockExamsForDisplay,
 } from '@/lib/mock-exams'
-import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
+import { ChevronRight, Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
+import { MockAttemptHistory } from '@/components/dashboard/mock-attempt-history'
+import { newestMockAttemptsFirst } from '@/lib/mock-attempt-history'
 
 export default async function ExamsPage() {
   const session = await requireActiveSession()
@@ -46,6 +49,54 @@ export default async function ExamsPage() {
   ])
 
   const exams = sortMockExamsForDisplay(publishedExams.filter(isFullMockExam))
+
+  // An attempt can expire while the learner is away from the exam route.
+  // Finalize those attempts before building the Mock list so an expired exam
+  // can never be presented as resumable. This covers both 40-question and
+  // full-length timed mocks.
+  const examById = new Map(exams.map((exam) => [exam.id, exam]))
+  const expiredAttemptIds = attempts
+    .filter((attempt) => {
+      if (attempt.status !== 'IN_PROGRESS' || !attempt.examId) return false
+      const exam = examById.get(attempt.examId)
+      if (!exam || exam.timeLimitMinutes <= 0) return false
+      return Date.now() - attempt.startedAt.getTime() >= exam.timeLimitMinutes * 60 * 1000
+    })
+    .map((attempt) => attempt.id)
+
+  if (expiredAttemptIds.length > 0) {
+    await Promise.all(
+      expiredAttemptIds.map(async (attemptId) => {
+        try {
+          await submitExam(attemptId, {})
+        } catch (error) {
+          // Another request may have finalized the same attempt concurrently.
+          // Re-read below rather than exposing a stale Resume action.
+          console.error('[ExamsPage] expired attempt finalization', error)
+        }
+      })
+    )
+
+    const refreshedAttempts = await prisma.examAttempt.findMany({
+      where: {
+        userId,
+        mode: 'EXAM',
+        status: { in: ['IN_PROGRESS', 'COMPLETED'] },
+        examId: { not: null },
+      },
+      select: {
+        id: true,
+        examId: true,
+        status: true,
+        score: true,
+        startedAt: true,
+        submittedAt: true,
+      },
+      orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
+    })
+    attempts.splice(0, attempts.length, ...refreshedAttempts)
+  }
+
   const fortyQuestionExams = exams.filter(
     (exam) => mockExamDisplayGroup(exam.questionCount) === 'FORTY_QUESTION'
   )
@@ -81,7 +132,13 @@ export default async function ExamsPage() {
         {sectionExams.map((exam) => {
           const locked = exam.requireSubscription && !canAccess(exam.certification.id)
           const history = completedByExam.get(exam.id) ?? []
-          const prev = history.length > 0 ? history[history.length - 1] : null
+          const historyNewestFirst = newestMockAttemptsFirst(history)
+          const historyForDisplay = historyNewestFirst.map((attempt) => ({
+            id: attempt.id,
+            score: attempt.score,
+            attemptNumber: history.indexOf(attempt) + 1,
+          }))
+          const prev = historyNewestFirst[0] ?? null
           const active = activeByExam.get(exam.id) ?? null
           const passed = history.some((attempt) => (attempt.score ?? 0) >= exam.passingScore)
 
@@ -127,25 +184,7 @@ export default async function ExamsPage() {
                   <span>Pass: {exam.passingScore}%</span>
                 </div>
 
-                {history.length > 0 && (
-                  <div className="mb-3 rounded-lg border overflow-hidden">
-                    <div className="px-3 py-2 bg-gray-50 text-xs font-semibold text-gray-700">
-                      Attempt history
-                    </div>
-                    <div className="max-h-32 overflow-y-auto divide-y">
-                      {history.map((attempt, index) => (
-                        <Link
-                          key={attempt.id}
-                          href={`/results/${attempt.id}`}
-                          className="flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-gray-50"
-                        >
-                          <span>Attempt {index + 1}</span>
-                          <span className="font-semibold">{Math.round(attempt.score ?? 0)}%</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <MockAttemptHistory attempts={historyForDisplay} />
 
                 {active && (
                   <p className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-2 mb-3">
@@ -192,18 +231,28 @@ export default async function ExamsPage() {
     if (sectionExams.length === 0) return null
 
     return (
-      <section className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+      <details className="group">
+        <summary className="list-none cursor-pointer rounded-lg -mx-2 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <ChevronRight
+                className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold">{title}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-xs flex-shrink-0">
+              {sectionExams.length}
+            </Badge>
           </div>
-          <Badge variant="secondary" className="text-xs flex-shrink-0">
-            {sectionExams.length}
-          </Badge>
+        </summary>
+        <div className="mt-3">
+          {renderExamCards(sectionExams)}
         </div>
-        {renderExamCards(sectionExams)}
-      </section>
+      </details>
     )
   }
 

@@ -2,9 +2,10 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Upload } from 'lucide-react'
+import { History, Plus, Upload } from 'lucide-react'
 import { QuestionsTable } from '@/components/admin/questions-table'
 import { TestQuestionsBanner } from '@/components/admin/test-questions-banner'
+import { ImportBatchesTable } from '@/components/admin/import-batches-table'
 import { QuestionBankFilters } from '@/components/admin/question-bank-filters'
 import {
   buildQuestionBankPageHref,
@@ -31,12 +32,20 @@ export default async function QuestionsPage({
   const selectedContentType = normalizeQuestionContentType(searchParams.contentType)
   const certificationId = searchParams.certification || undefined
 
-  const [certifications, testCount] = await Promise.all([
+  const [certifications, testCount, practiceBatches] = await Promise.all([
     prisma.certification.findMany({
       orderBy: { sortOrder: 'asc' },
       select: { id: true, name: true, _count: { select: { questions: true } } },
     }),
     prisma.question.count({ where: { isTest: true } }),
+    prisma.questionImportBatch.findMany({
+      where: { contentType: 'PRACTICE_ONLY' },
+      include: {
+        certification: { select: { name: true } },
+        _count: { select: { questions: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
   ])
 
   let contentSets: AdminQuestionSetOption[] = []
@@ -199,6 +208,9 @@ export default async function QuestionsPage({
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
+            <Link href="/admin/questions/import-history"><History className="h-4 w-4 mr-1" />Import History</Link>
+          </Button>
+          <Button variant="outline" asChild>
             <Link href="/admin/questions/import"><Upload className="h-4 w-4 mr-1" />Import CSV</Link>
           </Button>
           <Button asChild>
@@ -214,6 +226,18 @@ export default async function QuestionsPage({
       />
 
       {testCount > 0 && <TestQuestionsBanner count={testCount} />}
+
+      {selectedContentType === 'PRACTICE_ONLY' && (
+        <section className="space-y-2">
+          <div>
+            <h2 className="text-lg font-semibold">Practice Import Batches</h2>
+            <p className="text-sm text-gray-500">
+              Delete a Practice import and exactly the questions that belong to it.
+            </p>
+          </div>
+          <ImportBatchesTable batches={practiceBatches} />
+        </section>
+      )}
 
       <Card>
         <CardContent className="p-0 sm:p-3">

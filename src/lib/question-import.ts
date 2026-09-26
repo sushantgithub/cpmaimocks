@@ -158,3 +158,113 @@ export function validateNewMockImportConfig(
 
   return errors
 }
+
+
+export interface QuizImportRow {
+  domain?: string
+}
+
+export function quizImportDomainErrors(
+  rows: QuizImportRow[],
+  usesDomains: boolean,
+  quizSize = 10,
+): string[] {
+  if (rows.length === 0) return ['Quiz import must contain at least one question.']
+  if (!Number.isInteger(quizSize) || quizSize <= 0) {
+    return ['Quiz size must be a positive whole number.']
+  }
+
+  if (!usesDomains) {
+    return rows.length % quizSize === 0
+      ? []
+      : [`Quiz imports must contain a multiple of ${quizSize} questions. This import has ${rows.length}.`]
+  }
+
+  const counts = new Map<string, { name: string; count: number }>()
+  for (const row of rows) {
+    const name = row.domain?.trim() ?? ''
+    if (!name) continue
+    const key = name.toLocaleLowerCase()
+    const current = counts.get(key)
+    if (current) current.count += 1
+    else counts.set(key, { name, count: 1 })
+  }
+
+  return Array.from(counts.values())
+    .filter(({ count }) => count % quizSize !== 0)
+    .map(
+      ({ name, count }) =>
+        `Domain "${name}" has ${count} Quiz questions. Each domain must contain a multiple of ${quizSize} so every persisted Quiz has exactly ${quizSize} questions.`,
+    )
+}
+
+
+export interface ImportQuestionTextRow {
+  question?: string
+}
+
+export function normalizeQuestionText(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase()
+}
+
+export function duplicateQuestionTextErrors(
+  rows: ImportQuestionTextRow[],
+  existingQuestionTexts: Iterable<string>,
+): string[] {
+  const existing = new Set(
+    Array.from(existingQuestionTexts, (text) => normalizeQuestionText(text)).filter(Boolean),
+  )
+  const firstRowByText = new Map<string, number>()
+  const errors: string[] = []
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 2
+    const normalized = normalizeQuestionText(row.question ?? '')
+    if (!normalized) return
+
+    const firstRow = firstRowByText.get(normalized)
+    if (firstRow !== undefined) {
+      errors.push(
+        `Row ${rowNumber}: duplicate question text in this CSV (first used on row ${firstRow}).`,
+      )
+    } else {
+      firstRowByText.set(normalized, rowNumber)
+    }
+
+    if (existing.has(normalized)) {
+      errors.push(
+        `Row ${rowNumber}: this question already exists in the selected certification and content type.`,
+      )
+    }
+  })
+
+  return errors
+}
+
+
+export interface QuizBatchQuestionTags {
+  tags: string[]
+}
+
+export interface QuizBatchCandidate {
+  id: string
+  tag: string
+  externalQuestionCount: number
+}
+
+export function planQuizBatchCleanup(
+  questions: QuizBatchQuestionTags[],
+  quizzes: QuizBatchCandidate[],
+): { deleteQuizIds: string[]; sharedQuizIds: string[] } {
+  const batchTags = new Set(questions.flatMap((question) => question.tags))
+  const deleteQuizIds: string[] = []
+  const sharedQuizIds: string[] = []
+
+  for (const quiz of quizzes) {
+    if (!batchTags.has(quiz.tag)) continue
+    if (quiz.externalQuestionCount > 0) sharedQuizIds.push(quiz.id)
+    else deleteQuizIds.push(quiz.id)
+  }
+
+  return { deleteQuizIds, sharedQuizIds }
+}

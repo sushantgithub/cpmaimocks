@@ -116,12 +116,6 @@ async function poolFilter(key: QuizKey) {
     })
     if (!category) return null
 
-    const claimed = await prisma.quiz.findMany({
-      where: { isActive: true, certificationId: category.certificationId },
-      select: { tag: true },
-    })
-    const claimedTags = Array.from(new Set(claimed.map((q) => q.tag)))
-
     return {
       title: category.name,
       description: null as string | null,
@@ -131,7 +125,6 @@ async function poolFilter(key: QuizKey) {
         status: 'PUBLISHED' as const,
         contentType: 'QUIZ' as const,
         categoryId: category.id,
-        ...(claimedTags.length > 0 ? { NOT: { tags: { hasSome: claimedTags } } } : {}),
       },
     }
   }
@@ -306,9 +299,9 @@ function historyForSlot(attempts: NormalizedAttempt[], quizNumber: number): Quiz
     }))
 }
 
-function freeSlotState(attempts: NormalizedAttempt[]) {
+function freeSlotState(attempts: NormalizedAttempt[], firstQuizNumber = 1) {
   return freeQuizAttemptState(
-    standardForSlot(attempts, 1).map((attempt) => ({
+    standardForSlot(attempts, firstQuizNumber).map((attempt) => ({
       id: attempt.id,
       status: attempt.status,
     }))
@@ -316,14 +309,12 @@ function freeSlotState(attempts: NormalizedAttempt[]) {
 }
 
 export async function listQuizzes(userId: string): Promise<QuizSummary[]> {
-  const [categories, tagQuizzes, attempts, accessible] = await Promise.all([
+  const [categories, attempts, accessible] = await Promise.all([
     prisma.category.findMany({
-      where: { certification: { isActive: true, usesDomains: true } },
-      include: { certification: { select: { id: true, name: true, sortOrder: true } } },
-      orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
-    }),
-    prisma.quiz.findMany({
-      where: { isActive: true, certification: { isActive: true } },
+      where: {
+        certification: { isActive: true, usesDomains: true },
+        quizzes: { some: { isActive: true } },
+      },
       include: { certification: { select: { id: true, name: true, sortOrder: true } } },
       orderBy: [{ certification: { sortOrder: 'asc' } }, { sortOrder: 'asc' }],
     }),
@@ -331,15 +322,40 @@ export async function listQuizzes(userId: string): Promise<QuizSummary[]> {
     getAccessibleCertificationIds(userId),
   ])
 
-  const keys: QuizKey[] = [
-    ...categories.map((category) => domainKey(category.id)),
-    ...tagQuizzes.map((quiz) => tagKey(quiz.id)),
-  ]
+  // Learner UI is domain-first: Certification -> Domain -> Quiz.
+  // Persisted Quiz rows define ownership/admin lifecycle, while the domain
+  // summary keeps the proven learner experience of one expandable domain card.
+  const keys: QuizKey[] = categories.map((category) => domainKey(category.id))
 
   const summaries = await Promise.all(
     keys.map((key) => quizSummary(userId, key, attempts, accessible))
   )
   return summaries.filter((summary): summary is QuizSummary => summary !== null && summary.total > 0)
+}
+
+async function persistedDomainSlots(key: QuizKey) {
+  const [kind, categoryId] = key.split(':')
+  if (kind !== 'domain') return null
+
+  const quizzes = await prisma.quiz.findMany({
+    where: { categoryId, isActive: true },
+    select: { id: true, tag: true, sortOrder: true },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+  })
+
+  return Promise.all(quizzes.map(async (quiz) => ({
+    number: quiz.sortOrder + 1,
+    ids: (await prisma.question.findMany({
+      where: {
+        status: 'PUBLISHED',
+        contentType: 'QUIZ',
+        categoryId,
+        tags: { has: quiz.tag },
+      },
+      select: { id: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })).map((question) => question.id),
+  })))
 }
 
 export async function quizSummary(
@@ -351,44 +367,49 @@ export async function quizSummary(
   const pool = await poolFilter(key)
   if (!pool) return null
 
+  const persistedSlots = await persistedDomainSlots(key)
   const questions = await prisma.question.findMany({ where: pool.where, select: { id: true } })
   const ids = questions.map((question) => question.id)
-  const quizCount = quizCountForQuestions(ids.length, QUIZ_QUESTIONS_PER_SITTING)
+  const slotDefs = persistedSlots && persistedSlots.length > 0
+    ? persistedSlots.filter((slot) => slot.ids.length > 0)
+    : Array.from({ length: quizCountForQuestions(ids.length, QUIZ_QUESTIONS_PER_SITTING) }, (_, index) => ({
+        number: index + 1,
+        ids: ids.slice(index * QUIZ_QUESTIONS_PER_SITTING, (index + 1) * QUIZ_QUESTIONS_PER_SITTING),
+      }))
+  const quizCount = slotDefs.length
   if (quizCount === 0) return null
 
   const allAttempts = preloadedAttempts ?? await loadUserQuizAttempts(userId)
-  const attempts = normalizeAttemptsForKey(allAttempts, key, quizCount)
+  const attempts = normalizeAttemptsForKey(allAttempts, key, Math.max(...slotDefs.map((slot) => slot.number)))
 
   const hasAccess =
     accessible !== undefined
       ? accessible === 'ALL' || accessible.includes(pool.certificationId)
       : await hasAccessToCertification(userId, pool.certificationId)
 
-  const freeState = freeSlotState(attempts)
+  const firstQuizNumber = slotDefs[0].number
+  const freeState = freeSlotState(attempts, firstQuizNumber)
   const progressVerdicts = new Map<string, boolean>()
 
-  const slots: QuizSlotSummary[] = Array.from({ length: quizCount }, (_, index) => {
-    const number = index + 1
+  const slots: QuizSlotSummary[] = slotDefs.map((slotDef, index) => {
+    const number = slotDef.number
     const slotAttempts = standardForSlot(attempts, number)
     const active = [...slotAttempts].reverse().find((attempt) => attempt.status === 'IN_PROGRESS') ?? null
     const history = historyForSlot(attempts, number)
     const latest = history[0] ?? null
-    const expected = questionCountForQuiz(ids.length, number, QUIZ_QUESTIONS_PER_SITTING)
-    const previousExpected =
-      number > 1
-        ? questionCountForQuiz(ids.length, number - 1, QUIZ_QUESTIONS_PER_SITTING)
-        : 0
+    const expected = slotDef.ids.length
+    const previousSlot = index > 0 ? slotDefs[index - 1] : null
     const previousCompleted =
-      number === 1 ||
-      completedQuizMilestone(attempts, number - 1, previousExpected) !== null
+      !previousSlot ||
+      completedQuizMilestone(attempts, previousSlot.number, previousSlot.ids.length) !== null
     const previousReady =
-      number === 1 || previousQuizAllowsNext(previousCompleted)
+      !previousSlot || previousQuizAllowsNext(previousCompleted)
     const activeRetry = activeIncorrectRetry(attempts, number)
 
     let lockReason: QuizLockReason = null
-    if (!hasAccess && number > 1) lockReason = 'SUBSCRIPTION'
+    if (!hasAccess && index > 0) lockReason = 'SUBSCRIPTION'
     else if (!previousReady) lockReason = 'PREVIOUS'
-    else if (!hasAccess && number === 1 && freeState.locked && !active) lockReason = 'FREE_USED'
+    else if (!hasAccess && index === 0 && freeState.locked && !active) lockReason = 'FREE_USED'
 
     const canonical = canonicalQuestionIds(attempts, number)
     const progress = quizMasteryProgress(canonical, learningForSlot(attempts, number))
@@ -529,46 +550,40 @@ export async function prepareQuizSitting(
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   })
   const poolIds = questions.map((question) => question.id)
-  const quizCount = quizCountForQuestions(poolIds.length, QUIZ_QUESTIONS_PER_SITTING)
-  if (quizCount === 0) return { kind: 'empty' }
+  const persistedSlots = await persistedDomainSlots(key)
+  const slotDefs = persistedSlots && persistedSlots.length > 0
+    ? persistedSlots.filter((slot) => slot.ids.length > 0)
+    : Array.from({ length: quizCountForQuestions(poolIds.length, QUIZ_QUESTIONS_PER_SITTING) }, (_, index) => ({
+        number: index + 1,
+        ids: poolIds.slice(index * QUIZ_QUESTIONS_PER_SITTING, (index + 1) * QUIZ_QUESTIONS_PER_SITTING),
+      }))
+  if (slotDefs.length === 0) return { kind: 'empty' }
 
   const [hasAccess, allAttempts] = await Promise.all([
     hasAccessToCertification(userId, pool.certificationId),
     loadUserQuizAttempts(userId),
   ])
-  const attempts = normalizeAttemptsForKey(allAttempts, key, quizCount)
+  const attempts = normalizeAttemptsForKey(allAttempts, key, Math.max(...slotDefs.map((slot) => slot.number)))
+  const firstQuizNumber = slotDefs[0].number
 
   if (action === 'mixedReview') {
     if (!hasAccess) return { kind: 'locked', reason: 'subscription' }
-
-    const active = [...attempts]
-      .reverse()
-      .find(
-        (attempt) =>
-          attempt.sessionKind === 'MIXED_REVIEW' && attempt.status === 'IN_PROGRESS'
-      )
+    const active = [...attempts].reverse().find(
+      (attempt) => attempt.sessionKind === 'MIXED_REVIEW' && attempt.status === 'IN_PROGRESS'
+    )
     if (active) return { kind: 'resume', attemptId: active.id }
 
-    const firstIncomplete = Array.from({ length: quizCount }, (_, index) => index + 1)
-      .find(
-        (number) =>
-          completedQuizMilestone(
-            attempts,
-            number,
-            questionCountForQuiz(poolIds.length, number, QUIZ_QUESTIONS_PER_SITTING),
-          ) === null
-      )
-    if (firstIncomplete) {
-      return {
-        kind: 'sequence_locked',
-        previousQuizNumber: Math.max(1, firstIncomplete - 1),
-      }
+    const firstIncompleteIndex = slotDefs.findIndex(
+      (slot) => completedQuizMilestone(attempts, slot.number, slot.ids.length) === null
+    )
+    if (firstIncompleteIndex >= 0) {
+      const previous = slotDefs[Math.max(0, firstIncompleteIndex - 1)]
+      return { kind: 'sequence_locked', previousQuizNumber: previous.number }
     }
 
     const verdicts = currentLearningVerdicts(attempts)
     const wrong = poolIds.filter((id) => verdicts.get(id) === false)
     if (wrong.length === 0) return { kind: 'mastered' }
-
     return {
       kind: 'questions',
       questionIds: shuffled(wrong).slice(0, QUIZ_QUESTIONS_PER_SITTING),
@@ -579,34 +594,21 @@ export async function prepareQuizSitting(
     }
   }
 
-  if (
-    quizNumber === null ||
-    !Number.isInteger(quizNumber) ||
-    quizNumber < 1 ||
-    quizNumber > quizCount
-  ) {
-    return null
-  }
+  if (quizNumber === null || !Number.isInteger(quizNumber)) return null
+  const slotIndex = slotDefs.findIndex((slot) => slot.number === quizNumber)
+  if (slotIndex < 0) return null
+  const slot = slotDefs[slotIndex]
+  const previousSlot = slotIndex > 0 ? slotDefs[slotIndex - 1] : null
 
-  if (!hasAccess && quizNumber > 1) {
-    return { kind: 'locked', reason: 'subscription' }
-  }
+  if (!hasAccess && slotIndex > 0) return { kind: 'locked', reason: 'subscription' }
 
   if (
-    quizNumber > 1 &&
+    previousSlot &&
     !previousQuizAllowsNext(
-      completedQuizMilestone(
-        attempts,
-        quizNumber - 1,
-        questionCountForQuiz(
-          poolIds.length,
-          quizNumber - 1,
-          QUIZ_QUESTIONS_PER_SITTING,
-        ),
-      ) !== null,
+      completedQuizMilestone(attempts, previousSlot.number, previousSlot.ids.length) !== null
     )
   ) {
-    return { kind: 'sequence_locked', previousQuizNumber: quizNumber - 1 }
+    return { kind: 'sequence_locked', previousQuizNumber: previousSlot.number }
   }
 
   const standardActive = activeStandard(attempts, quizNumber)
@@ -614,26 +616,15 @@ export async function prepareQuizSitting(
 
   if (action === 'retryIncorrect') {
     if (!hasAccess) return { kind: 'locked', reason: 'subscription' }
-
     const canonical = canonicalQuestionIds(attempts, quizNumber)
-    const expected = questionCountForQuiz(
-      poolIds.length,
-      quizNumber,
-      QUIZ_QUESTIONS_PER_SITTING,
-    )
-    if (completedQuizMilestone(attempts, quizNumber, expected)) {
+    if (completedQuizMilestone(attempts, quizNumber, slot.ids.length)) {
       return { kind: 'mastered' }
     }
-
     const retryActive = activeIncorrectRetry(attempts, quizNumber)
     if (retryActive) return { kind: 'resume', attemptId: retryActive.id }
-
     const progress = quizMasteryProgress(canonical, learningForSlot(attempts, quizNumber))
-    const incorrectIds = canonical.filter(
-      (questionId) => progress.verdicts.get(questionId) === false
-    )
+    const incorrectIds = canonical.filter((questionId) => progress.verdicts.get(questionId) === false)
     if (incorrectIds.length === 0) return { kind: 'no_incorrect' }
-
     return {
       kind: 'questions',
       questionIds: incorrectIds,
@@ -645,34 +636,20 @@ export async function prepareQuizSitting(
     }
   }
 
-  const completed = completedQuizMilestone(
-    attempts,
-    quizNumber,
-    questionCountForQuiz(poolIds.length, quizNumber, QUIZ_QUESTIONS_PER_SITTING),
-  )
-
-  if (action === 'start' && completed) {
-    return { kind: 'completed', attemptId: completed.id }
-  }
-
-  if (action === 'retake' && !hasAccess) {
-    return { kind: 'locked', reason: 'subscription' }
-  }
+  const completed = completedQuizMilestone(attempts, quizNumber, slot.ids.length)
+  if (action === 'start' && completed) return { kind: 'completed', attemptId: completed.id }
+  if (action === 'retake' && !hasAccess) return { kind: 'locked', reason: 'subscription' }
 
   if (!hasAccess) {
-    const freeState = freeSlotState(attempts)
+    const freeState = freeSlotState(attempts, firstQuizNumber)
     if (freeState.locked) return { kind: 'locked', reason: 'free_used' }
-    if (freeState.activeAttemptId) {
-      return { kind: 'resume', attemptId: freeState.activeAttemptId }
-    }
+    if (freeState.activeAttemptId) return { kind: 'resume', attemptId: freeState.activeAttemptId }
   }
 
-  const budget = questionCountForQuiz(
-    poolIds.length,
-    quizNumber,
-    QUIZ_QUESTIONS_PER_SITTING,
-  )
-  const picked = fixedQuestionsForSlot(attempts, quizNumber, poolIds, budget)
+  const existing = canonicalQuestionIds(attempts, quizNumber)
+  const picked = existing.length > 0
+    ? fixedQuizQuestionSet(existing, slot.ids, usedByOtherSlots(attempts, quizNumber), slot.ids.length)
+    : slot.ids
   if (picked.length === 0) return { kind: 'empty' }
 
   return {

@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 import type { ExamQuestion } from '@/types'
 import { answerLetters, normalizeAnswer } from '@/lib/answers'
-import { nextReviewIndex } from '@/lib/exam-progress'
+import { nextResumeIndex, nextReviewIndex } from '@/lib/exam-progress'
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import {
   Flag, ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu
@@ -37,11 +37,12 @@ interface Props {
   initialMarked?: string[]
   initialChecked?: string[]
   initialFeedback?: Record<string, FeedbackData>
+  initialQuestionIndex?: number
 }
 
-export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [], initialFeedback = {} }: Props) {
+export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, initialAnswers = {}, initialMarked = [], initialChecked = [], initialFeedback = {}, initialQuestionIndex = 0 }: Props) {
   const router = useRouter()
-  const [current, setCurrent] = useState(0)
+  const [current, setCurrent] = useState(() => Math.min(Math.max(0, initialQuestionIndex), Math.max(0, questions.length - 1)))
   const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers)
   const [marked, setMarked] = useState<Set<string>>(() => new Set(initialMarked))
   const [checked, setChecked] = useState<Set<string>>(() => new Set(initialChecked))
@@ -59,6 +60,12 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
   const dirty = useRef<Set<string>>(new Set())
   const answersRef = useRef(answers)
   const markedRef = useRef(marked)
+  const resumeUnansweredOnly = useRef((() => {
+    const completedAtLoad = exam.showExplanations
+      ? initialChecked.length
+      : Object.values(initialAnswers).filter(Boolean).length
+    return completedAtLoad > 0 && completedAtLoad < questions.length
+  })())
 
   useEffect(() => { answersRef.current = answers }, [answers])
   useEffect(() => { markedRef.current = marked }, [marked])
@@ -252,6 +259,39 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
       return
     }
 
+    if (exam.showExplanations && answers[q.id] && !checked.has(q.id)) {
+      void revealCurrentFeedback()
+      return
+    }
+
+    if (resumeUnansweredOnly.current) {
+      const pending = questions
+        .map((question, index) => ({ question, index }))
+        .filter(({ question, index }) =>
+          index !== current && (exam.showExplanations
+            ? !checked.has(question.id)
+            : !answers[question.id])
+        )
+        .map(({ index }) => index)
+
+      const nextIndex = nextResumeIndex(current, pending)
+      if (nextIndex !== null) {
+        setCurrent(nextIndex)
+        return
+      }
+
+      // The resumed unanswered pass is complete. If the current question was
+      // deliberately skipped, let the existing review flow handle it;
+      // otherwise the attempt is ready for final confirmation.
+      resumeUnansweredOnly.current = false
+      const currentIncomplete = exam.showExplanations
+        ? !checked.has(q.id)
+        : !answers[q.id]
+      if (currentIncomplete) setShowReview(true)
+      else setShowConfirm(true)
+      return
+    }
+
     // An unanswered learning-mock question is a deliberate skip.
     if (exam.showExplanations && !answers[q.id]) {
       setCurrent((current) => Math.min(questions.length - 1, current + 1))
@@ -263,6 +303,12 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
     }
     setCurrent((current) => Math.min(questions.length - 1, current + 1))
   }
+
+  const hasResumePending = resumeUnansweredOnly.current && questions.some(
+    (question, index) => index !== current && (exam.showExplanations
+      ? !checked.has(question.id)
+      : !answers[question.id])
+  )
 
   const needsReview = questions
     .map((question, index) => ({
@@ -449,13 +495,17 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                       : 'Next Unanswered'}
                   {!feedbackLoading && <ChevronRight className="h-4 w-4 ml-1" />}
                 </Button>
-              ) : current === questions.length - 1 ? (
+              ) : current === questions.length - 1 && !hasResumePending ? (
                 <Button size="sm" onClick={() => needsReview.length > 0 ? setShowReview(true) : setShowConfirm(true)} disabled={submitting}>
                   <Send className="h-3.5 w-3.5 mr-1.5" />Finish
                 </Button>
               ) : (
                 <Button size="sm" onClick={nextQuestion} loading={feedbackLoading}>
-                  {exam.showExplanations && answers[q.id] && !checked.has(q.id) ? 'Check Answer' : 'Next'}
+                  {exam.showExplanations && answers[q.id] && !checked.has(q.id)
+                    ? 'Check Answer'
+                    : resumeUnansweredOnly.current
+                      ? 'Next Unanswered'
+                      : 'Next'}
                   {!feedbackLoading && <ChevronRight className="h-4 w-4 ml-1" />}
                 </Button>
               )}
@@ -618,7 +668,7 @@ export function ExamInterface({ attemptId, exam, timeLeftSeconds, questions, ini
                   if (needsReview.length > 0) setShowReview(true)
                 }}
               >
-                Review
+                Back to Exam
               </Button>
               <Button className="flex-1" onClick={() => { setShowConfirm(false); submitExam() }} loading={submitting}>
                 Submit

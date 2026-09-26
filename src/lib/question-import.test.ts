@@ -4,6 +4,10 @@ import {
   explicitImportQuestionIds,
   questionIdImportErrors,
   validateNewMockImportConfig,
+  quizImportDomainErrors,
+  duplicateQuestionTextErrors,
+  normalizeQuestionText,
+  planQuizBatchCleanup,
 } from './question-import'
 
 describe('question import ID validation', () => {
@@ -189,5 +193,95 @@ describe('new Mock import settings', () => {
       'Time limit must be a positive whole number of minutes.',
       'Passing percentage must be between 1 and 100.',
     ])
+  })
+})
+
+
+describe('fixed-size Quiz imports', () => {
+  const rows = (domain: string, count: number) =>
+    Array.from({ length: count }, () => ({ domain }))
+
+  it.each([50, 60, 70])('accepts %i questions as complete 10-question quizzes', (count) => {
+    expect(quizImportDomainErrors(rows('Domain 1', count), true)).toEqual([])
+  })
+
+  it('rejects a partial quiz instead of silently creating an incomplete set', () => {
+    expect(quizImportDomainErrors(rows('Domain 1', 63), true)).toEqual([
+      'Domain "Domain 1" has 63 Quiz questions. Each domain must contain a multiple of 10 so every persisted Quiz has exactly 10 questions.',
+    ])
+  })
+
+  it('validates every domain independently', () => {
+    expect(quizImportDomainErrors([
+      ...rows('Domain 1', 20),
+      ...rows('Domain 2', 30),
+    ], true)).toEqual([])
+
+    expect(quizImportDomainErrors([
+      ...rows('Domain 1', 20),
+      ...rows('Domain 2', 25),
+    ], true)).toEqual([
+      'Domain "Domain 2" has 25 Quiz questions. Each domain must contain a multiple of 10 so every persisted Quiz has exactly 10 questions.',
+    ])
+  })
+
+  it('groups domain names case-insensitively', () => {
+    expect(quizImportDomainErrors([
+      ...rows('Domain 1', 5),
+      ...rows('domain 1', 5),
+    ], true)).toEqual([])
+  })
+})
+
+
+describe('question text duplicate validation', () => {
+  it('normalizes case, surrounding whitespace, repeated whitespace, and Unicode width', () => {
+    expect(normalizeQuestionText('  WHAT   is ＡI?  ')).toBe('what is ai?')
+  })
+
+  it('reports exact CSV rows for duplicates within the uploaded file', () => {
+    expect(duplicateQuestionTextErrors([
+      { question: 'What is supervised learning?' },
+      { question: 'Another question' },
+      { question: '  WHAT   IS SUPERVISED LEARNING? ' },
+    ], [])).toEqual([
+      'Row 4: duplicate question text in this CSV (first used on row 2).',
+    ])
+  })
+
+  it('reports exact rows that already exist in the selected question bank', () => {
+    expect(duplicateQuestionTextErrors([
+      { question: 'New question' },
+      { question: 'What is supervised learning?' },
+    ], [' what IS supervised   learning? '])).toEqual([
+      'Row 3: this question already exists in the selected certification and content type.',
+    ])
+  })
+
+  it('does not treat the same text in another bank as a duplicate when no existing text is supplied', () => {
+    expect(duplicateQuestionTextErrors([
+      { question: 'Same wording may exist in another content type' },
+    ], [])).toEqual([])
+  })
+})
+
+
+describe('Quiz import batch cleanup', () => {
+  it('deletes only Quiz records whose ownership tags are in the batch', () => {
+    expect(planQuizBatchCleanup(
+      [{ tags: ['quiz-domain-1-1', 'algorithm'] }, { tags: ['quiz-domain-1-2'] }],
+      [
+        { id: 'quiz-1', tag: 'quiz-domain-1-1', externalQuestionCount: 0 },
+        { id: 'quiz-2', tag: 'quiz-domain-1-2', externalQuestionCount: 0 },
+        { id: 'other', tag: 'quiz-domain-2-1', externalQuestionCount: 0 },
+      ],
+    )).toEqual({ deleteQuizIds: ['quiz-1', 'quiz-2'], sharedQuizIds: [] })
+  })
+
+  it('blocks deleting a Quiz record when its tag is still used by questions outside the batch', () => {
+    expect(planQuizBatchCleanup(
+      [{ tags: ['quiz-domain-1-1'] }],
+      [{ id: 'quiz-1', tag: 'quiz-domain-1-1', externalQuestionCount: 1 }],
+    )).toEqual({ deleteQuizIds: [], sharedQuizIds: ['quiz-1'] })
   })
 })

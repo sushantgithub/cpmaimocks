@@ -10,6 +10,7 @@ import { answerLetters, normalizeAnswer, isAnswerCorrect, expectedCount } from '
 import { AnswerExplanation, AnswerVerdict } from '@/components/exam/answer-explanation'
 import { buildUnansweredQueue, finishNeedsConfirmation, reviewQueueTarget } from '@/lib/review-unanswered'
 import { needsMultiAnswerCheck } from '@/lib/quiz-ui-state'
+import { resolveQuizResumeQuestionIndex } from '@/lib/quiz-resume'
 import {
   ChevronLeft, ChevronRight, Send, AlertCircle, X, Menu,
   Bookmark, BookmarkCheck, CheckCircle2, XCircle, Lock
@@ -59,9 +60,16 @@ export function PracticeInterface({
   initialQuestionIndex = 0,
 }: Props) {
   const router = useRouter()
+  const requestedInitialQuestionIndex =
+    mode === 'QUIZ'
+      ? resolveQuizResumeQuestionIndex(
+          initialQuestionIndex,
+          questions.map((question) => question.selectedAnswer),
+        )
+      : initialQuestionIndex
   const safeInitialQuestionIndex =
     questions.length > 0
-      ? Math.min(Math.max(0, initialQuestionIndex), questions.length - 1)
+      ? Math.min(Math.max(0, requestedInitialQuestionIndex), questions.length - 1)
       : 0
   const [current, setCurrent] = useState(safeInitialQuestionIndex)
   // answers: questionId -> selected option key
