@@ -12,7 +12,7 @@ import {
   mockExamDisplayLabel,
   sortMockExamsForDisplay,
 } from '@/lib/mock-exams'
-import { Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
+import { ChevronRight, Clock, HelpCircle, Lock, CheckCircle2 } from 'lucide-react'
 import { MockAttemptHistory } from '@/components/dashboard/mock-attempt-history'
 import { newestMockAttemptsFirst } from '@/lib/mock-attempt-history'
 
@@ -182,18 +182,28 @@ export default async function ExamsPage() {
     if (sectionExams.length === 0) return null
 
     return (
-      <section className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+      <details open className="group">
+        <summary className="list-none cursor-pointer rounded-lg -mx-2 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
+              <ChevronRight
+                className="h-5 w-5 mt-0.5 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold">{title}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
+              </div>
+            </div>
+            <Badge variant="secondary" className="text-xs flex-shrink-0">
+              {sectionExams.length}
+            </Badge>
           </div>
-          <Badge variant="secondary" className="text-xs flex-shrink-0">
-            {sectionExams.length}
-          </Badge>
+        </summary>
+        <div className="mt-3">
+          {renderExamCards(sectionExams)}
         </div>
-        {renderExamCards(sectionExams)}
-      </section>
+      </details>
     )
   }
 
