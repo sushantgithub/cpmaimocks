@@ -182,7 +182,7 @@ export default async function ExamsPage() {
     if (sectionExams.length === 0) return null
 
     return (
-      <details open className="group">
+      <details className="group">
         <summary className="list-none cursor-pointer rounded-lg -mx-2 px-2 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2 min-w-0">
