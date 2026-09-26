@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { freshExamHref } from '@/lib/exam-links'
+import { submitExam } from '@/lib/quiz'
 import {
   isFullMockExam,
   mockExamDisplayGroup,
@@ -48,6 +49,54 @@ export default async function ExamsPage() {
   ])
 
   const exams = sortMockExamsForDisplay(publishedExams.filter(isFullMockExam))
+
+  // An attempt can expire while the learner is away from the exam route.
+  // Finalize those attempts before building the Mock list so an expired exam
+  // can never be presented as resumable. This covers both 40-question and
+  // full-length timed mocks.
+  const examById = new Map(exams.map((exam) => [exam.id, exam]))
+  const expiredAttemptIds = attempts
+    .filter((attempt) => {
+      if (attempt.status !== 'IN_PROGRESS' || !attempt.examId) return false
+      const exam = examById.get(attempt.examId)
+      if (!exam || exam.timeLimitMinutes <= 0) return false
+      return Date.now() - attempt.startedAt.getTime() >= exam.timeLimitMinutes * 60 * 1000
+    })
+    .map((attempt) => attempt.id)
+
+  if (expiredAttemptIds.length > 0) {
+    await Promise.all(
+      expiredAttemptIds.map(async (attemptId) => {
+        try {
+          await submitExam(attemptId, {})
+        } catch (error) {
+          // Another request may have finalized the same attempt concurrently.
+          // Re-read below rather than exposing a stale Resume action.
+          console.error('[ExamsPage] expired attempt finalization', error)
+        }
+      })
+    )
+
+    const refreshedAttempts = await prisma.examAttempt.findMany({
+      where: {
+        userId,
+        mode: 'EXAM',
+        status: { in: ['IN_PROGRESS', 'COMPLETED'] },
+        examId: { not: null },
+      },
+      select: {
+        id: true,
+        examId: true,
+        status: true,
+        score: true,
+        startedAt: true,
+        submittedAt: true,
+      },
+      orderBy: [{ startedAt: 'asc' }, { id: 'asc' }],
+    })
+    attempts.splice(0, attempts.length, ...refreshedAttempts)
+  }
+
   const fortyQuestionExams = exams.filter(
     (exam) => mockExamDisplayGroup(exam.questionCount) === 'FORTY_QUESTION'
   )
