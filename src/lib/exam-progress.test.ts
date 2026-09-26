@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { answerForFinalScoring, latestCheckedVerdicts, nextReviewIndex, questionHistoryState } from './exam-progress'
+import { answerForFinalScoring, latestCheckedVerdicts, nextResumeIndex, nextReviewIndex, questionHistoryState } from './exam-progress'
 
 describe('learning mock progress rules', () => {
   it('treats incorrect and unanswered history as missed', () => {
@@ -71,5 +71,17 @@ describe('learning mock progress rules', () => {
     expect(nextReviewIndex(7, [7, 9])).toBe(9)
     expect(nextReviewIndex(9, [9])).toBeNull()
     expect(nextReviewIndex(9, [5, 9])).toBeNull()
+  })
+
+  it('continues a resumed exam through only unanswered questions', () => {
+    // User originally left Q2, Q3, Q67 and Q68 unanswered.
+    expect(nextResumeIndex(1, [2, 66, 67])).toBe(2)
+    expect(nextResumeIndex(2, [66, 67])).toBe(66)
+    expect(nextResumeIndex(66, [67])).toBe(67)
+    expect(nextResumeIndex(67, [])).toBeNull()
+  })
+
+  it('wraps to an earlier unanswered question after manual navigation', () => {
+    expect(nextResumeIndex(67, [1, 2])).toBe(1)
   })
 })
