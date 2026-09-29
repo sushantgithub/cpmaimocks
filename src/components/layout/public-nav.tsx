@@ -28,7 +28,7 @@ export function PublicNav() {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden lg:flex items-center gap-6">
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               {l.label}
@@ -36,7 +36,7 @@ export function PublicNav() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           {session ? (
             <Button asChild size="sm">
               <Link href="/dashboard">Dashboard</Link>
@@ -54,14 +54,14 @@ export function PublicNav() {
         </div>
 
         {/* Mobile menu button */}
-        <button className="md:hidden p-2" onClick={() => setOpen(!open)}>
+        <button className="lg:hidden p-2" onClick={() => setOpen(!open)}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t bg-white px-4 py-4 space-y-3">
+        <div className="lg:hidden border-t bg-white px-4 py-4 space-y-3">
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} className="block py-2 text-sm text-muted-foreground" onClick={() => setOpen(false)}>
               {l.label}

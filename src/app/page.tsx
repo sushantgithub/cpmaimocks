@@ -29,7 +29,7 @@ const features = [
 
 const faqs = [
   { q: 'Is this affiliated with PMI?', a: 'No. This is an independent exam preparation platform. PMI and CPMAI are trademarks of the Project Management Institute.' },
-  { q: 'How many questions are in each mock exam?', a: 'Each full mock exam contains 120 questions with a 3-hour timer, mirroring the real CPMAI exam format.' },
+  { q: 'How many questions are in each mock exam?', a: 'Each full mock exam contains 120 questions with a 160-minute timer, mirroring the real CPMAI exam format.' },
   { q: 'Can I access on mobile?', a: 'Yes. The platform is designed mobile-first and works on Android, iPhone, tablets, and desktop.' },
   { q: 'Can I cancel my subscription?', a: 'Yes, you can cancel anytime from your account settings. Access continues until the end of your billing period.' },
 ]

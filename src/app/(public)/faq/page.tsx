@@ -14,7 +14,7 @@ const faqs = [
     { q: 'Is CertMocks affiliated with PMI?', a: 'No. CertMocks is an independent exam preparation platform. PMI and CPMAI are registered trademarks of the Project Management Institute, Inc.' },
   ]},
   { category: 'Platform', items: [
-    { q: 'How many questions are in each mock exam?', a: '120 questions per full mock exam, matching the actual CPMAI exam format with a 3-hour timer.' },
+    { q: 'How many questions are in each mock exam?', a: '120 questions per full mock exam with a 160-minute timer, matching the actual CPMAI exam format.' },
     { q: 'Can I use this on my phone?', a: 'Yes. The platform is designed mobile-first and works on Android, iPhone, tablets, and desktop browsers.' },
     { q: 'Are explanations provided?', a: 'Yes. Every question includes a detailed explanation of the correct answer, shown after you submit the exam.' },
   ]},
