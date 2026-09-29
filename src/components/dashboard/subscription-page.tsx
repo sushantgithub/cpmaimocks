@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/hooks/use-toast'
 import { formatCurrency, approxUsd, planPeriodLabel, isLifetime, accessUntilLabel } from '@/lib/utils'
-import { BASELINE_FREE_PLAN_FEATURES, isBaselineFreePlan } from '@/lib/subscription-plans'
+import { isBaselineFreePlan } from '@/lib/subscription-plans'
 import { CheckCircle2, CreditCard, ArrowRight } from 'lucide-react'
 
 interface Plan {
@@ -235,7 +235,7 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
           const isFree = isBaselineFreePlan(plan)
           const isOwned = subscriptions.some((subscription) => subscription.planId === plan.id)
           const isSelected = selectedPlan?.id === plan.id
-          const displayFeatures = isFree ? BASELINE_FREE_PLAN_FEATURES : plan.features
+          const displayFeatures = plan.features
           const freeIsCurrent = isFree && !hasPremiumSubscription
           return (
             <Card
