@@ -51,7 +51,7 @@ async function loadHomeData() {
         },
       }),
     ])
-    const domainCount = certifications.reduce((sum, cert) => sum + cert.categories.length, 0)
+    const domainCount = certifications.reduce((sum, cert) => sum + cert.categories.filter((category) => category.name.toLowerCase() !== 'algorithms').length, 0)
     return { questionCount, examCount, domainCount, plans, certifications }
   } catch (err) {
     console.error('[Home] could not load live data', err)
@@ -65,19 +65,12 @@ export default async function HomePage() {
   const ctaHref = session ? '/dashboard' : '/register'
   const certifications = (data?.certifications ?? []).filter((cert) => cert.categories.length > 0)
 
-  const stats = data
-    ? [
-        { value: data.questionCount >= 100 ? `${Math.floor(data.questionCount / 50) * 50}+` : String(data.questionCount), label: 'Practice Questions' },
-        { value: String(data.examCount), label: data.examCount === 1 ? 'Full Mock Exam' : 'Full Mock Exams' },
-        { value: data.certifications.length === 1 && data.certifications[0].name === 'CPMAI' && data.domainCount === 6 ? '5 + Algo' : String(data.domainCount), label: data.certifications.length === 1 && data.certifications[0].name === 'CPMAI' && data.domainCount === 6 ? 'Domains + Algorithms' : 'Exam Domains' },
-        { value: '24/7', label: 'Access' },
-      ]
-    : [
-        { value: 'Timed', label: 'Full-length Mock Exams' },
-        { value: 'Every', label: 'CPMAI Domain Covered' },
-        { value: 'Detailed', label: 'Answer Explanations' },
-        { value: '24/7', label: 'Access' },
-      ]
+  const stats = [
+    { value: '1000+', label: 'Practice Questions' },
+    { value: '4', label: 'Full Mock Exams' },
+    { value: '6', label: 'Mini Mocks' },
+    { value: '5', label: 'Exam Domains' },
+  ]
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -239,7 +232,7 @@ export default async function HomePage() {
                   </h3>
                 )}
                 <div className="flex flex-wrap justify-center gap-3">
-                  {cert.categories.map((category) => (
+                  {cert.categories.filter((category) => category.name.toLowerCase() !== 'algorithms').map((category) => (
                     <span key={category.name} className="rounded-full bg-blue-800 px-4 py-2 text-sm text-blue-100 border border-blue-700">
                       {category.name}
                     </span>
