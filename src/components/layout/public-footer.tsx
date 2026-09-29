@@ -23,6 +23,7 @@ export function PublicFooter() {
             <h4 className="font-semibold text-sm mb-3">Platform</h4>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/exams" className="hover:text-foreground">Mock Exams</Link></li>
+              <li><Link href="/cpmai-practice-questions" className="hover:text-foreground">Free Practice Questions</Link></li>
               <li><Link href="/pricing" className="hover:text-foreground">Pricing</Link></li>
               <li><Link href="/blog" className="hover:text-foreground">Blog</Link></li>
               <li><Link href="/faq" className="hover:text-foreground">FAQ</Link></li>

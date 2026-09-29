@@ -13,7 +13,7 @@ function JsonLd({ data }: JsonLdProps) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, '\\u003c') }}
     />
   )
 }
@@ -119,6 +119,44 @@ export function ProductJsonLd({
           priceCurrency: o.currency,
           availability: 'https://schema.org/InStock',
           url,
+        })),
+      }}
+    />
+  )
+}
+
+/** Quiz schema for pages of sample questions with answers */
+export function PracticeQuizJsonLd({
+  name,
+  about,
+  questions,
+}: {
+  name: string
+  about: string
+  questions: { text: string; options: { key: string; text: string; correct: boolean }[]; explanation: string }[]
+}) {
+  return (
+    <JsonLd
+      data={{
+        '@context': 'https://schema.org',
+        '@type': 'Quiz',
+        name,
+        about: { '@type': 'Thing', name: about },
+        educationalLevel: 'professional',
+        hasPart: questions.map((q) => ({
+          '@type': 'Question',
+          eduQuestionType: q.options.filter((o) => o.correct).length > 1 ? 'Checkbox' : 'Multiple choice',
+          text: q.text,
+          suggestedAnswer: q.options
+            .filter((o) => !o.correct)
+            .map((o) => ({ '@type': 'Answer', text: o.text })),
+          acceptedAnswer: q.options
+            .filter((o) => o.correct)
+            .map((o) => ({
+              '@type': 'Answer',
+              text: o.text,
+              answerExplanation: { '@type': 'Comment', text: q.explanation },
+            })),
         })),
       }}
     />

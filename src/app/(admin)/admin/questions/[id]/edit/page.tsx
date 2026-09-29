@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
 import { ArrowLeft } from 'lucide-react'
+import { FREE_SAMPLE_TAG } from '@/lib/free-sample'
 
 interface Category { id: string; name: string }
 interface Question {
@@ -19,6 +20,7 @@ interface Question {
   /** The topic's name, not its id — it may not exist yet. */
   topic: string;
   isTest: boolean;
+  tags: string[];
 }
 
 const OPTION_EXPLANATIONS = ['explanationA', 'explanationB', 'explanationC', 'explanationD'] as const
@@ -75,6 +77,7 @@ export default function EditQuestionPage() {
           categoryId: form.categoryId || null,
           topic: form.topic ?? '',
           isTest: !!form.isTest,
+          tags: form.tags ?? [],
         }),
       })
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Save failed')
@@ -229,6 +232,25 @@ export default function EditQuestionPage() {
               <span className="text-sm font-medium text-gray-700">Test question</span>
               <span className="block text-xs text-muted-foreground">
                 Marks this as throwaway content, so it can be found and deleted in one go later.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 cursor-pointer mt-4 border-t pt-4">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300"
+              checked={(form.tags ?? []).includes(FREE_SAMPLE_TAG)}
+              onChange={e => setForm(p => {
+                if (!p) return p
+                const rest = (p.tags ?? []).filter(t => t !== FREE_SAMPLE_TAG)
+                return { ...p, tags: e.target.checked ? [...rest, FREE_SAMPLE_TAG] : rest }
+              })}
+            />
+            <span>
+              <span className="text-sm font-medium text-gray-700">Show on free practice questions page</span>
+              <span className="block text-xs text-muted-foreground">
+                Anyone can see this question and its answer at /cpmai-practice-questions. Pick quiz
+                questions rather than mock exam ones. Must also be Published.
               </span>
             </span>
           </label>

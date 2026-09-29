@@ -8,7 +8,7 @@ import { CalendarDays } from 'lucide-react'
 export const metadata: Metadata = {
   title: 'Blog — CertMocks',
   description:
-    'CPMAI exam tips, study guides, domain breakdowns, and preparation strategies for the PMI Certified Professional in AI and Machine Learning certification.',
+    'CPMAI exam tips, study guides, domain breakdowns, and preparation strategies for the PMI Certified Professional in Managing AI (CPMAI) certification.',
   alternates: { canonical: '/blog' },
 }
 

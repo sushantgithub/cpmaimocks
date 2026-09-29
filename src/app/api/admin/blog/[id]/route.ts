@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireAdminSession } from '@/lib/require-auth'
 
@@ -62,12 +63,20 @@ export async function PUT(req: Request, ctx: Ctx) {
     },
   })
 
+  revalidateBlog(existing.slug, post.slug)
   return NextResponse.json(post)
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
   await requireAdminSession()
   const { id } = await ctx.params
-  await prisma.blogPost.delete({ where: { id } })
+  const post = await prisma.blogPost.delete({ where: { id } })
+  revalidateBlog(post.slug)
   return NextResponse.json({ ok: true })
+}
+
+function revalidateBlog(...slugs: string[]) {
+  revalidatePath('/blog')
+  for (const slug of Array.from(new Set(slugs))) revalidatePath(`/blog/${slug}`)
+  revalidatePath('/sitemap.xml')
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { requireAdminSession } from '@/lib/require-auth'
 
@@ -59,5 +60,8 @@ export async function POST(req: Request) {
     },
   })
 
+  revalidatePath('/blog')
+  revalidatePath(`/blog/${post.slug}`)
+  revalidatePath('/sitemap.xml')
   return NextResponse.json(post, { status: 201 })
 }
