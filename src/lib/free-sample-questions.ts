@@ -1,10 +1,11 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { FREE_SAMPLE_TAG } from '@/lib/free-sample'
 
 const MAX_FREE_SAMPLES = 30
 
-export async function getFreeSampleQuestions() {
-  return prisma.question.findMany({
+export const getFreeSampleQuestions = cache(async () =>
+  prisma.question.findMany({
     where: {
       tags: { has: FREE_SAMPLE_TAG },
       status: 'PUBLISHED',
@@ -31,7 +32,7 @@ export async function getFreeSampleQuestions() {
       explanationF: true,
       category: { select: { name: true } },
     },
-  })
-}
+  }),
+)
 
 export type FreeSampleQuestion = Awaited<ReturnType<typeof getFreeSampleQuestions>>[number]
