@@ -8,6 +8,7 @@ import { Menu, X, BookOpen } from 'lucide-react'
 
 const navLinks = [
   { label: 'Mock Exams', href: '/exams' },
+  { label: 'Free Questions', href: '/cpmai-practice-questions' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
   { label: 'FAQ', href: '/faq' },

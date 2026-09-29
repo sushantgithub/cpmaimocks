@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { normalizeAnswer } from '@/lib/answers'
 import { slugify } from '@/lib/utils'
+import { FREE_SAMPLE_PAGE_PATH } from '@/lib/free-sample'
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -88,6 +90,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
 
   const question = await prisma.question.update({ where: { id: params.id }, data })
+  revalidatePath(FREE_SAMPLE_PAGE_PATH)
   return NextResponse.json(question)
 }
 
@@ -127,5 +130,6 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     )
   )
 
+  revalidatePath(FREE_SAMPLE_PAGE_PATH)
   return NextResponse.json({ success: true, answeredRemoved: answered })
 }

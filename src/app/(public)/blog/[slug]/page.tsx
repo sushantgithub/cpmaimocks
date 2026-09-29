@@ -133,10 +133,10 @@ export default async function BlogPostPage({ params }: Props) {
           Start with free CPMAI practice questions — no credit card required.
         </p>
         <Link
-          href="/register"
+          href="/cpmai-practice-questions"
           className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-white hover:bg-primary/90"
         >
-          Start Free Today
+          Try Free Practice Questions
         </Link>
       </div>
     </div>
