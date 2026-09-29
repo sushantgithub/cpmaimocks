@@ -3,9 +3,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import {
-  CheckCircle2, Clock, BarChart3, BookMarked,
-  Trophy, ArrowRight, Brain, Target,
-  ShieldCheck, Smartphone
+  CheckCircle2, BarChart3, BookMarked,
+  Trophy, ArrowRight, Brain,
+  ShieldCheck
 } from 'lucide-react'
 import { PublicNav } from '@/components/layout/public-nav'
 import { PublicFooter } from '@/components/layout/public-footer'
@@ -17,18 +17,15 @@ import { formatCurrency, planPeriodLabel, isLifetime } from '@/lib/utils'
 export const revalidate = 3600
 
 const features = [
-  { icon: Brain, title: 'Realistic Mock Exams', desc: '120-question full-length exams matching the actual CPMAI format and difficulty.' },
-  { icon: Clock, title: 'Timed Exam Experience', desc: 'Practice under real exam conditions with a built-in countdown timer.' },
-  { icon: BarChart3, title: 'Performance Analytics', desc: 'Track your progress by domain, topic, and difficulty. Know exactly where to focus.' },
-  { icon: BookMarked, title: 'Bookmark & Review', desc: 'Bookmark tricky questions and revisit them anytime in practice mode.' },
-  { icon: Target, title: 'Practice Mode', desc: 'Drill by topic, difficulty, or review your previously incorrect answers.' },
-  { icon: Smartphone, title: 'Mobile Friendly', desc: 'Study on any device — phone, tablet, or desktop. Optimised for touch.' },
+  { icon: Brain, title: 'Realistic Mock Exams', desc: '120-question full-length exams designed to simulate the CPMAI exam experience.' },
+  { icon: BarChart3, title: 'Performance Analytics', desc: 'Track progress by domain, topic, and difficulty so you know where to focus.' },
+  { icon: BookMarked, title: 'Practice & Review', desc: 'Practice by topic, revisit incorrect answers, and bookmark questions for later review.' },
 ]
 
 
 const faqs = [
   { q: 'Is this affiliated with PMI?', a: 'No. This is an independent exam preparation platform. PMI and CPMAI are trademarks of the Project Management Institute.' },
-  { q: 'How many questions are in each mock exam?', a: 'Each full mock exam contains 120 questions with a 3-hour timer, mirroring the real CPMAI exam format.' },
+  { q: 'How many questions are in each mock exam?', a: 'Each full mock exam contains 120 questions with a 160-minute timer, aligned with the current CPMAI exam duration.' },
   { q: 'Can I access on mobile?', a: 'Yes. The platform is designed mobile-first and works on Android, iPhone, tablets, and desktop.' },
   { q: 'Can I cancel my subscription?', a: 'Yes, you can cancel anytime from your account settings. Access continues until the end of your billing period.' },
 ]
@@ -54,7 +51,7 @@ async function loadHomeData() {
         },
       }),
     ])
-    const domainCount = certifications.reduce((sum, cert) => sum + cert.categories.length, 0)
+    const domainCount = certifications.reduce((sum, cert) => sum + cert.categories.filter((category) => category.name.toLowerCase() !== 'algorithms').length, 0)
     return { questionCount, examCount, domainCount, plans, certifications }
   } catch (err) {
     console.error('[Home] could not load live data', err)
@@ -68,19 +65,12 @@ export default async function HomePage() {
   const ctaHref = session ? '/dashboard' : '/register'
   const certifications = (data?.certifications ?? []).filter((cert) => cert.categories.length > 0)
 
-  const stats = data
-    ? [
-        { value: data.questionCount >= 100 ? `${Math.floor(data.questionCount / 50) * 50}+` : String(data.questionCount), label: 'Practice Questions' },
-        { value: String(data.examCount), label: data.examCount === 1 ? 'Full Mock Exam' : 'Full Mock Exams' },
-        { value: String(data.domainCount), label: data.certifications.length === 1 ? `${data.certifications[0].name} Domains` : 'Exam Domains' },
-        { value: '24/7', label: 'Access' },
-      ]
-    : [
-        { value: 'Timed', label: 'Full-length Mock Exams' },
-        { value: 'Every', label: 'CPMAI Domain Covered' },
-        { value: 'Detailed', label: 'Answer Explanations' },
-        { value: '24/7', label: 'Access' },
-      ]
+  const stats = [
+    { value: '1000+', label: 'Practice Questions' },
+    { value: '4', label: 'Full Mock Exams' },
+    { value: '6', label: 'Mini Mocks' },
+    { value: '5', label: 'Exam Domains' },
+  ]
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -119,7 +109,7 @@ export default async function HomePage() {
               <CheckCircle2 className="h-4 w-4" /> Detailed answer explanations
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <Smartphone className="h-4 w-4" /> Mobile friendly
+              <CheckCircle2 className="h-4 w-4" /> Mobile friendly
             </span>
           </div>
         </div>
@@ -139,31 +129,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 md:py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-3">Everything You Need to Pass</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              A complete preparation system built around the real CPMAI exam structure.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f) => (
-              <Card key={f.title} className="border-0 shadow-sm">
-                <CardContent className="p-6">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
-                    <f.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <h3 className="font-semibold mb-2">{f.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Exam Preview */}
       <section className="py-16 md:py-20 bg-white">
         <div className="container mx-auto px-4">
@@ -171,7 +136,7 @@ export default async function HomePage() {
             <div>
               <h2 className="text-3xl font-bold mb-4">Realistic Exam Interface</h2>
               <p className="text-muted-foreground mb-6 leading-relaxed">
-                Our exam interface mirrors the actual CPMAI testing experience with a question
+                Our exam interface is designed to simulate a realistic CPMAI testing experience with a question
                 navigation panel, mark-for-review, and auto-submit when time expires.
               </p>
               <ul className="space-y-3">
@@ -227,6 +192,31 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Features */}
+      <section className="py-16 md:py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-3">Focused Practice for Exam Day</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Build confidence with focused practice, explanations, and progress tracking.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f) => (
+              <Card key={f.title} className="border-0 shadow-sm">
+                <CardContent className="p-6">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
+                    <f.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-2">{f.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Domains, straight from the question bank so they stay true to what is imported */}
       {certifications.length > 0 && (
       <section className="py-16 bg-blue-900 text-white">
@@ -242,7 +232,7 @@ export default async function HomePage() {
                   </h3>
                 )}
                 <div className="flex flex-wrap justify-center gap-3">
-                  {cert.categories.map((category) => (
+                  {cert.categories.filter((category) => category.name.toLowerCase() !== 'algorithms').map((category) => (
                     <span key={category.name} className="rounded-full bg-blue-800 px-4 py-2 text-sm text-blue-100 border border-blue-700">
                       {category.name}
                     </span>
@@ -267,7 +257,7 @@ export default async function HomePage() {
               price: formatCurrency(dbPlan.price, dbPlan.currency),
               period: isLifetime(dbPlan.durationDays) ? (dbPlan.price === 0 ? 'forever' : 'one-time, lifetime') : `/${planPeriodLabel(dbPlan.durationDays)}`,
               features: (dbPlan.features as string[]).slice(0, 5),
-              cta: dbPlan.price === 0 ? 'Get Started' : dbPlan.isFeatured ? 'Most Popular' : `Start ${dbPlan.name}`,
+              cta: dbPlan.price === 0 ? 'Get Started' : `Start ${dbPlan.name}`,
               href: ctaHref,
               highlight: dbPlan.isFeatured,
             })).map((plan) => (
@@ -326,7 +316,7 @@ export default async function HomePage() {
       <section className="py-16 bg-primary text-white text-center">
         <div className="container mx-auto px-4">
           <Trophy className="h-12 w-12 mx-auto mb-4 text-yellow-300" />
-          <h2 className="text-3xl font-bold mb-3">Ready to Pass Your CPMAI?</h2>
+          <h2 className="text-3xl font-bold mb-3">Ready to Prepare for Your CPMAI?</h2>
           <p className="text-blue-100 mb-8 max-w-lg mx-auto">
             Realistic practice for the PMI CPMAI certification.
             Start with a free account today.
