@@ -5,6 +5,8 @@ import { applyCoupon } from '@/lib/subscription'
 import { sendPaymentConfirmationEmail } from '@/lib/email'
 import { formatDate, isLifetime } from '@/lib/utils'
 import { isBaselineFreePlan } from '@/lib/subscription-plans'
+import { trackEvent } from '@/lib/analytics-track'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 
 function toMoney(value: number) {
   return Math.round(value * 100) / 100
@@ -111,6 +113,17 @@ export async function fulfilPayment(
   if (!outcome) return { alreadyProcessed: true }
 
   const { payment, subscription } = outcome
+
+  // Reached only by whichever caller's transaction actually claimed the
+  // payment above, so a Razorpay webhook racing the browser's own verify
+  // call for the same payment can never double-count this.
+  trackEvent(ANALYTICS_EVENTS.PURCHASE_COMPLETED, {
+    planId: payment.plan!.id,
+    planSlug: payment.plan!.slug,
+    amount: payment.amount,
+    free: payment.amount === 0,
+  })
+
   try {
     await sendPaymentConfirmationEmail(
       payment.user.email,

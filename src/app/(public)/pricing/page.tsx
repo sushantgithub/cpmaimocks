@@ -7,6 +7,8 @@ import { formatCurrency, approxUsd, planPeriodLabel, isLifetime } from '@/lib/ut
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { ProductJsonLd, FAQPageJsonLd } from '@/components/seo/json-ld'
+import { trackEvent } from '@/lib/analytics-track'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 
 // Reads plans from the database, so it cannot be built ahead of time like
 // the other public pages.
@@ -19,6 +21,8 @@ export const metadata: Metadata = {
 }
 
 export default async function PricingPage() {
+  trackEvent(ANALYTICS_EVENTS.PRICING_VIEWED)
+
   const plans = await prisma.subscriptionPlan.findMany({
     where: { isActive: true },
     orderBy: [{ certificationId: 'asc' }, { sortOrder: 'asc' }],

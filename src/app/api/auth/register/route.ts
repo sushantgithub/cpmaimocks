@@ -5,6 +5,8 @@ import { sendVerificationEmail } from '@/lib/email'
 import { generateToken, normalizeEmail, isValidEmail } from '@/lib/tokens'
 import { addHours } from 'date-fns'
 import { clientIp, throttle } from '@/lib/rate-limit'
+import { trackEvent } from '@/lib/analytics-track'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +14,8 @@ export async function POST(req: Request) {
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 100) : ''
     const email = normalizeEmail(body.email)
     const password = typeof body.password === 'string' ? body.password : ''
+    // Analytics label only — never used to grant or price anything.
+    const plan = typeof body.plan === 'string' ? body.plan.trim().slice(0, 60) : ''
 
     if (!name || !email || !password) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 })
@@ -53,6 +57,7 @@ export async function POST(req: Request) {
     await prisma.analyticsEvent.create({
       data: { event: 'USER_REGISTERED', userId: user.id },
     })
+    trackEvent(ANALYTICS_EVENTS.REGISTER_COMPLETED, plan ? { plan } : undefined)
 
     return NextResponse.json({ success: true })
   } catch (err) {
