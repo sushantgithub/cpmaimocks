@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/hooks/use-toast'
-import { RefreshCw, RotateCcw } from 'lucide-react'
+import { RefreshCw, RotateCcw, ShieldOff } from 'lucide-react'
 
 interface Payment {
   id: string
@@ -21,6 +21,7 @@ interface Payment {
   createdAt: string
   user: { name: string | null; email: string }
   plan: { name: string } | null
+  subscription: { id: string; status: string } | null
 }
 
 const statusVariant: Record<string, 'success' | 'destructive' | 'secondary' | 'outline'> = {
@@ -37,6 +38,7 @@ export default function AdminPaymentsPage() {
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState(1)
   const [refunding, setRefunding] = useState<string | null>(null)
+  const [revoking, setRevoking] = useState<string | null>(null)
 
   async function load(p = page) {
     setLoading(true)
@@ -67,6 +69,24 @@ export default function AdminPaymentsPage() {
       toast({ title: (err as Error).message, variant: 'destructive' })
     } finally {
       setRefunding(null)
+    }
+  }
+
+  async function handleRevoke(payment: Payment) {
+    if (!confirm(`Revoke ${payment.user.email}'s access from this refunded payment?`)) return
+    setRevoking(payment.id)
+    try {
+      const res = await fetch(`/api/admin/payments/${payment.id}/revoke-access`, { method: 'POST' })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error || 'Revoke failed')
+      toast({ title: `Access revoked for ${payment.user.email}`, variant: 'success' })
+      setPayments((prev) => prev.map((p) =>
+        p.id === payment.id && p.subscription ? { ...p, subscription: { ...p.subscription, status: 'CANCELLED' } } : p
+      ))
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: 'destructive' })
+    } finally {
+      setRevoking(null)
     }
   }
 
@@ -127,6 +147,17 @@ export default function AdminPaymentsPage() {
                     >
                       <RotateCcw className="h-3.5 w-3.5 mr-1" />
                       {refunding === payment.id ? 'Processing...' : 'Refund'}
+                    </Button>
+                  )}
+                  {payment.status === 'REFUNDED' && payment.subscription?.status === 'ACTIVE' && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleRevoke(payment)}
+                      disabled={revoking === payment.id}
+                    >
+                      <ShieldOff className="h-3.5 w-3.5 mr-1" />
+                      {revoking === payment.id ? 'Revoking...' : 'Revoke Access'}
                     </Button>
                   )}
                 </CardContent>
