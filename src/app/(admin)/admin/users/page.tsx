@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
-import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2, KeyRound, X } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, ShieldCheck, Trash2, KeyRound, X, FileBarChart } from 'lucide-react'
 import { formatDate, formatCurrency, isLifetime } from '@/lib/utils'
 
 interface User {
@@ -352,6 +353,11 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex gap-2 justify-end flex-wrap">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin/users/${user.id}`}>
+                              <FileBarChart className="h-3.5 w-3.5 mr-1" />Report
+                            </Link>
+                          </Button>
                           <Button variant="outline" size="sm" onClick={() => openAccess(user)} disabled={plans.length === 0}>
                             <KeyRound className="h-3.5 w-3.5 mr-1" />Grant Access
                           </Button>
