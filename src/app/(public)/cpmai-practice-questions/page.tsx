@@ -7,6 +7,8 @@ import { PracticeQuizJsonLd } from '@/components/seo/json-ld'
 import { OPTION_KEYS, answerLetters } from '@/lib/answers'
 import { FREE_SAMPLE_PAGE_PATH } from '@/lib/free-sample'
 import { getFreeSampleQuestions, type FreeSampleQuestion } from '@/lib/free-sample-questions'
+import { trackEvent } from '@/lib/analytics-track'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 
 export const revalidate = 3600
 
@@ -78,6 +80,10 @@ export default async function FreePracticeQuestionsPage() {
   const questions = await loadQuestions()
   const rendered = questions.map((q) => ({ q, options: optionsOf(q) }))
   const midpoint = Math.ceil(rendered.length / 2)
+
+  // Only a page with real questions demonstrates anything — the "coming
+  // soon" empty state isn't a meaningful funnel step.
+  if (rendered.length > 0) trackEvent(ANALYTICS_EVENTS.FREE_QUESTIONS_VIEWED)
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-16 max-w-3xl">
