@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { BookOpen, Target, ShieldCheck } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'About — CertMocks',
+  title: 'About',
   description: 'CertMocks is an independent exam preparation platform for PMI CPMAI certification candidates.',
   alternates: { canonical: '/about' },
 }
@@ -29,6 +30,20 @@ export default function AboutPage() {
             <p className="text-sm text-muted-foreground">{item.desc}</p>
           </div>
         ))}
+      </div>
+
+      <div className="text-center mb-12">
+        <p className="text-sm text-muted-foreground mb-3">
+          Curious what the questions actually look like? Try{' '}
+          <Link href="/cpmai-practice-questions" className="text-primary underline">
+            free CPMAI practice questions
+          </Link>
+          , or read the{' '}
+          <Link href="/blog/pmi-cpmai-exam-guide-2026" className="text-primary underline">
+            CPMAI exam guide
+          </Link>{' '}
+          for the full format and study plan.
+        </p>
       </div>
 
       <div className="prose prose-gray max-w-none text-sm leading-relaxed space-y-4 bg-gray-50 rounded-xl p-6">

@@ -15,7 +15,7 @@ import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Pricing — CertMocks',
+  title: 'Pricing',
   description: 'Affordable subscription plans for CPMAI exam preparation. Start free, upgrade for full access.',
   alternates: { canonical: '/pricing' },
 }
