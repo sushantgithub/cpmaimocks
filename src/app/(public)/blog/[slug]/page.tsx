@@ -75,13 +75,13 @@ export default async function BlogPostPage({ params }: Props) {
             dateModified: post.updatedAt.toISOString(),
             author: {
               '@type': 'Organization',
-              name: 'CertMocks',
+              name: post.author || 'CertMocks',
             },
             publisher: {
               '@type': 'Organization',
               name: 'CertMocks',
             },
-          }),
+          }).replace(/</g, '\\u003c'),
         }}
       />
 
