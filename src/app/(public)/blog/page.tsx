@@ -6,7 +6,7 @@ import { prisma } from '@/lib/db'
 import { CalendarDays } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Blog — CertMocks',
+  title: 'Blog',
   description:
     'CPMAI exam tips, study guides, domain breakdowns, and preparation strategies for the PMI Certified Professional in Managing AI (CPMAI) certification.',
   alternates: { canonical: '/blog' },
