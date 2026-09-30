@@ -86,7 +86,7 @@ export default async function PricingPage() {
                   ))}
                 </ul>
                 <Button className="w-full" variant={plan.isFeatured ? 'default' : 'outline'} asChild>
-                  <Link href="/register">Get Started</Link>
+                  <Link href={`/register?plan=${plan.slug}`}>Get Started</Link>
                 </Button>
               </CardContent>
             </Card>
