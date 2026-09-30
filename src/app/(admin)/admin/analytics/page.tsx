@@ -2,6 +2,20 @@ import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/lib/utils'
 import { Users, BookOpen, TrendingUp, CreditCard, Trophy, Target } from 'lucide-react'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
+
+// Viewed Pricing and Viewed Free Questions are two separate entry points,
+// not sequential steps — someone can reach either first, or skip both and
+// go straight to sign-up. The bars are a volume comparison across stages,
+// not a strict per-visitor conversion path.
+const FUNNEL_STEPS = [
+  { event: ANALYTICS_EVENTS.PRICING_VIEWED, label: 'Viewed Pricing' },
+  { event: ANALYTICS_EVENTS.FREE_QUESTIONS_VIEWED, label: 'Viewed Free Questions' },
+  { event: ANALYTICS_EVENTS.REGISTER_STARTED, label: 'Started Sign Up' },
+  { event: ANALYTICS_EVENTS.REGISTER_COMPLETED, label: 'Completed Sign Up' },
+  { event: ANALYTICS_EVENTS.CHECKOUT_STARTED, label: 'Started Checkout' },
+  { event: ANALYTICS_EVENTS.PURCHASE_COMPLETED, label: 'Completed Purchase' },
+] as const
 
 export default async function AdminAnalyticsPage() {
   const [
@@ -17,6 +31,7 @@ export default async function AdminAnalyticsPage() {
     topExams,
     recentAttempts,
     scoreDistribution,
+    funnelCounts,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: new Date(new Date().setDate(1)) } } }),
@@ -50,7 +65,19 @@ export default async function AdminAnalyticsPage() {
       where: { status: 'COMPLETED', score: { not: null } },
       _count: true,
     }),
+    prisma.analyticsEvent.groupBy({
+      by: ['event'],
+      where: {
+        event: { in: FUNNEL_STEPS.map((s) => s.event) },
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
+      _count: true,
+    }),
   ])
+
+  const funnelCountByEvent = new Map(funnelCounts.map((f) => [f.event, f._count]))
+  const funnelRows = FUNNEL_STEPS.map((s) => ({ ...s, count: funnelCountByEvent.get(s.event) ?? 0 }))
+  const funnelMax = Math.max(...funnelRows.map((r) => r.count), 1)
 
   const avgScore = completedAttempts > 0
     ? await prisma.examAttempt.aggregate({ where: { status: 'COMPLETED' }, _avg: { score: true } })
@@ -178,6 +205,36 @@ export default async function AdminAnalyticsPage() {
               </div>
             )
           })()}
+        </CardContent>
+      </Card>
+
+      {/* Conversion funnel */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Conversion Funnel</CardTitle>
+          <p className="text-xs text-gray-500 mt-1">
+            Last 30 days. Viewed Pricing and Viewed Free Questions are separate entry points, not sequential steps.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {funnelRows.every((r) => r.count === 0) ? (
+            <p className="text-sm text-gray-500">No funnel events recorded yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {funnelRows.map((r) => (
+                <div key={r.event} className="flex items-center gap-3 text-sm">
+                  <span className="w-36 sm:w-40 text-gray-600 text-right flex-shrink-0">{r.label}</span>
+                  <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-blue-500"
+                      style={{ width: `${(r.count / funnelMax) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-8 text-gray-700 font-semibold flex-shrink-0">{r.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

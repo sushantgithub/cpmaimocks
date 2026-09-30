@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       },
     })
 
-    trackEvent(ANALYTICS_EVENTS.CHECKOUT_STARTED, { planId: plan.id, planSlug: plan.slug, amount })
+    trackEvent(ANALYTICS_EVENTS.CHECKOUT_STARTED, { planId: plan.id, planSlug: plan.slug, amount }, { userId: session.user.id })
 
     return NextResponse.json({ ...order, paymentId: payment.id })
   } catch (err) {
