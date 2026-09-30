@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -33,8 +33,17 @@ declare global {
   }
 }
 
-export function SubscriptionPage({ subscriptions, plans, certifications, freeQuizAvailable }: Props) {
+export function SubscriptionPage(props: Props) {
+  return (
+    <Suspense fallback={<div className="max-w-3xl mx-auto animate-pulse h-40 bg-gray-100 rounded-xl" />}>
+      <SubscriptionPageInner {...props} />
+    </Suspense>
+  )
+}
+
+function SubscriptionPageInner({ subscriptions, plans, certifications, freeQuizAvailable }: Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [selectedCert, setSelectedCert] = useState<string>(certifications[0]?.id ?? '')
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
   const [coupon, setCoupon] = useState('')
@@ -52,6 +61,20 @@ export function SubscriptionPage({ subscriptions, plans, certifications, freeQui
       purchaseCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [selectedPlan])
+
+  // A visitor who picked a paid plan on /pricing before signing up arrives
+  // here with ?plan=<slug>. Pre-select it so they aren't asked to find it
+  // again — but never for the free plan or one they already own, matching
+  // what a click on those cards does.
+  useEffect(() => {
+    const planSlug = searchParams.get('plan')
+    if (!planSlug) return
+    const match = plans.find((plan) => plan.slug === planSlug)
+    if (!match || isBaselineFreePlan(match)) return
+    if (subscriptions.some((subscription) => subscription.planId === match.id)) return
+    if (match.certificationId) setSelectedCert(match.certificationId)
+    setSelectedPlan(match)
+  }, [searchParams, plans, subscriptions])
 
   // An all-access plan is relevant whichever certification you picked
   const visiblePlans = plans.filter(

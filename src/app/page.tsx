@@ -281,7 +281,7 @@ export default async function HomePage() {
               period: isLifetime(dbPlan.durationDays) ? (dbPlan.price === 0 ? 'forever' : 'one-time, lifetime') : `/${planPeriodLabel(dbPlan.durationDays)}`,
               features: (dbPlan.features as string[]).slice(0, 5),
               cta: dbPlan.price === 0 ? 'Get Started' : dbPlan.isFeatured ? 'Most Popular' : `Start ${dbPlan.name}`,
-              href: ctaHref,
+              href: session ? ctaHref : `/register?plan=${dbPlan.slug}`,
               highlight: dbPlan.isFeatured,
             })).map((plan) => (
               <Card key={plan.name} className={`${plan.highlight ? 'border-primary ring-2 ring-primary' : ''}`}>
