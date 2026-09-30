@@ -82,7 +82,7 @@ export default async function HomePage() {
         url={siteUrl}
         providerName="CertMocks"
         courseName="CPMAI Exam Preparation"
-        description="Realistic mock exams, domain-wise practice questions, and detailed explanations for the PMI Certified Professional in AI and Machine Learning exam."
+        description="Realistic mock exams, domain-wise practice questions, and detailed explanations for the PMI Certified Professional in Managing AI exam."
       />
       <FAQPageJsonLd
         faqs={faqs.map((f) => ({ question: f.q, answer: f.a }))}
@@ -105,12 +105,12 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="xl" className="bg-white text-blue-900 hover:bg-blue-50" asChild>
-              <Link href={ctaHref}>
-                {session ? 'Go to Dashboard' : 'Start Free Today'} <ArrowRight className="h-5 w-5" />
+              <Link href={session ? ctaHref : '/cpmai-practice-questions'}>
+                {session ? 'Go to Dashboard' : 'Try Free CPMAI Questions'} <ArrowRight className="h-5 w-5" />
               </Link>
             </Button>
             <Button size="xl" variant="outline" className="bg-transparent border-white text-white hover:bg-white/10 hover:text-white" asChild>
-              <Link href="/exams">View Mock Exams</Link>
+              <Link href={session ? '/exams' : '/pricing'}>{session ? 'View Mock Exams' : 'See Mock Exam Plans'}</Link>
             </Button>
           </div>
           <p className="mt-4 text-sm text-blue-200">Free plan available — no credit card required</p>
