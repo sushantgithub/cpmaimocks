@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
+import { track } from '@vercel/analytics/react'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 
 export default function RegisterPage() {
   return (
@@ -44,6 +46,12 @@ function RegisterForm() {
       .catch(() => setGoogleEnabled(false))
   }, [])
 
+  // Fires once per real page load in a browser — reaching the form is the
+  // funnel step, not any particular field being filled in.
+  useEffect(() => {
+    track(ANALYTICS_EVENTS.REGISTER_STARTED, plan ? { plan } : undefined)
+  }, [])
+
   async function clearExistingSession() {
     // Registration is an account-switch boundary. An existing session (for
     // example an admin testing signup) must not survive into the new account.
@@ -65,7 +73,7 @@ function RegisterForm() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+        body: JSON.stringify({ name: form.name, email: form.email, password: form.password, plan: plan ?? undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Registration failed')

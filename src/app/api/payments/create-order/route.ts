@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createPaymentOrder } from '@/lib/payment'
 import { quoteOrder, fulfilPayment } from '@/lib/checkout'
+import { trackEvent } from '@/lib/analytics-track'
+import { ANALYTICS_EVENTS } from '@/lib/analytics-events'
 
 export async function POST(req: Request) {
   try {
@@ -56,6 +58,8 @@ export async function POST(req: Request) {
         status: 'PENDING',
       },
     })
+
+    trackEvent(ANALYTICS_EVENTS.CHECKOUT_STARTED, { planId: plan.id, planSlug: plan.slug, amount })
 
     return NextResponse.json({ ...order, paymentId: payment.id })
   } catch (err) {
