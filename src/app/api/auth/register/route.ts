@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     await prisma.analyticsEvent.create({
       data: { event: 'USER_REGISTERED', userId: user.id },
     })
-    trackEvent(ANALYTICS_EVENTS.REGISTER_COMPLETED, plan ? { plan } : undefined)
+    trackEvent(ANALYTICS_EVENTS.REGISTER_COMPLETED, plan ? { plan } : undefined, { userId: user.id })
 
     return NextResponse.json({ success: true })
   } catch (err) {

@@ -122,7 +122,7 @@ export async function fulfilPayment(
     planSlug: payment.plan!.slug,
     amount: payment.amount,
     free: payment.amount === 0,
-  })
+  }, { userId: payment.userId })
 
   try {
     await sendPaymentConfirmationEmail(

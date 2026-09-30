@@ -47,9 +47,17 @@ function RegisterForm() {
   }, [])
 
   // Fires once per real page load in a browser — reaching the form is the
-  // funnel step, not any particular field being filled in.
+  // funnel step, not any particular field being filled in. Sent to Vercel
+  // Analytics and, so the admin Analytics page can show it without a paid
+  // Vercel plan, to this app's own event log.
   useEffect(() => {
-    track(ANALYTICS_EVENTS.REGISTER_STARTED, plan ? { plan } : undefined)
+    const metadata = plan ? { plan } : undefined
+    track(ANALYTICS_EVENTS.REGISTER_STARTED, metadata)
+    fetch('/api/analytics/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: ANALYTICS_EVENTS.REGISTER_STARTED, metadata }),
+    }).catch(() => {})
   }, [])
 
   async function clearExistingSession() {
