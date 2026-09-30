@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { getProviders, signIn, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast'
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<Card className="w-full max-w-md"><CardContent className="py-12 text-center text-muted-foreground">Loading…</CardContent></Card>}>
+      <RegisterForm />
+    </Suspense>
+  )
+}
+
+// Plan slugs are lowercase-with-hyphens (enforced when the plan was
+// created), so anything else is treated as absent rather than passed
+// through into a redirect URL.
+function sanitizedPlanSlug(raw: string | null): string | null {
+  return raw && /^[a-z0-9-]+$/.test(raw) ? raw : null
+}
+
+function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const plan = sanitizedPlanSlug(searchParams.get('plan'))
+  // Carries the chosen paid plan through email verification and sign-in, so
+  // it's still selected on the subscription page instead of making the
+  // visitor find it again after registering.
+  const postLoginTarget = plan ? `/subscription?plan=${plan}` : '/dashboard'
   const [loading, setLoading] = useState(false)
   const googleInFlight = useRef(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
@@ -53,7 +74,7 @@ export default function RegisterPage() {
       // server error must not unexpectedly sign the current user out.
       await clearExistingSession()
       toast({ title: 'Account created!', description: 'Please check your email to verify your account.', variant: 'success' })
-      router.replace('/login?registered=1')
+      router.replace(`/login?registered=1&callbackUrl=${encodeURIComponent(postLoginTarget)}`)
       router.refresh()
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error('Registration failed')
@@ -71,7 +92,7 @@ export default function RegisterPage() {
       // Google signup may be started while another CertMocks account is signed
       // in. Clear that application session before OAuth chooses the new account.
       await clearExistingSession()
-      await signIn('google', { callbackUrl: '/dashboard' }, { prompt: 'select_account' })
+      await signIn('google', { callbackUrl: postLoginTarget }, { prompt: 'select_account' })
     } catch {
       toast({ title: 'Could not start Google sign-up', variant: 'destructive' })
       setLoading(false)
