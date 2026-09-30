@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Refund Policy' }
+export const metadata: Metadata = { title: 'Refund Policy', alternates: { canonical: '/legal/refund' } }
 
 export default function RefundPage() {
   return (
