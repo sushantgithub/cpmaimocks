@@ -18,6 +18,7 @@ export async function GET(req: Request) {
       include: {
         user: { select: { name: true, email: true } },
         plan: { select: { name: true } },
+        subscription: { select: { id: true, status: true } },
       },
     }),
     prisma.payment.count(),

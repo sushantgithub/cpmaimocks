@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { verifyWebhookSignature } from '@/lib/payment'
 import { prisma } from '@/lib/db'
 import { fulfilPayment } from '@/lib/checkout'
+import { cancelSubscription } from '@/lib/subscription'
 
 interface PaymentEntity { id?: string; order_id?: string; error_description?: string }
 interface RefundEntity { id?: string; payment_id?: string }
@@ -54,11 +55,25 @@ export async function POST(req: Request) {
       }
       case 'refund.processed': {
         if (refund?.payment_id) {
-          const result = await prisma.payment.updateMany({
+          const record = await prisma.payment.findFirst({
             where: { providerPaymentId: refund.payment_id },
-            data: { status: 'REFUNDED', refundedAt: new Date() },
+            include: { subscription: { select: { id: true, status: true } } },
           })
-          action = result.count > 0 ? 'marked-refunded' : 'unknown-payment'
+          if (record) {
+            await prisma.payment.update({
+              where: { id: record.id },
+              data: { status: 'REFUNDED', refundedAt: new Date() },
+            })
+            // A refund must not leave the access it paid for still active.
+            if (record.subscription?.status === 'ACTIVE') {
+              await cancelSubscription(record.subscription.id, 'Payment refunded')
+              action = 'marked-refunded-and-revoked'
+            } else {
+              action = 'marked-refunded'
+            }
+          } else {
+            action = 'unknown-payment'
+          }
         }
         break
       }
