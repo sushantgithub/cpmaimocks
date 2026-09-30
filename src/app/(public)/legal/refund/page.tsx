@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-export const metadata: Metadata = { title: 'Refund Policy — CertMocks' }
+export const metadata: Metadata = { title: 'Refund Policy' }
 
 export default function RefundPage() {
   return (

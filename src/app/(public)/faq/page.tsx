@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { FAQPageJsonLd } from '@/components/seo/json-ld'
 
 export const metadata: Metadata = {
-  title: 'FAQ — CertMocks',
+  title: 'FAQ',
   description: 'Frequently asked questions about CertMocks CPMAI exam preparation — mock exams, pricing, explanations, and more.',
   alternates: { canonical: '/faq' },
 }
@@ -22,7 +23,7 @@ const faqs = [
     { q: 'What payment methods are accepted?', a: 'UPI, credit cards, debit cards, and net banking (India). International Visa and Mastercard are also supported.' },
     { q: 'Can I cancel anytime?', a: 'Yes. Cancel from your Account → Subscription page. Your access continues until the end of your billing period.' },
     { q: 'Is there a refund policy?', a: 'Yes. Contact us within 7 days of purchase for a full refund. See our Refund Policy page.' },
-    { q: 'What is the free plan?', a: 'The free plan includes 20 sample questions and 1 mini mock exam — enough to try the platform before subscribing.' },
+    { q: 'What is the free plan?', a: 'The free plan includes 25 free practice questions, 1 mini mock exam, and 1 full mock exam — enough to try the platform before subscribing.' },
   ]},
   { category: 'Questions & Content', items: [
     { q: 'Where do the questions come from?', a: 'All questions are independently authored for exam preparation purposes. The content is not copied from any official PMI materials.' },
@@ -56,6 +57,14 @@ export default function FAQPage() {
           </div>
         ))}
       </div>
+
+      <p className="text-sm text-muted-foreground text-center mt-10">
+        Still deciding? Try{' '}
+        <Link href="/cpmai-practice-questions" className="text-primary underline">
+          free CPMAI practice questions
+        </Link>{' '}
+        — no sign-up needed.
+      </p>
     </div>
   )
 }
