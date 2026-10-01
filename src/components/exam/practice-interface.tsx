@@ -186,6 +186,7 @@ export function PracticeInterface({
     if (answers[q.id] || answerSaving === q.id) return
 
     if (!multi) {
+      setPending([opt])
       void commitAnswer([opt])
       return
     }
@@ -384,7 +385,9 @@ export function PracticeInterface({
                     optClass = 'border-gray-200 bg-white opacity-60 cursor-default'
                   }
                 } else if (isSelected) {
-                  optClass = 'border-primary bg-blue-50 cursor-pointer'
+                  optClass = answerSaving === q.id
+                    ? 'border-primary bg-blue-50 cursor-wait'
+                    : 'border-primary bg-blue-50 cursor-pointer'
                 }
 
                 return (
