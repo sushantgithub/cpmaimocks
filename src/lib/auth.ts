@@ -8,6 +8,8 @@ import { clientIp, isRateLimited, recordAttempt } from '@/lib/rate-limit'
 import { authConfig } from '@/lib/auth.config'
 import { activeAccountRole } from '@/lib/session-access'
 import { stagingGoogleOAuthAllowed } from '@/lib/environment-safety'
+import { headers } from 'next/headers'
+import { verifyMobileToken } from '@/lib/mobile-auth'
 
 const nextAuth = NextAuth({
   ...authConfig,
@@ -118,7 +120,33 @@ const rawAuth = nextAuth.auth
 // account, which would let an already-signed-in user keep using protected
 // pages and APIs until the token expires.
 export async function auth() {
-  const session = await rawAuth()
+  let session = await rawAuth()
+
+  // Native Android clients authenticate with a short-lived signed bearer token.
+  // Browser sessions continue to use the existing Auth.js HttpOnly cookie path.
+  if (!session?.user?.id) {
+    const authorization = headers().get('authorization')
+    const bearer = authorization?.startsWith('Bearer ')
+      ? authorization.slice('Bearer '.length).trim()
+      : ''
+
+    if (bearer) {
+      const mobile = verifyMobileToken(bearer)
+      if (mobile) {
+        session = {
+          user: {
+            id: mobile.sub,
+            email: mobile.email,
+            name: mobile.name,
+            image: null,
+            role: mobile.role,
+          },
+          expires: new Date(mobile.exp * 1000).toISOString(),
+        } as Awaited<ReturnType<typeof rawAuth>>
+      }
+    }
+  }
+
   if (!session?.user?.id) return session
 
   const account = await prisma.user.findUnique({
