@@ -3,6 +3,8 @@ import { stagingGoogleOAuthAllowed } from '@/lib/environment-safety'
 
 export const dynamic = 'force-dynamic'
 
+// Public runtime config used by the native Android sign-in flow.
+
 export async function GET() {
   const clientId =
     stagingGoogleOAuthAllowed() && process.env.GOOGLE_CLIENT_ID
