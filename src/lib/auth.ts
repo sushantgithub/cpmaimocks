@@ -120,43 +120,53 @@ const rawAuth = nextAuth.auth
 // account, which would let an already-signed-in user keep using protected
 // pages and APIs until the token expires.
 export async function auth() {
-  let session = await rawAuth()
+  const browserSession = await rawAuth()
+
+  if (browserSession?.user?.id) {
+    const account = await prisma.user.findUnique({
+      where: { id: browserSession.user.id },
+      select: { isActive: true, role: true },
+    })
+    const role = activeAccountRole(account)
+    if (!role) return null
+
+    // Keep role changes made by an admin effective for existing sessions too.
+    browserSession.user.role = role
+    return browserSession
+  }
 
   // Native Android clients authenticate with a short-lived signed bearer token.
   // Browser sessions continue to use the existing Auth.js HttpOnly cookie path.
-  if (!session?.user?.id) {
-    const authorization = headers().get('authorization')
-    const bearer = authorization?.startsWith('Bearer ')
-      ? authorization.slice('Bearer '.length).trim()
-      : ''
+  const authorization = headers().get('authorization')
+  const bearer = authorization?.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length).trim()
+    : ''
+  if (!bearer) return browserSession
 
-    if (bearer) {
-      const mobile = verifyMobileToken(bearer)
-      if (mobile) {
-        session = {
-          user: {
-            id: mobile.sub,
-            email: mobile.email,
-            name: mobile.name,
-            image: null,
-            role: mobile.role,
-          },
-          expires: new Date(mobile.exp * 1000).toISOString(),
-        } as Awaited<ReturnType<typeof rawAuth>>
-      }
-    }
-  }
-
-  if (!session?.user?.id) return session
+  const mobile = verifyMobileToken(bearer)
+  if (!mobile) return null
 
   const account = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isActive: true, role: true },
+    where: { id: mobile.sub },
+    select: {
+      isActive: true,
+      role: true,
+      email: true,
+      name: true,
+      image: true,
+    },
   })
   const role = activeAccountRole(account)
-  if (!role) return null
+  if (!account || !role) return null
 
-  // Keep role changes made by an admin effective for existing sessions too.
-  session.user.role = role
-  return session
+  return {
+    user: {
+      id: mobile.sub,
+      email: account.email,
+      name: account.name,
+      image: account.image,
+      role,
+    },
+    expires: new Date(mobile.exp * 1000).toISOString(),
+  }
 }
