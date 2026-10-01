@@ -8,6 +8,8 @@ import { clientIp, isRateLimited, recordAttempt } from '@/lib/rate-limit'
 import { authConfig } from '@/lib/auth.config'
 import { activeAccountRole } from '@/lib/session-access'
 import { stagingGoogleOAuthAllowed } from '@/lib/environment-safety'
+import { headers } from 'next/headers'
+import { verifyMobileToken } from '@/lib/mobile-auth'
 
 const nextAuth = NextAuth({
   ...authConfig,
@@ -118,17 +120,53 @@ const rawAuth = nextAuth.auth
 // account, which would let an already-signed-in user keep using protected
 // pages and APIs until the token expires.
 export async function auth() {
-  const session = await rawAuth()
-  if (!session?.user?.id) return session
+  const browserSession = await rawAuth()
+
+  if (browserSession?.user?.id) {
+    const account = await prisma.user.findUnique({
+      where: { id: browserSession.user.id },
+      select: { isActive: true, role: true },
+    })
+    const role = activeAccountRole(account)
+    if (!role) return null
+
+    // Keep role changes made by an admin effective for existing sessions too.
+    browserSession.user.role = role
+    return browserSession
+  }
+
+  // Native Android clients authenticate with a short-lived signed bearer token.
+  // Browser sessions continue to use the existing Auth.js HttpOnly cookie path.
+  const authorization = headers().get('authorization')
+  const bearer = authorization?.startsWith('Bearer ')
+    ? authorization.slice('Bearer '.length).trim()
+    : ''
+  if (!bearer) return browserSession
+
+  const mobile = verifyMobileToken(bearer)
+  if (!mobile) return null
 
   const account = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { isActive: true, role: true },
+    where: { id: mobile.sub },
+    select: {
+      isActive: true,
+      role: true,
+      email: true,
+      name: true,
+      image: true,
+    },
   })
   const role = activeAccountRole(account)
-  if (!role) return null
+  if (!account || !role) return null
 
-  // Keep role changes made by an admin effective for existing sessions too.
-  session.user.role = role
-  return session
+  return {
+    user: {
+      id: mobile.sub,
+      email: account.email,
+      name: account.name,
+      image: account.image,
+      role,
+    },
+    expires: new Date(mobile.exp * 1000).toISOString(),
+  }
 }
