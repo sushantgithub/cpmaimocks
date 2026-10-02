@@ -8,6 +8,24 @@ const nextConfig = {
   },
   experimental: {
     serverActions: { allowedOrigins: ['localhost:3000'] },
+    outputFileTracingExcludes: {
+      // Driver adapters (@prisma/adapter-pg) mean the native query-engine
+      // binary is never loaded at runtime, but Next's file tracer still
+      // picks it up via a conditional require() in the generated client.
+      // Each one is ~16MB, duplicated into every one of our ~60 route
+      // functions, so excluding it is the main lever on Functions Storage.
+      '*': [
+        'node_modules/.prisma/client/libquery_engine-*',
+        'node_modules/@prisma/engines/**',
+        'node_modules/@prisma/engines-version/**',
+        'node_modules/prisma/**',
+        'node_modules/**/*.md',
+        'node_modules/**/README*',
+        'node_modules/**/CHANGELOG*',
+        'node_modules/**/*.map',
+        'node_modules/typescript/**',
+      ],
+    },
   },
   async headers() {
     return [
